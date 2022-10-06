@@ -1,533 +1,631 @@
 <?xml version='1.0' encoding='utf-8'?>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<html
+	xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:epub="http://www.idpf.org/2007/ops"
+>
+	<head>
+		<title>Django For Beginner</title>
+		<link href="stylesheet.css" type="text/css" rel="stylesheet" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	</head>
 
-<head>
-  <title>Table of Contents</title>
-  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
+	<body dir="ltr">
+		<section class="frontmatter TableOfContents" epub:type="frontmatter toc">
+			<h2 id="toc">Table of Contents</h2>
 
-<body dir="ltr">
+			<nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="toc">
+				<ol class="toc no-parts">
+					<li>
+						<a href="chap00.html#leanpub-auto-introduction">Introduction</a>
+						<ol>
+							<li>
+								<a href="chap00.html#leanpub-auto-why-django">Why Django</a>
+							</li>
+							<li>
+								<a href="chap00.html#leanpub-auto-why-this-book">Why This Book</a>
+							</li>
+							<li>
+								<a href="chap00.html#leanpub-auto-prerequisites">Prerequisites</a>
+							</li>
+							<li>
+								<a href="chap00.html#leanpub-auto-book-structure">Book Structure</a>
+							</li>
+							<li>
+								<a href="chap00.html#leanpub-auto-book-layout">Book Layout</a>
+							</li>
+							<li>
+								<a href="chap00.html#leanpub-auto-advice-on-getting-stuck"
+									>Advice on Getting Stuck</a
+								>
+							</li>
+							<li>
+								<a href="chap00.html#leanpub-auto-community">Community</a>
+							</li>
+							<li>
+								<a href="chap00.html#leanpub-auto-conclusion">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap01.html#leanpub-auto-chapter-1-initial-set-up"
+							>Chapter 1: Initial Set Up</a
+						>
+						<ol>
+							<li>
+								<a href="chap01.html#leanpub-auto-the-command-line">The Command Line</a>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-shell-commands">Shell Commands</a>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-install-python-3-on-windows"
+									>Install Python 3 on Windows</a
+								>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-install-python-3-on-mac"
+									>Install Python 3 on Mac</a
+								>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-python-interactive-mode"
+									>Python Interactive Mode</a
+								>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-virtual-environments"
+									>Virtual Environments</a
+								>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-install-django">Install Django</a>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-first-django-project"
+									>First Django Project</a
+								>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-text-editors">Text Editors</a>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-install-git">Install Git</a>
+							</li>
+							<li>
+								<a href="chap01.html#leanpub-auto-conclusion-1">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap02.html#leanpub-auto-chapter-2-hello-world-app"
+							>Chapter 2: Hello World App</a
+						>
+						<ol>
+							<li>
+								<a href="chap02.html#leanpub-auto-initial-set-up">Initial Set Up</a>
+							</li>
+							<li>
+								<a href="chap02.html#leanpub-auto-http-requestresponse-cycle"
+									>HTTP Request/Response Cycle</a
+								>
+							</li>
+							<li>
+								<a
+									href="chap02.html#leanpub-auto-model-view-controller-vs-model-view-template"
+									>Model-View-Controller vs Model-View-Template</a
+								>
+							</li>
+							<li>
+								<a href="chap02.html#leanpub-auto-create-an-app">Create An App</a>
+							</li>
+							<li>
+								<a href="chap02.html#leanpub-auto-hello-world">Hello, World</a>
+							</li>
+							<li>
+								<a href="chap02.html#leanpub-auto-git">Git</a>
+							</li>
+							<li>
+								<a href="chap02.html#leanpub-auto-github">GitHub</a>
+							</li>
+							<li>
+								<a href="chap02.html#leanpub-auto-ssh-keys">SSH Keys</a>
+							</li>
+							<li>
+								<a href="chap02.html#leanpub-auto-conclusion-2">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap03.html#leanpub-auto-chapter-3-pages-app"
+							>Chapter 3: Pages App</a
+						>
+						<ol>
+							<li>
+								<a href="chap03.html#leanpub-auto-initial-set-up-1">Initial Set Up</a>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-templates">Templates</a>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-class-based-views"
+									>Class-Based Views</a
+								>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-urls">URLs</a>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-about-page">About Page</a>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-extending-templates"
+									>Extending Templates</a
+								>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-tests">Tests</a>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-git-and-github">Git and GitHub</a>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-local-vs-production"
+									>Local vs Production</a
+								>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-heroku">Heroku</a>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-deployment-checklist"
+									>Deployment Checklist</a
+								>
+							</li>
+							<li>
+								<a href="chap03.html#leanpub-auto-conclusion-3">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap04.html#leanpub-auto-chapter-4-message-board-app"
+							>Chapter 4: Message Board App</a
+						>
+						<ol>
+							<li>
+								<a href="chap04.html#leanpub-auto-initial-set-up-2">Initial Set Up</a>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-create-a-database-model"
+									>Create a Database Model</a
+								>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-activating-models"
+									>Activating models</a
+								>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-django-admin">Django Admin</a>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-viewstemplatesurls"
+									>Views/Templates/URLs</a
+								>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-adding-new-posts">Adding New Posts</a>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-tests-1">Tests</a>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-github-1">GitHub</a>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-heroku-configuration"
+									>Heroku Configuration</a
+								>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-heroku-deployment"
+									>Heroku Deployment</a
+								>
+							</li>
+							<li>
+								<a href="chap04.html#leanpub-auto-conclusion-4">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap05.html#leanpub-auto-chapter-5-blog-app"
+							>Chapter 5: Blog App</a
+						>
+						<ol>
+							<li>
+								<a href="chap05.html#leanpub-auto-initial-set-up-3">Initial Set Up</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-database-models">Database Models</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-admin">Admin</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-urls-1">URLs</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-views">Views</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-templates-1">Templates</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-static-files">Static Files</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-individual-blog-pages"
+									>Individual Blog Pages</a
+								>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-tests-2">Tests</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-git-1">Git</a>
+							</li>
+							<li>
+								<a href="chap05.html#leanpub-auto-conclusion-5">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap06.html#leanpub-auto-chapter-6-forms">Chapter 6: Forms</a>
+						<ol>
+							<li>
+								<a href="chap06.html#leanpub-auto-createview">CreateView</a>
+							</li>
+							<li>
+								<a href="chap06.html#leanpub-auto-updateview">UpdateView</a>
+							</li>
+							<li>
+								<a href="chap06.html#leanpub-auto-deleteview">DeleteView</a>
+							</li>
+							<li>
+								<a href="chap06.html#leanpub-auto-tests-3">Tests</a>
+							</li>
+							<li>
+								<a href="chap06.html#leanpub-auto-conclusion-6">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap07.html#leanpub-auto-chapter-7-user-accounts"
+							>Chapter 7: User Accounts</a
+						>
+						<ol>
+							<li>
+								<a href="chap07.html#leanpub-auto-log-in">Log In</a>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-updated-homepage">Updated Homepage</a>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-log-out-link">Log Out Link</a>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-sign-up">Sign Up</a>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-sign-up-link">Sign Up Link</a>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-github-2">GitHub</a>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-static-files-1">Static Files</a>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-heroku-config">Heroku Config</a>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-heroku-deployment-1"
+									>Heroku Deployment</a
+								>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-sqlite-vs-postgresql"
+									>SQLite vs PostgreSQL</a
+								>
+							</li>
+							<li>
+								<a href="chap07.html#leanpub-auto-conclusion-7">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap08.html#leanpub-auto-chapter-8-custom-user-model"
+							>Chapter 8: Custom User Model</a
+						>
+						<ol>
+							<li>
+								<a href="chap08.html#leanpub-auto-initial-set-up-4">Initial Set Up</a>
+							</li>
+							<li>
+								<a href="chap08.html#leanpub-auto-custom-user-model"
+									>Custom User Model</a
+								>
+							</li>
+							<li>
+								<a href="chap08.html#leanpub-auto-forms">Forms</a>
+							</li>
+							<li>
+								<a href="chap08.html#leanpub-auto-superuser">Superuser</a>
+							</li>
+							<li>
+								<a href="chap08.html#leanpub-auto-conclusion-8">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap09.html#leanpub-auto-chapter-9-user-authentication"
+							>Chapter 9: User Authentication</a
+						>
+						<ol>
+							<li>
+								<a href="chap09.html#leanpub-auto-templates-2">Templates</a>
+							</li>
+							<li>
+								<a href="chap09.html#leanpub-auto-urls-2">URLs</a>
+							</li>
+							<li>
+								<a href="chap09.html#leanpub-auto-admin-1">Admin</a>
+							</li>
+							<li>
+								<a href="chap09.html#leanpub-auto-tests-4">Tests</a>
+							</li>
+							<li>
+								<a href="chap09.html#leanpub-auto-conclusion-9">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap10.html#leanpub-auto-chapter-10-bootstrap"
+							>Chapter 10: Bootstrap</a
+						>
+						<ol>
+							<li>
+								<a href="chap10.html#leanpub-auto-pages-app">Pages App</a>
+							</li>
+							<li>
+								<a href="chap10.html#leanpub-auto-tests-5">Tests</a>
+							</li>
+							<li>
+								<a href="chap10.html#leanpub-auto-testing-philosophy"
+									>Testing Philosophy</a
+								>
+							</li>
+							<li>
+								<a href="chap10.html#leanpub-auto-bootstrap">Bootstrap</a>
+							</li>
+							<li>
+								<a href="chap10.html#leanpub-auto-sign-up-form">Sign Up Form</a>
+							</li>
+							<li>
+								<a href="chap10.html#leanpub-auto-conclusion-10">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap11.html#leanpub-auto-chapter-11-password-change-and-reset"
+							>Chapter 11: Password Change and Reset</a
+						>
+						<ol>
+							<li>
+								<a href="chap11.html#leanpub-auto-password-change">Password Change</a>
+							</li>
+							<li>
+								<a href="chap11.html#leanpub-auto-customizing-password-change"
+									>Customizing Password Change</a
+								>
+							</li>
+							<li>
+								<a href="chap11.html#leanpub-auto-password-reset">Password Reset</a>
+							</li>
+							<li>
+								<a href="chap11.html#leanpub-auto-custom-templates">Custom Templates</a>
+							</li>
+							<li>
+								<a href="chap11.html#leanpub-auto-try-it-out">Try It Out</a>
+							</li>
+							<li>
+								<a href="chap11.html#leanpub-auto-conclusion-11">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap12.html#leanpub-auto-chapter-12-email">Chapter 12: Email</a>
+						<ol>
+							<li>
+								<a href="chap12.html#leanpub-auto-sendgrid">SendGrid</a>
+							</li>
+							<li>
+								<a href="chap12.html#leanpub-auto-custom-emails">Custom Emails</a>
+							</li>
+							<li>
+								<a href="chap12.html#leanpub-auto-conclusion-12">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap13.html#leanpub-auto-chapter-13-newspaper-app"
+							>Chapter 13: Newspaper App</a
+						>
+						<ol>
+							<li>
+								<a href="chap13.html#leanpub-auto-articles-app">Articles App</a>
+							</li>
+							<li>
+								<a href="chap13.html#leanpub-auto-urls-and-views">URLs and Views</a>
+							</li>
+							<li>
+								<a href="chap13.html#leanpub-auto-detaileditdelete"
+									>Detail/Edit/Delete</a
+								>
+							</li>
+							<li>
+								<a href="chap13.html#leanpub-auto-create-page">Create Page</a>
+							</li>
+							<li>
+								<a href="chap13.html#leanpub-auto-conclusion-13">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a
+							href="chap14.html#leanpub-auto-chapter-14-permissions-and-authorization"
+							>Chapter 14: Permissions and Authorization</a
+						>
+						<ol>
+							<li>
+								<a href="chap14.html#leanpub-auto-improved-createview"
+									>Improved CreateView</a
+								>
+							</li>
+							<li>
+								<a href="chap14.html#leanpub-auto-authorizations">Authorizations</a>
+							</li>
+							<li>
+								<a href="chap14.html#leanpub-auto-mixins">Mixins</a>
+							</li>
+							<li>
+								<a href="chap14.html#leanpub-auto-loginrequiredmixin"
+									>LoginRequiredMixin</a
+								>
+							</li>
+							<li>
+								<a href="chap14.html#leanpub-auto-updateview-and-deleteview"
+									>UpdateView and DeleteView</a
+								>
+							</li>
+							<li>
+								<a href="chap14.html#leanpub-auto-conclusion-14">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap15.html#leanpub-auto-chapter-15-comments"
+							>Chapter 15: Comments</a
+						>
+						<ol>
+							<li>
+								<a href="chap15.html#leanpub-auto-model">Model</a>
+							</li>
+							<li>
+								<a href="chap15.html#leanpub-auto-admin-2">Admin</a>
+							</li>
+							<li>
+								<a href="chap15.html#leanpub-auto-template">Template</a>
+							</li>
+							<li>
+								<a href="chap15.html#leanpub-auto-comment-form">Comment Form</a>
+							</li>
+							<li>
+								<a href="chap15.html#leanpub-auto-comment-view">Comment View</a>
+							</li>
+							<li>
+								<a href="chap15.html#leanpub-auto-comment-template">Comment Template</a>
+							</li>
+							<li>
+								<a href="chap15.html#leanpub-auto-comment-post-view"
+									>Comment Post View</a
+								>
+							</li>
+							<li>
+								<a href="chap15.html#leanpub-auto-conclusion-15">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap16.html#leanpub-auto-chapter-16-deployment"
+							>Chapter 16: Deployment</a
+						>
+						<ol>
+							<li>
+								<a href="chap16.html#leanpub-auto-environment-variables"
+									>Environment Variables</a
+								>
+							</li>
+							<li>
+								<a href="chap16.html#leanpub-auto-debug--allowed-hosts"
+									>DEBUG &amp; ALLOWED HOSTS</a
+								>
+							</li>
+							<li>
+								<a href="chap16.html#leanpub-auto-secretkey">SECRET_KEY</a>
+							</li>
+							<li>
+								<a href="chap16.html#leanpub-auto-databases">DATABASES</a>
+							</li>
+							<li>
+								<a href="chap16.html#leanpub-auto-static-files-2">Static Files</a>
+							</li>
+							<li>
+								<a href="chap16.html#leanpub-auto-deployment-checklist-1"
+									>Deployment Checklist</a
+								>
+							</li>
+							<li>
+								<a href="chap16.html#leanpub-auto-github-3">GitHub</a>
+							</li>
+							<li>
+								<a href="chap16.html#leanpub-auto-heroku-deployment-2"
+									>Heroku Deployment</a
+								>
+							</li>
+							<li>
+								<a href="chap16.html#leanpub-auto-conclusion-16">Conclusion</a>
+							</li>
+						</ol>
+					</li>
+					<li>
+						<a href="chap17.html#leanpub-auto-conclusion-17">Conclusion</a>
+						<ol>
+							<li>
+								<a href="chap17.html#leanpub-auto-next-steps">Next Steps</a>
+							</li>
+							<li>
+								<a href="chap17.html#leanpub-auto-rd-party-packages"
+									>3rd Party Packages</a
+								>
+							</li>
+							<li>
+								<a href="chap17.html#leanpub-auto-learning-resources"
+									>Learning Resources</a
+								>
+							</li>
+							<li>
+								<a href="chap17.html#leanpub-auto-python-books">Python Books</a>
+							</li>
+							<li>
+								<a href="chap17.html#leanpub-auto-feedback">Feedback</a>
+							</li>
+						</ol>
+					</li>
+				</ol>
+			</nav>
 
-  <section class="frontmatter TableOfContents" epub:type="frontmatter toc">
-
-    <h2 id="toc">Table of Contents</h2>
-
-    <nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="toc">
-           <ol class="toc no-parts">
-  <li>
-    <a href="chap00.html#leanpub-auto-introduction">Introduction</a>
-    <ol>
-      <li>
-        <a href="chap00.html#leanpub-auto-why-django">Why Django</a>
-      </li>
-      <li>
-        <a href="chap00.html#leanpub-auto-why-this-book">Why This Book</a>
-      </li>
-      <li>
-        <a href="chap00.html#leanpub-auto-prerequisites">Prerequisites</a>
-      </li>
-      <li>
-        <a href="chap00.html#leanpub-auto-book-structure">Book Structure</a>
-      </li>
-      <li>
-        <a href="chap00.html#leanpub-auto-book-layout">Book Layout</a>
-      </li>
-      <li>
-        <a href="chap00.html#leanpub-auto-advice-on-getting-stuck">Advice on Getting Stuck</a>
-      </li>
-      <li>
-        <a href="chap00.html#leanpub-auto-community">Community</a>
-      </li>
-      <li>
-        <a href="chap00.html#leanpub-auto-conclusion">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap01.html#leanpub-auto-chapter-1-initial-set-up">Chapter 1: Initial Set Up</a>
-    <ol>
-      <li>
-        <a href="chap01.html#leanpub-auto-the-command-line">The Command Line</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-shell-commands">Shell Commands</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-install-python-3-on-windows">Install Python 3 on Windows</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-install-python-3-on-mac">Install Python 3 on Mac</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-python-interactive-mode">Python Interactive Mode</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-virtual-environments">Virtual Environments</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-install-django">Install Django</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-first-django-project">First Django Project</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-text-editors">Text Editors</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-install-git">Install Git</a>
-      </li>
-      <li>
-        <a href="chap01.html#leanpub-auto-conclusion-1">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap02.html#leanpub-auto-chapter-2-hello-world-app">Chapter 2: Hello World App</a>
-    <ol>
-      <li>
-        <a href="chap02.html#leanpub-auto-initial-set-up">Initial Set Up</a>
-      </li>
-      <li>
-        <a href="chap02.html#leanpub-auto-http-requestresponse-cycle">HTTP Request/Response Cycle</a>
-      </li>
-      <li>
-        <a href="chap02.html#leanpub-auto-model-view-controller-vs-model-view-template">Model-View-Controller vs Model-View-Template</a>
-      </li>
-      <li>
-        <a href="chap02.html#leanpub-auto-create-an-app">Create An App</a>
-      </li>
-      <li>
-        <a href="chap02.html#leanpub-auto-hello-world">Hello, World</a>
-      </li>
-      <li>
-        <a href="chap02.html#leanpub-auto-git">Git</a>
-      </li>
-      <li>
-        <a href="chap02.html#leanpub-auto-github">GitHub</a>
-      </li>
-      <li>
-        <a href="chap02.html#leanpub-auto-ssh-keys">SSH Keys</a>
-      </li>
-      <li>
-        <a href="chap02.html#leanpub-auto-conclusion-2">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap03.html#leanpub-auto-chapter-3-pages-app">Chapter 3: Pages App</a>
-    <ol>
-      <li>
-        <a href="chap03.html#leanpub-auto-initial-set-up-1">Initial Set Up</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-templates">Templates</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-class-based-views">Class-Based Views</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-urls">URLs</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-about-page">About Page</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-extending-templates">Extending Templates</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-tests">Tests</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-git-and-github">Git and GitHub</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-local-vs-production">Local vs Production</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-heroku">Heroku</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-deployment-checklist">Deployment Checklist</a>
-      </li>
-      <li>
-        <a href="chap03.html#leanpub-auto-conclusion-3">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap04.html#leanpub-auto-chapter-4-message-board-app">Chapter 4: Message Board App</a>
-    <ol>
-      <li>
-        <a href="chap04.html#leanpub-auto-initial-set-up-2">Initial Set Up</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-create-a-database-model">Create a Database Model</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-activating-models">Activating models</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-django-admin">Django Admin</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-viewstemplatesurls">Views/Templates/URLs</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-adding-new-posts">Adding New Posts</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-tests-1">Tests</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-github-1">GitHub</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-heroku-configuration">Heroku Configuration</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-heroku-deployment">Heroku Deployment</a>
-      </li>
-      <li>
-        <a href="chap04.html#leanpub-auto-conclusion-4">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap05.html#leanpub-auto-chapter-5-blog-app">Chapter 5: Blog App</a>
-    <ol>
-      <li>
-        <a href="chap05.html#leanpub-auto-initial-set-up-3">Initial Set Up</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-database-models">Database Models</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-admin">Admin</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-urls-1">URLs</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-views">Views</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-templates-1">Templates</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-static-files">Static Files</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-individual-blog-pages">Individual Blog Pages</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-tests-2">Tests</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-git-1">Git</a>
-      </li>
-      <li>
-        <a href="chap05.html#leanpub-auto-conclusion-5">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap06.html#leanpub-auto-chapter-6-forms">Chapter 6: Forms</a>
-    <ol>
-      <li>
-        <a href="chap06.html#leanpub-auto-createview">CreateView</a>
-      </li>
-      <li>
-        <a href="chap06.html#leanpub-auto-updateview">UpdateView</a>
-      </li>
-      <li>
-        <a href="chap06.html#leanpub-auto-deleteview">DeleteView</a>
-      </li>
-      <li>
-        <a href="chap06.html#leanpub-auto-tests-3">Tests</a>
-      </li>
-      <li>
-        <a href="chap06.html#leanpub-auto-conclusion-6">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap07.html#leanpub-auto-chapter-7-user-accounts">Chapter 7: User Accounts</a>
-    <ol>
-      <li>
-        <a href="chap07.html#leanpub-auto-log-in">Log In</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-updated-homepage">Updated Homepage</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-log-out-link">Log Out Link</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-sign-up">Sign Up</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-sign-up-link">Sign Up Link</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-github-2">GitHub</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-static-files-1">Static Files</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-heroku-config">Heroku Config</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-heroku-deployment-1">Heroku Deployment</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-sqlite-vs-postgresql">SQLite vs PostgreSQL</a>
-      </li>
-      <li>
-        <a href="chap07.html#leanpub-auto-conclusion-7">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap08.html#leanpub-auto-chapter-8-custom-user-model">Chapter 8: Custom User Model</a>
-    <ol>
-      <li>
-        <a href="chap08.html#leanpub-auto-initial-set-up-4">Initial Set Up</a>
-      </li>
-      <li>
-        <a href="chap08.html#leanpub-auto-custom-user-model">Custom User Model</a>
-      </li>
-      <li>
-        <a href="chap08.html#leanpub-auto-forms">Forms</a>
-      </li>
-      <li>
-        <a href="chap08.html#leanpub-auto-superuser">Superuser</a>
-      </li>
-      <li>
-        <a href="chap08.html#leanpub-auto-conclusion-8">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap09.html#leanpub-auto-chapter-9-user-authentication">Chapter 9: User Authentication</a>
-    <ol>
-      <li>
-        <a href="chap09.html#leanpub-auto-templates-2">Templates</a>
-      </li>
-      <li>
-        <a href="chap09.html#leanpub-auto-urls-2">URLs</a>
-      </li>
-      <li>
-        <a href="chap09.html#leanpub-auto-admin-1">Admin</a>
-      </li>
-      <li>
-        <a href="chap09.html#leanpub-auto-tests-4">Tests</a>
-      </li>
-      <li>
-        <a href="chap09.html#leanpub-auto-conclusion-9">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap10.html#leanpub-auto-chapter-10-bootstrap">Chapter 10: Bootstrap</a>
-    <ol>
-      <li>
-        <a href="chap10.html#leanpub-auto-pages-app">Pages App</a>
-      </li>
-      <li>
-        <a href="chap10.html#leanpub-auto-tests-5">Tests</a>
-      </li>
-      <li>
-        <a href="chap10.html#leanpub-auto-testing-philosophy">Testing Philosophy</a>
-      </li>
-      <li>
-        <a href="chap10.html#leanpub-auto-bootstrap">Bootstrap</a>
-      </li>
-      <li>
-        <a href="chap10.html#leanpub-auto-sign-up-form">Sign Up Form</a>
-      </li>
-      <li>
-        <a href="chap10.html#leanpub-auto-conclusion-10">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap11.html#leanpub-auto-chapter-11-password-change-and-reset">Chapter 11: Password Change and Reset</a>
-    <ol>
-      <li>
-        <a href="chap11.html#leanpub-auto-password-change">Password Change</a>
-      </li>
-      <li>
-        <a href="chap11.html#leanpub-auto-customizing-password-change">Customizing Password Change</a>
-      </li>
-      <li>
-        <a href="chap11.html#leanpub-auto-password-reset">Password Reset</a>
-      </li>
-      <li>
-        <a href="chap11.html#leanpub-auto-custom-templates">Custom Templates</a>
-      </li>
-      <li>
-        <a href="chap11.html#leanpub-auto-try-it-out">Try It Out</a>
-      </li>
-      <li>
-        <a href="chap11.html#leanpub-auto-conclusion-11">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap12.html#leanpub-auto-chapter-12-email">Chapter 12: Email</a>
-    <ol>
-      <li>
-        <a href="chap12.html#leanpub-auto-sendgrid">SendGrid</a>
-      </li>
-      <li>
-        <a href="chap12.html#leanpub-auto-custom-emails">Custom Emails</a>
-      </li>
-      <li>
-        <a href="chap12.html#leanpub-auto-conclusion-12">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap13.html#leanpub-auto-chapter-13-newspaper-app">Chapter 13: Newspaper App</a>
-    <ol>
-      <li>
-        <a href="chap13.html#leanpub-auto-articles-app">Articles App</a>
-      </li>
-      <li>
-        <a href="chap13.html#leanpub-auto-urls-and-views">URLs and Views</a>
-      </li>
-      <li>
-        <a href="chap13.html#leanpub-auto-detaileditdelete">Detail/Edit/Delete</a>
-      </li>
-      <li>
-        <a href="chap13.html#leanpub-auto-create-page">Create Page</a>
-      </li>
-      <li>
-        <a href="chap13.html#leanpub-auto-conclusion-13">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap14.html#leanpub-auto-chapter-14-permissions-and-authorization">Chapter 14: Permissions and Authorization</a>
-    <ol>
-      <li>
-        <a href="chap14.html#leanpub-auto-improved-createview">Improved CreateView</a>
-      </li>
-      <li>
-        <a href="chap14.html#leanpub-auto-authorizations">Authorizations</a>
-      </li>
-      <li>
-        <a href="chap14.html#leanpub-auto-mixins">Mixins</a>
-      </li>
-      <li>
-        <a href="chap14.html#leanpub-auto-loginrequiredmixin">LoginRequiredMixin</a>
-      </li>
-      <li>
-        <a href="chap14.html#leanpub-auto-updateview-and-deleteview">UpdateView and DeleteView</a>
-      </li>
-      <li>
-        <a href="chap14.html#leanpub-auto-conclusion-14">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap15.html#leanpub-auto-chapter-15-comments">Chapter 15: Comments</a>
-    <ol>
-      <li>
-        <a href="chap15.html#leanpub-auto-model">Model</a>
-      </li>
-      <li>
-        <a href="chap15.html#leanpub-auto-admin-2">Admin</a>
-      </li>
-      <li>
-        <a href="chap15.html#leanpub-auto-template">Template</a>
-      </li>
-      <li>
-        <a href="chap15.html#leanpub-auto-comment-form">Comment Form</a>
-      </li>
-      <li>
-        <a href="chap15.html#leanpub-auto-comment-view">Comment View</a>
-      </li>
-      <li>
-        <a href="chap15.html#leanpub-auto-comment-template">Comment Template</a>
-      </li>
-      <li>
-        <a href="chap15.html#leanpub-auto-comment-post-view">Comment Post View</a>
-      </li>
-      <li>
-        <a href="chap15.html#leanpub-auto-conclusion-15">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap16.html#leanpub-auto-chapter-16-deployment">Chapter 16: Deployment</a>
-    <ol>
-      <li>
-        <a href="chap16.html#leanpub-auto-environment-variables">Environment Variables</a>
-      </li>
-      <li>
-        <a href="chap16.html#leanpub-auto-debug--allowed-hosts">DEBUG &amp; ALLOWED HOSTS</a>
-      </li>
-      <li>
-        <a href="chap16.html#leanpub-auto-secretkey">SECRET_KEY</a>
-      </li>
-      <li>
-        <a href="chap16.html#leanpub-auto-databases">DATABASES</a>
-      </li>
-      <li>
-        <a href="chap16.html#leanpub-auto-static-files-2">Static Files</a>
-      </li>
-      <li>
-        <a href="chap16.html#leanpub-auto-deployment-checklist-1">Deployment Checklist</a>
-      </li>
-      <li>
-        <a href="chap16.html#leanpub-auto-github-3">GitHub</a>
-      </li>
-      <li>
-        <a href="chap16.html#leanpub-auto-heroku-deployment-2">Heroku Deployment</a>
-      </li>
-      <li>
-        <a href="chap16.html#leanpub-auto-conclusion-16">Conclusion</a>
-      </li>
-    </ol>
-  </li>
-  <li>
-    <a href="chap17.html#leanpub-auto-conclusion-17">Conclusion</a>
-    <ol>
-      <li>
-        <a href="chap17.html#leanpub-auto-next-steps">Next Steps</a>
-      </li>
-      <li>
-        <a href="chap17.html#leanpub-auto-rd-party-packages">3rd Party Packages</a>
-      </li>
-      <li>
-        <a href="chap17.html#leanpub-auto-learning-resources">Learning Resources</a>
-      </li>
-      <li>
-        <a href="chap17.html#leanpub-auto-python-books">Python Books</a>
-      </li>
-      <li>
-        <a href="chap17.html#leanpub-auto-feedback">Feedback</a>
-      </li>
-    </ol>
-  </li>
-</ol>
-
-         </nav>
-
-    <nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="landmarks" id="guide">
-            <h2>Guide</h2>
-            <ol>
-               <li>
-                  <a epub:type="bodymatter" href="chap00.html">Begin Reading</a>
-               </li>
-            </ol>
-         </nav>
-
-  </section>
-
-</body>
-
+			<nav
+				xmlns:epub="http://www.idpf.org/2007/ops"
+				epub:type="landmarks"
+				id="guide"
+			>
+				<h2>Guide</h2>
+				<ol>
+					<li>
+						<a epub:type="bodymatter" href="chap00.html">Begin Reading</a>
+					</li>
+				</ol>
+			</nav>
+		</section>
+	</body>
 </html>
