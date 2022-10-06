@@ -1,0 +1,748 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 1: Initial Set Up</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-1-initial-set-up">Chapter 1: Initial Set Up</h2>
+
+    <p>This chapter covers how to properly configure your Windows or macOS computer to work on Django projects. We start with an overview of the <em>Command Line</em>, a powerful text-only interface that developers use extensively to install and configure Django projects. Then we install the latest version of Python, learn how to create dedicated virtual environments, and install Django. As a final step, we will explore using Git for version control and working with a text editor. By the end of this chapter you will have created your first Django project from scratch and more importantly be able to create and modify new Django projects in just a few keystrokes.</p>
+
+    <h3 id="leanpub-auto-the-command-line">The Command Line</h3>
+
+    <p>If you have ever seen a television show or movie where a hacker is furiously typing into a black window: that’s the command line. It is an alternative to the mouse or finger-based graphical user interface familiar to most computer users. An everyday computer user will never need to use the command line but software developers do because certain tasks can only be done with it. These include running programs, installing software, using Git for version control, or connecting to servers in the cloud. With a little practice, most developers find that the command line is actually a faster and more powerful way to navigate and control a computer.</p>
+
+    <p>Given its minimal user interface–just a blank screen and a blinking cursor–the command line is intimidating to newcomers. There is often no feedback after a command has run and it is possible to wipe the contents of an entire computer with a single command if you’re not careful: no warning will pop up! As a result, the command line must be used with caution. Make sure not to blindly copy and paste commands you find online; only rely on trusted resources for any command you do not fully understand.</p>
+
+    <p>In practice, multiple terms are used to refer to the command line: Command Line Interface (CLI), console, terminal, shell, or prompt. Technically speaking, the <em>terminal</em> is the program that opens up a new window to access the command line, a <em>console</em> is a text-based application, the <em>shell</em> is the program that runs commands on the underlying operating system, and the <em>prompt</em> is where commands are typed and run. It is easy to be confused by these terms initially but they all essentially mean the same thing: the command line is where we run and execute text-only commands on our computer.</p>
+
+    <p>On Windows, the built-in terminal and shell are both called <em>PowerShell</em>. To access it, locate the taskbar on the bottom of the screen next to the Windows button and type in “powershell” to launch the app. It will open a new window with a dark blue background and a blinking cursor after the <code>&gt;</code> prompt. Here is how it looks on my computer.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>PS C:\Users\wsv&gt;
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Before the prompt is <code>PS</code> which refers to PowerShell, the initial <code>C</code> directory of the Windows operating system, followed by the <code>Users</code> directory and the current user which, on my personal computers, is <code>wsv</code>. Your username will obviously be different. At this point, don’t worry about what comes <em>to the left</em> of the <code>&gt;</code> prompt: it varies depending on each computer and can be customized at a later date. The shorter prompt of <code>&gt;</code> will be used going forward for Windows.</p>
+
+    <p>On macOS, the built-in terminal is called appropriately enough <em>Terminal</em>. It can be opened via Spotlight: press the <code>Command</code> and <code>space bar</code> keys at the same time and then type in “terminal.” Alternatively, open a new Finder window, navigate to the <em>Applications</em> directory, scroll down to open the <em>Utilities</em> directory, and double-click the application called Terminal. This opens a new screen with a white background by default and a blinking cursor after the <code>%</code> prompt. Don’t worry about what comes <em>to the left</em> of the <code>%</code> prompt. It varies by computer and can be customized later on.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>Wills-Macbook-Pro:~ wsv%
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If your macOS prompt is <code>$</code> instead of <code>%</code> that means you are using <code>Bash</code> as the shell. Starting in 2019, macOS switched from <em>Bash</em> to <em>zsh</em> as the default shell. While most of the commands in this book will work interchangeably, it is recommended to look up online how to change to zsh via <code>System Preferences</code> if your computer still uses Bash.</p>
+
+    <h3 id="leanpub-auto-shell-commands">Shell Commands</h3>
+
+    <p>There are many available shell commands but most developers rely on the same handful over and over again and look up more complicated ones as needed.</p>
+
+    <p>In most cases, the commands for Windows (PowerShell) and macOS are similar. For example, the command <code>whoami</code> returns the computer name/username on Windows and just the username on macOS. As with all shell commands, type the command itself followed by the <code>return</code> key. Note that the <code>#</code> symbol represents a comment and will not be executed on the command line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; whoami
+wsv2021/wsv
+
+# macOS
+% whoami
+wsv
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Sometimes, however, the shell commands on Windows and macOS are completely different. A good example is the command for outputting a basic “Hello, World!” message to the console. On Windows the command is <code>Write-Host</code> while on macOS the command is <code>echo</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; Write-Host "Hello, World!"
+Hello, World!
+
+# macOS
+% echo "Hello, World!"
+Hello, World!
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>A frequent task on the command line is navigating within the computer filesystem. On Windows and macOS the command <code>pwd</code> (print working directory) outputs the current location within the file system.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; pwd
+
+Path
+----
+C:\Users\wsv
+
+# macOS
+% pwd
+/Users/wsv
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can save your Django code anywhere you like but for convenience we will place our code the <code>desktop</code> directory. The command <code>cd</code> (change directory) followed by the intended location works on both systems.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; cd onedrive\desktop
+&gt; pwd
+
+Path
+----
+C:\Users\wsv\onedrive\desktop
+
+# macOS
+% cd desktop
+% pwd
+/Users/wsv/desktop
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p><strong>Tip:</strong> The <code>tab</code> key will autocomplete a command so if you type <code>cd d</code> and then hit <code>tab</code> it will automatically fill in the rest of the name. If there are more than two directories that start with <code>d</code>, hit the <code>tab</code> key again to cycle through them.</p>
+
+    <p>To make a new directory use the command <code>mkdir</code> followed by the name. We will create one called <code>code</code> on the Desktop and then within it a new directory called <code>ch1-setup</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; mkdir code
+&gt; cd code
+&gt; mkdir ch1-setup
+&gt; cd ch1-setup
+
+# macOS
+% mkdir code
+% cd code
+% mkdir ch1-setup
+% cd ch1-setup
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can check that it has been created by looking on your Desktop or running the command <code>ls</code>. The full Windows output is slightly longer but is shortened here for conciseness.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; ls
+testdir
+
+# macOS
+% ls
+testdir
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p><strong>Tip</strong>: The <code>clear</code> command will clear the Terminal of past commands and outputs so you have a clean slate. The <code>tab</code> command autocompletes the line as we’ve discussed. And the <code>↑</code> and <code>↓</code> keys cycle through previous commands to save yourself from typing the same thing over and over again.</p>
+
+    <p>To exit you could close the Terminal with your mouse but the hacker way is to use use the shell command <code>exit</code> instead. This works by default on Windows but on macOS the Terminal preferences need to be changed. At the top of the screen click on <code>Terminal</code>, then <code>Preferences</code> from the drop down menu. Click on <code>Profiles</code> in the top menu and then <code>Shell</code> from the list below. There is a radio button for “When the shell exits:”. Select “Close the window.”</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; exit
+
+# macOS
+% exit
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Kinda cool, right? With practice, the command line is a far more efficient way to navigate and operate your computer than using a mouse. For this book you don’t need to be a command line expert: I will provide the exact instructions to run each time. But if you are curious, a complete list of shell commands for each operating system can be found over at <code>ss64.com</code>.</p>
+
+    <h3 id="leanpub-auto-install-python-3-on-windows">Install Python 3 on Windows</h3>
+
+    <p>On Windows, Microsoft hosts a community release of Python 3 in the Microsoft Store. In the search bar on the bottom of your screen type in “python” and click on the best match result. This will automatically launch Python 3.10 on the Microsoft Store. Click on the blue “Get” button to download it.</p>
+
+    <p>To confirm Python was installed correctly, open a new Terminal window with PowerShell and then type <code>python --version</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>&gt; python --version
+Python 3.10.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The result should be at least Python 3.10. Then type <code>python</code> to open the Python interpreter from the command line shell.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>&gt; python
+Python 3.10.2 (tags/v3.10.2:a58ebcc, Jan 17 2022, 19:00:18)
+[MSC v.1929 64 bit (AMD64)] on win32
+Type "help", "copyright", "credits", or "license" for more information.
+&gt;&gt;&gt;
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-install-python-3-on-mac">Install Python 3 on Mac</h3>
+
+    <p>On Mac, the official installer on the Python website is the best approach. In a new browser window go the <a href="https://www.python.org/downloads/">Python downloads page</a> and click on the button underneath the text “Download the latest version for Mac OS X.” As of this writing, that is Python 3.10. The package will be in your <code>Downloads</code> directory. Double click on it which launches the Python Installer and follow through the prompts.</p>
+
+    <p>To confirm the download was successful, open up a new Terminal window and type <code>python3 --version</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>% python3 --version
+Python 3.10.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The result should be at least 3.10. Then type <code>python3</code> to open the Python interpreter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>% python3
+Python 3.10.2 (v3.10.2:a58ebcc701, Jan 13 2022, 14:50:16)
+ [Clang 13.0.0 (clang-1300.0.29.30)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+&gt;&gt;&gt;
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-python-interactive-mode">Python Interactive Mode</h3>
+
+    <p>From the command line typing either <code>python</code> on Windows or <code>python3</code> on macOS will bring up the Python Interpreter, also known as Python Interactive mode. The new prompt of <code>&gt;&gt;&gt;</code> indicates that you are now inside Python itself and <strong>not</strong> the command line. If you try any of the previous shell commands we ran–<code>cd</code>, <code>ls</code>, <code>mkdir</code>–they will each raise errors. What <em>will</em> work is actual Python code. For example, try out both <code>1 + 1</code> and <code>print("Hello Python!")</code> making sure to hit the <code>Enter</code> or <code>Return</code> key after each to run them.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>&gt;&gt;&gt; 1 + 1
+2
+&gt;&gt;&gt; print("Hello Python!")
+Hello Python!
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Python’s interactive mode is a great way to save time if you want to try out a short bit of Python code. But it has a number of limitations: you can’t save your work in a file and writing longer code snippets is cumbersome. As a result, we will spend most of our time writing Python and Django in files using a text editor.</p>
+
+    <p>To exit Python from the command line you can type either <code>exit()</code> and the <code>Enter</code> key or use <code>Ctrl + z</code> on Windows or <code>Ctrl + d</code> on macOS.</p>
+
+    <h3 id="leanpub-auto-virtual-environments">Virtual Environments</h3>
+
+    <p>Installing the latest version of Python and Django is the correct approach for any new project. But in the real world, it is common that existing projects rely on older versions of each. Consider the following situation: <em>Project A</em> uses Django 2.2 but <em>Project B</em> uses Django 4.0? By default, Python and Django are installed <em>globally</em> on a computer meaning it is quite a pain to install and reinstall different versions every time you want to switch between projects.</p>
+
+    <p>Fortunately, there is a straightforward solution. <em>Virtual environments</em> allow you to create and manage separate environments for each Python project on the same computer. There are many areas of software development that are hotly debated, but using virtual environments for Python development is not one. <strong>You should use a dedicated virtual environment for each new Python project</strong>.</p>
+
+    <p>There are several ways to implement virtual environments but the simplest is with the <a href="https://docs.python.org/3/library/venv.html">venv</a> module already installed as part of the Python 3 standard library. To try it out, navigate to the existing <code>ch1-setup</code> directory on your Desktop.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; cd onedrive\desktop\code\ch1-setup
+
+# macOS
+% cd ~/desktop/code/ch1-setup
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To create a virtual environment within this new directory use the format <code>python -m venv &lt;name_of_env&gt;</code> on Windows or <code>python3 -m venv &lt;name_of_env&gt;</code> on macOS. It is up to the developer to choose a proper environment name but a common choice is to call it <code>.venv</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; python -m venv .venv
+&gt; Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# macOS
+% python3 -m venv .venv
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you use the command <code>ls</code> to look at our current directory it will appear empty. However the <code>.venv</code> directory <em>is</em> there, it’s just that it is “hidden” due to the period <code>.</code> that precedes the name. Hidden files and directories are a way for developers to indicate that the contents are important and should be treated differently than regular files. To view it, try <code>ls -la</code> which shows all directories and files, even hidden ones. </p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>&gt; ls -la
+total 0
+drwxr-xr-x  3 wsv  staff   96 Dec  12 11:10 .
+drwxr-xr-x  3 wsv  staff   96 Dec  12 11:10 ..
+drwxr-xr-x  6 wsv  staff  192 Dec  12 11:10 .venv
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You will see that <code>.venv</code> is there and can be accessed via <code>cd</code> if desired. In the directory itself is a copy of the Python interpreter and a few management scripts, but you will not need to use it directly in this book.</p>
+
+    <p>Once created, a virtual environment must be <em>activated</em>. On Windows an <em>Execution Policy</em> must be set to enable running scripts. This is a safety precaution. The <a href="https://docs.python.org/3/library/venv.html">Python docs</a> recommend allowing scripts for the <code>CurrentUser</code> only, which is what we will do. On macOS there are no similar restrictions on scripts so it is possible to directly run <code>source .venv/bin/activate</code>.</p>
+
+    <p>Here is what the full commands look like to create and activate a new virtual environment called <code>.venv</code>:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; python -m venv .venv
+&gt; Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+&gt; .venv\Scripts\Activate.ps1
+(.venv) &gt;
+
+# macOS
+% python3 -m venv .venv
+% source .venv/bin/activate
+(.venv) %
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The shell prompt now has the environment name <code>(.venv)</code> prefixed which indicates that the virtual environment is active. Any Python packages installed or updated within this location will be confined to the active virtual environment.</p>
+
+    <p>To deactivate and leave a virtual environment type <code>deactivate</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+(.venv) &gt; deactivate
+&gt;
+
+# macOS
+(.venv) % deactivate
+%
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The shell prompt no longer has the virtual environment name prefixed which means the session is now back to normal.</p>
+
+    <h3 id="leanpub-auto-install-django">Install Django</h3>
+
+    <p>Now that Python is installed and we know how to use virtual environments it is time to install Django for the first time. In the <code>ch1-setup</code> directory reactivate the existing virtual environment.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; .venv\Scripts\Activate.ps1
+(.venv) &gt;
+
+# macOS
+% source .venv/bin/activate
+(.venv) %
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Django is hosted on the <a href="https://pypi.org">Python Package Index (PyPI)</a>, a central repository for most Python packages. We will use <code>pip</code>, the most popular package installer, which comes included with Python 3. To install the latest version of Django use the command <code>python -m pip install django~=4.0.0</code>.</p>
+
+    <p>The comparison operator <code>~=</code> ensures that subsequent security updates for Django, such as 4.0.1, 4.0.2, and so on are automatically installed. Note that while it <em>is</em> possible to use the shorter version of <code>pip install &lt;package&gt;</code>, it is a best practice to use the longer but more explicit form of <code>python -m pip install &lt;package&gt;</code> to ensure that the correct version of Python is used. This can be an issue if you have multiple versions of Python installed on your computer.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install django~=4.0.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You might see a <code>WARNING</code> message about updating <code>pip</code> after running these commands. It’s always good to be on the latest version of software and to remove the annoying <code>WARNING</code> message each time you use <code>pip</code>. You can either copy and paste the recommended command or run <code>python -m pip install --upgrade pip</code> to be on the latest version.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install --upgrade pip
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-first-django-project">First Django Project</h3>
+
+    <p>A Django project can have almost any name but we will use <code>django_project</code> in this book. To create a new Django project use the command <code>django-admin startproject django_project .</code></p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; django-admin startproject django_project .
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>It’s worth pausing here to explain why you should add a period (<code>.</code>) to the end of the previous command. If you just run <code>django-admin startproject django_project</code> then by default Django will create this directory structure:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Layout</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>django_project/
+    ├── django_project
+    │   ├── __init__.py
+    │   ├── asgi.py
+    │   ├── settings.py
+    │   ├── urls.py
+    │   └── wsgi.py
+    ├── manage.py
+    └── .venv/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Do you see the multiple <code>django_project</code> directories? First a top-level <code>django_project</code> directory is created and then <em>another</em> one within it that contains the files we need for our Django project. This feels redundant to me which is why I prefer adding a period to the end which installs Django in the current directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Layout</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>├── django_project
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── manage.py
+└── .venv/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>As you progress in your journey learning Django, you’ll start to bump up more and more into similar situations where there are different opinions within the Django community on the correct best practice. Django is eminently customizable, which is a great strength, however the tradeoff is that this flexibility comes at the cost of seeming complexity. Generally speaking, it’s a good idea to research any such issues that arise, make a decision, and then stick with it!</p>
+
+    <p>Now let’s confirm everything is working by running Django’s internal web server via the <code>runserver</code> command. This is suitable for local development purposes, but when it comes time to deploy our project’s online we will switch to a more robust WSGI server like <em>Gunicorn</em>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+(.venv) &gt; python manage.py runserver
+
+# macOS
+(.venv) % python3 manage.py runserver
+
+Watching for file changes with StatReloader
+Performing system checks...
+
+System check identified no issues (0 silenced).
+
+You have 18 unapplied migration(s). Your project may not work properly until
+you apply the migrations for app(s): admin, auth, contenttypes, sessions.
+Run 'python manage.py migrate' to apply them.
+
+December 12, 2021 - 15:26:23
+Django version 4.0.0, using settings 'django_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CONTROL-BREAK.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Don’t worry about the text in red about <code>18 unapplied migrations.</code> We’ll get to that shortly. The important part, for now, is to visit <code>http://127.0.0.1:8000/</code> in your web browser and make sure the following image is visible:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/00_welcome40.png" alt="Django welcome page" style="width: 100%"/>
+
+        <figcaption>Django welcome page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you are on Windows you’ll see the final line says to use <code>CONTROL-BREAK</code> to quit whereas on macOS it is <code>CONTROL-C</code>. Newer Windows keyboards often do not have a Pause/Break key in which case using the <code>c</code> key usually works.</p>
+
+    <p>As a side note, it is also possible to visit <code>http://localhost:8000</code> to see the running Django website. There are two ways to visit a local port number on your machine. I default to <code>127.0.0.1:8000</code> in this book because that is what Django outputs in the terminal but either is okay to use in practice.</p>
+
+    <p>Go ahead and stop the local server with the appropriate command and then exit the virtual environment by typing <code>deactivate</code> and hitting <code>Return</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows or macOS
+(.venv) &gt; deactivate
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’ll get lots of practice with virtual environments in this book so don’t worry if it’s a little confusing right now. The basic pattern for any new Django project is to first make and activate a virtual environment, install Django, and then run <code>startproject</code>.</p>
+
+    <p>It’s worth noting that only one virtual environment can be active in a command line tab at a time. In future chapters we will be creating a brand new virtual environment for each new project so either make sure to <code>deactivate</code> your current environment or open up a new tab for new projects.</p>
+
+    <h3 id="leanpub-auto-text-editors">Text Editors</h3>
+
+    <p>The command line is where we execute commands for our programs but a text editor is where actual code is written. The computer doesn’t care what text editor you use–the end result is just code–but a good text editor can provide helpful hints and catch typos for you.</p>
+
+    <p>There are many modern text editors available but a very popular one is <a href="https://code.visualstudio.com/">Visual Studio Code</a>, which is free, easy to install, and enjoys widespread popularity. If you’re not already using a text editor, download and install VSCode from the official website.</p>
+
+    <p>An optional–but highly recommended–additional step is to take advance of the large ecosystem of extensions available on VSCode. On Windows, navigate to <code>File -&gt; Preferences -&gt; Extensions</code> or on macOS <code>Code -&gt; Preferences -&gt; Extensions</code>. This launches a search bar for the extensions marketplace. Enter “python” which will bring up the Microsoft extension as the first result. Install it.</p>
+
+    <p>A second extension to add is <a href="https://pypi.org/project/black/">Black</a>, which is a Python code formatter that has quickly become the default within the Python community. To install Black, open a Terminal window within VSCode by going to <code>Terminal -&gt; New Terminal</code> at the top of the page. In the new terminal window opened at the bottom of the page, type <code>python -m pip install black</code>. Next, open up the VSCode settings by navigating to <code>File -&gt; Preferences -&gt; Settings</code> on Windows or <code>Code -&gt; Preferences -&gt; Settings</code> on macOS. Search for “python formatting provider” and select <code>black</code> from the dropdown options. Then search for “format on save” and enable “Editor: Format on Save”. Black will now automatically format your code whenever a <code>*.py</code> file is saved.</p>
+
+    <p>To confirm this is working, use your text editor to create a new file called <code>hello.py</code> within the <code>ch1-setup</code> directory. located on your Desktop and type in the following using single quotes:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>hello.py</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="nb">print</code><code class="p">(</code><code class="s1">'Hello, World!'</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On save, it should be automatically updated to using double quotes which is <a href="https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#strings">Black’s default preference</a>: <code>print("Hello, World!")</code>. That means everything is working properly.</p>
+
+    <h3 id="leanpub-auto-install-git">Install Git</h3>
+
+    <p>The final step is to install <em>Git</em>, a version control system that is indispensable to modern software development. With Git you can collaborate with other developers, track all your work via commits, and revert to any previous version of your code even if you accidentally delete something important!</p>
+
+    <p>On Windows, navigate to the official website at <code>https://git-scm.com/</code> and click on the “Download” link which should install the proper version for your computer. Save the file and then open your Downloads folder and double click on the file. This will launch the Git for Windows installer. Click the “Next” button through most of the early defaults as they are fine and can always be updated later as needed. There are two exceptions however: under “Choosing the default editor used by Git” select VS Code not Vim. And in the section on “Adjusting the name of the initial branch in new repositories” select the option to use “main” as opposed to “master” as the default branch name. Otherwise the recommended defaults are fine and can always be tweaked later if needed.</p>
+
+    <p>To confirm Git is installed on Windows, close all current shell windows and then open a new one which will load the changes to our PATH variable. Type in <code>git --version</code> which should show it is installed.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; git --version
+git version 2.33.1.windows.1
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On macOS, installing Git via Xcode is currently the easiest option. To check if Git is already installed on your computer, type <code>git --version</code> in a new terminal window.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># macOS
+% git --version
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you do not have Git installed, a popup message will ask if you want to install it as part of “command line developer tools.” Select “Install” which will load Xcode and its command line tools package. Or if you do not see the message for some reason, type <code>xcode-select --install</code> instead to install Xcode directly.</p>
+
+    <p>Be aware that Xcode is a very large package so the initial download may take some time. Xcode is primarily designed for building iOS apps but also includes many developer features need on macOS. Once the download is complete close all existing terminal shells, open a new window, and type in <code>git --version</code> to confirm the install worked.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># macOS
+% git --version
+git version 2.30.1 (Apple Git-130)
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Once Git is installed on your machine we need to do a one-time <em>system</em> configuration by declaring the name and email address associated with all your Git commits. We will also set the default branch name to <code>main</code>. Within the command line shell type the following two lines. Make sure to update them your name and email address.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>&gt; git config --global user.name "Your Name"
+&gt; git config --global user.email "yourname@email.com"
+&gt; git config --global init.defaultBranch main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can always change these configs later if you desire by retyping the same commands with a new name or email address.</p>
+
+    <h3 id="leanpub-auto-conclusion-1">Conclusion</h3>
+
+    <p>Phew! It is no easy task to configure a software development environment. But fortunately it is a one-time pain and will pay many dividends done the road. We have now learned about the command line, Python interactive mode, installed the latest version of Python, Django and Git, and configured our text editor. Everything is ready for our first Django app in the next chapter.</p>
+
+  </div>
+
+</body>
+
+</html>

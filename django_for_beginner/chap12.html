@@ -1,0 +1,263 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 12: Email</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-12-email">Chapter 12: Email</h2>
+
+    <p>At this point you may be feeling a little overwhelmed by all the user authentication configuration we’ve done up to this point. That’s normal. After all, we haven’t even created any core <em>Newspaper</em> app features yet! Everything has been about setting up custom user accounts and the rest.</p>
+
+    <p>The upside to Django’s approach is that it is incredibly easy to customize any piece of our website. The downside is that Django requires a bit more out-of-the-box code than some competing web frameworks. As you become more and more experienced in web development, the wisdom of Django’s approach will ring true.</p>
+
+    <p>Currently, emails are outputted to our command line console. They are not actually sent to users. Let’s change that! First we need to sign up for an account at <a href="https://sendgrid.com/">SendGrid</a> as our email provider. Then update the <code>django_project/settings.py</code> files and Django will take care of the rest. Ready?</p>
+
+    <h3 id="leanpub-auto-sendgrid">SendGrid</h3>
+
+    <p>SendGrid is a popular service for sending transactional emails so we’ll use it. Django doesn’t care what service you choose though. The steps taken here will be almost identical to what you’ll need with any other email service provider.</p>
+
+    <p>On the SendGrid website sign up for a free account. Make sure that the email account you use for SendGrid <strong>is not</strong> the same email account you have for your superuser account on the <em>Newspaper</em> project or weird errors may result. On the “Tell Us About Yourself” page is a required field for “Company Website”. I recommend using the URL of your Heroku deployment from a previous chapter here as this setting can later be changed. Then on the bottom of the page click the “Get Started” button.</p>
+
+    <p>SendGrid then presents us with a welcome screen and a prompt to “Create a Single Sender”. This approach is far faster for verifying that our website and emails work correctly. For a production website taking the additional steps to authenticate your domain is recommended instead.</p>
+
+    <p>After clicking on the “Create a Single Sender” button you are brought to a “Create a Sender” page. It requires entering a name, email, and physical address. These are all requirements that help to minimize email spam and are now required in most countries. Note that you should use a real email address here because SendGrid will send a verification email link to it.</p>
+
+    <p>Check your email and click on the link to “Verify Single Sender” from SendGrid. It will redirect to a “Sender Verified” page and has a link to “Return to Single Sender Verification”.</p>
+
+    <p>To send our first email, there should be a prompt at the top of the page at this point. If not, you can go directly to the guide at <code>https://app.sendgrid.com/guide</code>.</p>
+
+    <p>SendGrid offers two main ways to send our first email. Select the first option for “Integrate using our Web API or SMTP relay” and click on the “Start” button next to it.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/12_sendgrid_welcome.png" alt="SendGrid welcome screen" style="width: 100%"/>
+
+        <figcaption>SendGrid welcome screen</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now we have one more choice to make: Web API or SMTP Relay. We’ll use <em>SMTP Relay</em> since it is the simpler choice and works well for our basic needs here. In a large-scale website you likely would want to use the Web API instead. Click on the “Choose” button under “SMTP Relay” to proceed.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/12_sendgrid_web_api_vs_smtp.png" alt="SendGrid Web API vs SMTP Relay" style="width: 100%"/>
+
+        <figcaption>SendGrid Web API vs SMTP Relay</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Ok, one more screen to navigate. Under step 1, “Create an API key,” enter in a name for your first API Key. I’ve chosen the name “Newspaper” here. Then click on the blue “Create Key” button next to it.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/12_sendgrid_integrate.png" alt="SendGrid integrate" style="width: 100%"/>
+
+        <figcaption>SendGrid integrate</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>The page will update and generate a custom API key in part 1 which is <em>also</em> our password in part 2. The username here, <code>apikey</code>, is the same for everyone but the password will be different for each account. Note that it matches our API key if we had wanted to go that route.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/12_sendgrid_username_and_password.png" alt="SendGrid username and password" style="width: 100%"/>
+
+        <figcaption>SendGrid username and password</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now it’s time to add the new SendGrid username and password into our Django project. This won’t take long!</p>
+
+    <p>First, in the <code>django_project/settings.py</code> file update the email backend to use SMTP. We already configured this once before near the bottom of the file. Instead of outputting emails to the console we want to instead send them for real using SMTP.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">EMAIL_BACKEND</code> <code class="o">=</code> <code class="s2">"django.core.mail.backends.smtp.EmailBackend"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then, right below it, add the following six lines of email configuration. The <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#default-from-email">DEFAULT_FROM_EMAIL</a> field is set, by default, to <code>webmaster@localhost</code>. You should update it with your intended email account. Make sure to enter your own SendGrid <code>EMAIL_HOST_PASSWORD</code> here: <code>sendgrid_password</code> is just a placeholder!</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEFAULT_FROM_EMAIL</code> <code class="o">=</code> <code class="s2">"your_custom_email_account"</code>
+<code class="n">EMAIL_HOST</code> <code class="o">=</code> <code class="s2">"smtp.sendgrid.net"</code>
+<code class="n">EMAIL_HOST_USER</code> <code class="o">=</code> <code class="s2">"apikey"</code>
+<code class="n">EMAIL_HOST_PASSWORD</code> <code class="o">=</code> <code class="s2">"sendgrid_password"</code>
+<code class="n">EMAIL_PORT</code> <code class="o">=</code> <code class="mi">587</code>
+<code class="n">EMAIL_USE_TLS</code> <code class="o">=</code> <code class="kc">True</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that an email password is information that should be kept secure and secret. Pasting it in plain text into your codebase is a bad practice. And you definitely do <em>not</em> want to add it to Git accidentally. In Chapter 16 we will learn how to add environment variables to our project so that we can keep secret information truly secret. But for now, to keep things simple, we won’t. Technically we haven’t added Git to our repo yet so we’re ok but just be aware that any time you are dealing with passwords or API keys alarm bells should be ringing in your ears around security!</p>
+
+    <p>With that said, we’re now complete and ready to confirm everything is working. The local server should be already running at this point but if not, type <code>python manage.py runserver</code> to ensure that it is.</p>
+
+    <p>Go <em>back</em> to the SendGrid “Integrate using our Web API or SMTP Relay” page and select the checkbox next to “I’ve updated my settings.” Then click on “Next: Verify Integration.”</p>
+
+    <p>Navigate to the password reset form in your web browser, which should be located at:</p>
+
+    <p>
+  <code>http://127.0.0.1:8000/accounts/password_reset/</code>
+</p>
+
+    <p>Type in the email address for your superuser account which should be an email account you can access. <em>Do not</em> use the email for your SendGrid account; it should be different. Fill in the form and submit.</p>
+
+    <p>Now check your email inbox. You should see a new email there from your <code>DEFAULT_FROM_EMAIL</code> email address which was just verified. The text will be exactly the same as that outputted to our command line console previously.</p>
+
+    <p>The final step is to return to SendGrid and click on the blue button to “Verify Integration.”</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/12_sendgrid_verify_integration.png" alt="SendGrid verify integration" style="width: 100%"/>
+
+        <figcaption>SendGrid verify integration</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>The button will turn grey and display “Checking…” for a moment until displaying “It worked!”</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/12_sendgrid_it_worked.png" alt="SendGrid it worked" style="width: 100%"/>
+
+        <figcaption>SendGrid it worked</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Phew. We’re done! That was a lot of steps but our real-world email integration is now working.</p>
+
+    <h3 id="leanpub-auto-custom-emails">Custom Emails</h3>
+
+    <p>The current email text isn’t very personal, is it? Let’s change things. At this point I could just show you what steps to take, but I think it’s helpful to instead explain <strong>how</strong> I figured out how to do this. After all, you want to be able to customize all parts of Django as needed.</p>
+
+    <p>In this case, I knew what text Django was using by default but it wasn’t clear where in the Django source code it was written. And since all of Django’s source code is <a href="https://github.com/django/django">available on Github</a> we can can just search it.</p>
+
+    <p>Use the Github search bar and enter a few words from the email text. For example, “You’re receiving this email because” and make sure to search “in this repository”. There are a number of results that appear but the first result is the one we want. It shows the code is located in the <code>contrib</code> app in a file called <code>password_reset_email.html</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/12_github_search_result.png" alt="GitHub search result" style="width: 100%"/>
+
+        <figcaption>GitHub search result</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>The complete link for the file is quite long:</p>
+
+    <p>
+  <code>django/contrib/admin/templates/registration/password_reset_email.html</code>
+</p>
+
+    <p>Here is that default text from the Django source code.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>{% load i18n %}{% autoescape off %}
+{% blocktranslate %}You're receiving this email because you requested a password reset
+for your user account at {{ site_name }}.{% endblocktranslate %}
+
+{% translate "Please go to the following page and choose a new password:" %}
+{% block reset_link %}
+{{ protocol }}://{{ domain }}{% url 'password_reset_confirm' uidb64=uid token=token %}
+{% endblock %}
+{% translate "Your username, in case you've forgotten:" %} {{ user.get_username }}
+
+{% translate "Thanks for using our site!" %}
+
+{% blocktranslate %}The {{ site_name }} team{% endblocktranslate %}
+
+{% endautoescape %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To make changes create a new <code>templates/registration/password_reset_email.html</code> file in your own project. Then copy and paste the code from the Django repo into it. If you want to customize the text, you can.</p>
+
+    <p>This code might look a little scary so let’s break it down line-by-line. Up top we load the template tag <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#i18n">i18n</a> which means this text is eligible to be translated into multiple languages. Django has robust <a href="https://docs.djangoproject.com/en/4.0/topics/i18n/">internationalization support</a> though covering it is beyond the scope of this book.</p>
+
+    <p>We’re greeting the user by name thanks to <code>user.get_username</code>. Then we use the <code>reset_link</code> block to include the custom URL link. You can read more about Django’s <a href="https://docs.djangoproject.com/en/4.0/topics/auth/passwords/">password management approach</a> in the official docs.</p>
+
+    <p>Let’s also update the email’s subject title. To do this we’ll create another new file called <code>templates/registration/password_reset_subject.txt</code>. Add the following line of code to it:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>Please reset your password
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And we’re all set. Go ahead and try out our new flow again by entering a new password at <code>http://127.0.0.1:8000/accounts/password_reset/</code>. Then check your email and it will have the desired content and updated subject.</p>
+
+    <h3 id="leanpub-auto-conclusion-12">Conclusion</h3>
+
+    <p>We’ve now finished implementing a complete user authentication flow. Users can sign up for a new account, log in, log out, change their password, and reset their password. We have learned how to customize all the templates involve and integrate with an email provider to actually send the emails. It’s time to build out our actual <em>Newspaper</em> app.</p>
+
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,191 @@
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" xml:lang="en" unique-identifier="BookId" dir="ltr" prefix="calibre: https://calibre-ebook.com">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+    <dc:title dir="ltr" id="title">Django for Beginners</dc:title>
+    <dc:creator id="id">William S. Vincent</dc:creator>
+    <dc:identifier>calibre:7</dc:identifier>
+    <dc:identifier>uuid:4e181abb-b4e8-4183-9b66-3e2d16386c27</dc:identifier>
+    <dc:identifier id="BookId">https://leanpub.com/djangoforbeginners</dc:identifier>
+    <dc:language>en</dc:language>
+    <dc:contributor id="id-1">calibre (6.3.0) [https://calibre-ebook.com]</dc:contributor>
+    <dc:date>2018-02-22T00:00:00+00:00</dc:date>
+    <dc:publisher>leanpub.com</dc:publisher>
+    <opf:meta refines="#title" property="title-type">main</opf:meta>
+    <opf:meta refines="#title" property="file-as">Django for Beginners</opf:meta>
+    <meta property="dcterms:modified">2022-10-06T10:33:02Z</meta>
+    <meta name="cover" content="cover_image"/>
+    <opf:meta refines="#id-1" property="role" scheme="marc:relators">bkp</opf:meta>
+    <opf:meta refines="#id" property="role" scheme="marc:relators">aut</opf:meta>
+    <opf:meta refines="#id" property="file-as">William S. Vincent</opf:meta>
+    <opf:meta property="calibre:author_link_map">{"William S. Vincent": ""}</opf:meta>
+  </metadata>
+  <manifest>
+    <item id="titlepage" href="title_page.html" media-type="application/xhtml+xml"/>
+    <item id="versopage" href="verso_page.html" media-type="application/xhtml+xml"/>
+    <item id="toc" href="toc.html" media-type="application/xhtml+xml" properties="nav"/>
+    <item id="chapter00" href="chap00.html" media-type="application/xhtml+xml"/>
+    <item id="chapter01" href="chap01.html" media-type="application/xhtml+xml"/>
+    <item id="chapter02" href="chap02.html" media-type="application/xhtml+xml"/>
+    <item id="chapter03" href="chap03.html" media-type="application/xhtml+xml"/>
+    <item id="chapter04" href="chap04.html" media-type="application/xhtml+xml"/>
+    <item id="chapter05" href="chap05.html" media-type="application/xhtml+xml"/>
+    <item id="chapter06" href="chap06.html" media-type="application/xhtml+xml"/>
+    <item id="chapter07" href="chap07.html" media-type="application/xhtml+xml"/>
+    <item id="chapter08" href="chap08.html" media-type="application/xhtml+xml"/>
+    <item id="chapter09" href="chap09.html" media-type="application/xhtml+xml"/>
+    <item id="chapter10" href="chap10.html" media-type="application/xhtml+xml"/>
+    <item id="chapter11" href="chap11.html" media-type="application/xhtml+xml"/>
+    <item id="chapter12" href="chap12.html" media-type="application/xhtml+xml"/>
+    <item id="chapter13" href="chap13.html" media-type="application/xhtml+xml"/>
+    <item id="chapter14" href="chap14.html" media-type="application/xhtml+xml"/>
+    <item id="chapter15" href="chap15.html" media-type="application/xhtml+xml"/>
+    <item id="chapter16" href="chap16.html" media-type="application/xhtml+xml"/>
+    <item id="chapter17" href="chap17.html" media-type="application/xhtml+xml"/>
+    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="style" href="stylesheet.css" media-type="text/css"/>
+    <item id="img000" href="images/00_welcome40.png" media-type="image/png"/>
+    <item id="img001" href="images/02_helloworld.png" media-type="image/png"/>
+    <item id="img005" href="images/03_about_header.png" media-type="image/png"/>
+    <item id="img003" href="images/03_about.png" media-type="image/png"/>
+    <item id="img006" href="images/03_heroku_home.png" media-type="image/png"/>
+    <item id="img004" href="images/03_home_header.png" media-type="image/png"/>
+    <item id="img002" href="images/03_homepage.png" media-type="image/png"/>
+    <item id="img009" href="images/04_django_admin_app.png" media-type="image/png"/>
+    <item id="img010" href="images/04_django_admin_first_entry.png" media-type="image/png"/>
+    <item id="img008" href="images/04_django_admin_home.png" media-type="image/png"/>
+    <item id="img007" href="images/04_django_admin_login.png" media-type="image/png"/>
+    <item id="img011" href="images/04_django_admin_post_object.png" media-type="image/png"/>
+    <item id="img012" href="images/04_django_admin_post_str.png" media-type="image/png"/>
+    <item id="img013" href="images/04_homepage_helloworld.png" media-type="image/png"/>
+    <item id="img015" href="images/05_admin_first_post.png" media-type="image/png"/>
+    <item id="img017" href="images/05_admin_home_two_posts.png" media-type="image/png"/>
+    <item id="img014" href="images/05_admin_posts.png" media-type="image/png"/>
+    <item id="img016" href="images/05_admin_second_post.png" media-type="image/png"/>
+    <item id="img021" href="images/05_blog_detail_one.png" media-type="image/png"/>
+    <item id="img020" href="images/05_homepage_css.png" media-type="image/png"/>
+    <item id="img018" href="images/05_homepage_no_styling.png" media-type="image/png"/>
+    <item id="img019" href="images/05_homepage_red_title.png" media-type="image/png"/>
+    <item id="img030" href="images/06_delete_page.png" media-type="image/png"/>
+    <item id="img029" href="images/06_delete_view.png" media-type="image/png"/>
+    <item id="img027" href="images/06_edited.png" media-type="image/png"/>
+    <item id="img031" href="images/06_homepage_deleted_post.png" media-type="image/png"/>
+    <item id="img028" href="images/06_homepage_edited_post.png" media-type="image/png"/>
+    <item id="img022" href="images/06_new_button.png" media-type="image/png"/>
+    <item id="img023" href="images/06_new_page.png" media-type="image/png"/>
+    <item id="img025" href="images/06_new_third_post_page.png" media-type="image/png"/>
+    <item id="img024" href="images/06_new_third_post.png" media-type="image/png"/>
+    <item id="img026" href="images/06_post_with_edit.png" media-type="image/png"/>
+    <item id="img035" href="images/07_homepage_logged_out.png" media-type="image/png"/>
+    <item id="img033" href="images/07_homepage_login.png" media-type="image/png"/>
+    <item id="img034" href="images/07_homepage_logout_link.png" media-type="image/png"/>
+    <item id="img037" href="images/07_homepage_new_user.png" media-type="image/png"/>
+    <item id="img032" href="images/07_login_firststep.png" media-type="image/png"/>
+    <item id="img038" href="images/07_signup_link.png" media-type="image/png"/>
+    <item id="img036" href="images/07_signup.png" media-type="image/png"/>
+    <item id="img040" href="images/08_admin_edit_age.png" media-type="image/png"/>
+    <item id="img039" href="images/08_admin_select_user_to_change.png" media-type="image/png"/>
+    <item id="img041" href="images/08_admin_updated_age.png" media-type="image/png"/>
+    <item id="img047" href="images/09_admin_login_wrong.png" media-type="image/png"/>
+    <item id="img051" href="images/09_admin_three_users.png" media-type="image/png"/>
+    <item id="img048" href="images/09_admin_users.png" media-type="image/png"/>
+    <item id="img043" href="images/09_home_logged_out.png" media-type="image/png"/>
+    <item id="img042" href="images/09_home_loggedin.png" media-type="image/png"/>
+    <item id="img044" href="images/09_login.png" media-type="image/png"/>
+    <item id="img049" href="images/09_new_signup.png" media-type="image/png"/>
+    <item id="img045" href="images/09_signup.png" media-type="image/png"/>
+    <item id="img046" href="images/09_testuser.png" media-type="image/png"/>
+    <item id="img050" href="images/09_testuser2_homepage.png" media-type="image/png"/>
+    <item id="img053" href="images/10_bootstrap_nav_loggedout.png" media-type="image/png"/>
+    <item id="img056" href="images/10_bootstrap_signup.png" media-type="image/png"/>
+    <item id="img058" href="images/10_crispy_login.png" media-type="image/png"/>
+    <item id="img057" href="images/10_crispy_signup.png" media-type="image/png"/>
+    <item id="img052" href="images/10_home_loggedin.png" media-type="image/png"/>
+    <item id="img055" href="images/10_login_new_button.png" media-type="image/png"/>
+    <item id="img054" href="images/10_login.png" media-type="image/png"/>
+    <item id="img071" href="images/11_forgot_your_password.png" media-type="image/png"/>
+    <item id="img062" href="images/11_new_password_change_done.png" media-type="image/png"/>
+    <item id="img061" href="images/11_new_password_change.png" media-type="image/png"/>
+    <item id="img070" href="images/11_new_password_reset_complete.png" media-type="image/png"/>
+    <item id="img068" href="images/11_new_password_reset_done.png" media-type="image/png"/>
+    <item id="img067" href="images/11_new_password_reset.png" media-type="image/png"/>
+    <item id="img069" href="images/11_new_set_password.png" media-type="image/png"/>
+    <item id="img060" href="images/11_password_change_done.png" media-type="image/png"/>
+    <item id="img059" href="images/11_password_change.png" media-type="image/png"/>
+    <item id="img066" href="images/11_password_reset_complete.png" media-type="image/png"/>
+    <item id="img065" href="images/11_password_reset_confirmation.png" media-type="image/png"/>
+    <item id="img064" href="images/11_password_reset_done.png" media-type="image/png"/>
+    <item id="img063" href="images/11_password_reset.png" media-type="image/png"/>
+    <item id="img078" href="images/12_github_search_result.png" media-type="image/png"/>
+    <item id="img074" href="images/12_sendgrid_integrate.png" media-type="image/png"/>
+    <item id="img077" href="images/12_sendgrid_it_worked.png" media-type="image/png"/>
+    <item id="img075" href="images/12_sendgrid_username_and_password.png" media-type="image/png"/>
+    <item id="img076" href="images/12_sendgrid_verify_integration.png" media-type="image/png"/>
+    <item id="img073" href="images/12_sendgrid_web_api_vs_smtp.png" media-type="image/png"/>
+    <item id="img072" href="images/12_sendgrid_welcome.png" media-type="image/png"/>
+    <item id="img079" href="images/13_admin_articles.png" media-type="image/png"/>
+    <item id="img087" href="images/13_article_four.png" media-type="image/png"/>
+    <item id="img081" href="images/13_articles_page.png" media-type="image/png"/>
+    <item id="img084" href="images/13_delete.png" media-type="image/png"/>
+    <item id="img083" href="images/13_detail.png" media-type="image/png"/>
+    <item id="img082" href="images/13_edit.png" media-type="image/png"/>
+    <item id="img088" href="images/13_final_articles_page.png" media-type="image/png"/>
+    <item id="img086" href="images/13_new.png" media-type="image/png"/>
+    <item id="img080" href="images/13_three_articles.png" media-type="image/png"/>
+    <item id="img085" href="images/13_two_articles.png" media-type="image/png"/>
+    <item id="img093" href="images/14_403_error.png" media-type="image/png"/>
+    <item id="img091" href="images/14_create_error.png" media-type="image/png"/>
+    <item id="img092" href="images/14_login.png" media-type="image/png"/>
+    <item id="img090" href="images/14_new_loggedout.png" media-type="image/png"/>
+    <item id="img089" href="images/14_new_updated.png" media-type="image/png"/>
+    <item id="img095" href="images/15_admin_comments.png" media-type="image/png"/>
+    <item id="img094" href="images/15_admin_with_comments.png" media-type="image/png"/>
+    <item id="img097" href="images/15_article_comment.png" media-type="image/png"/>
+    <item id="img102" href="images/15_article_details_with_comments.png" media-type="image/png"/>
+    <item id="img101" href="images/15_articles_with_comments.png" media-type="image/png"/>
+    <item id="img105" href="images/15_comment_displayed.png" media-type="image/png"/>
+    <item id="img103" href="images/15_form_displayed.png" media-type="image/png"/>
+    <item id="img099" href="images/15_no_extra_comments.png" media-type="image/png"/>
+    <item id="img098" href="images/15_stacked.png" media-type="image/png"/>
+    <item id="img104" href="images/15_submit_comment.png" media-type="image/png"/>
+    <item id="img100" href="images/15_tabular.png" media-type="image/png"/>
+    <item id="img096" href="images/15_testuser_comment.png" media-type="image/png"/>
+    <item id="img107" href="images/16_not_found.png" media-type="image/png"/>
+    <item id="img106" href="images/16_page_not_found.png" media-type="image/png"/>
+    <item id="lpimg003" href="images/leanpub_bug.png" media-type="image/png"/>
+    <item id="lpimg005" href="images/leanpub_comments.png" media-type="image/png"/>
+    <item id="lpimg001" href="images/leanpub_info-circle.png" media-type="image/png"/>
+    <item id="lpimg004" href="images/leanpub_key.png" media-type="image/png"/>
+    <item id="lpimg006" href="images/leanpub_pencil.png" media-type="image/png"/>
+    <item id="lpimg002" href="images/leanpub_question-circle.png" media-type="image/png"/>
+    <item id="lpimg000" href="images/leanpub_warning.png" media-type="image/png"/>
+    <item id="publisher-logo" href="images/leanpub-logo.png" media-type="image/png"/>
+    <item id="cover_image" href="images/title_page.jpg" media-type="image/jpeg" properties="cover-image"/>
+  </manifest>
+  <spine toc="ncx" page-progression-direction="ltr">
+    <itemref idref="titlepage"/>
+    <itemref idref="versopage"/>
+    <itemref idref="toc"/>
+    <itemref idref="chapter00"/>
+    <itemref idref="chapter01"/>
+    <itemref idref="chapter02"/>
+    <itemref idref="chapter03"/>
+    <itemref idref="chapter04"/>
+    <itemref idref="chapter05"/>
+    <itemref idref="chapter06"/>
+    <itemref idref="chapter07"/>
+    <itemref idref="chapter08"/>
+    <itemref idref="chapter09"/>
+    <itemref idref="chapter10"/>
+    <itemref idref="chapter11"/>
+    <itemref idref="chapter12"/>
+    <itemref idref="chapter13"/>
+    <itemref idref="chapter14"/>
+    <itemref idref="chapter15"/>
+    <itemref idref="chapter16"/>
+    <itemref idref="chapter17"/>
+  </spine>
+  <guide>
+    <reference href="title_page.html" type="cover" title="Cover"/>
+    <reference href="toc.html" type="toc" title="Table of Contents"/>
+    <reference href="chap00.html" type="text" title="Start"/>
+  </guide>
+</package>

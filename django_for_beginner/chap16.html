@@ -1,0 +1,874 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 16: Deployment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-16-deployment">Chapter 16: Deployment</h2>
+
+    <p>There is a fundamental tension between the ease-of-use desired in a local Django development environment and the security and performance necessary in a production environment. Django is designed to make web developers’s lives easier and it therefore defaults to a local configuration when the <code>startproject</code> command is first run. We’ve seen this in the use of SQLite as the file-based database and the various configurations in <code>settings.py</code> out of the box.</p>
+
+    <p>But as we’ve already seen in our projects, deployment requires additional steps for proper security and performance. Here is the complete deployment checklist last used for the <em>Blog</em> app back in Chapter 7:</p>
+
+    <ul>
+
+      <li>install <code>Gunicorn</code>
+</li>
+
+      <li>create a <code>requirements.txt</code> file</li>
+
+      <li>update <code>ALLOWED_HOSTS</code> in <code>django_project/settings.py</code>
+</li>
+
+      <li>create a <code>Procfile</code> file</li>
+
+      <li>create a <code>runtime.txt</code> file</li>
+
+      <li>configure static files, install <code>whitenoise</code>, and run <code>collectstatic</code>
+</li>
+
+      <li>create and update a <code>.gitignore</code> file</li>
+
+      <li>create a new Heroku project, push the code to it, and start a dyno web process</li>
+
+    </ul>
+
+    <p>In truth, though, this list is far from complete. We’ve relied on a number of shortcuts in our deployments so far that now need to be fixed. As the <a href="https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/">Django deployment checklist</a> notes, at the very minimum, a production environment should also have:</p>
+
+    <ul>
+
+      <li>
+<code>DEBUG</code> set to <code>False</code>
+</li>
+
+      <li>
+<code>SECRET_KEY</code> actually kept secret</li>
+
+      <li>a production database, not SQLite</li>
+
+    </ul>
+
+    <p>The question is: how do we balance both of these needs? One environment for local development and another for production? Today, the best practice is to use <em>environment variables</em>, which can be loaded into the codebase at runtime yet not stored in the source code. In other words, even if someone had access to your GitHub repo and all the source code, they couldn’t do much damage because the environment variables representing the most important details would be stored elsewhere!</p>
+
+    <p>In this final chapter we will switch over to environment variables and create a deployment checklist suitable for a professional website.</p>
+
+    <h3 id="leanpub-auto-environment-variables">Environment Variables</h3>
+
+    <p>There are multiple ways to work with environment variables in Python but for this project we’ll use the <a href="https://github.com/sloria/environs">environs</a> package. It allows us to create a dedicated <code>.env</code> file for environment variables as well as load a number of Django-specific additional packages to help with configuration.</p>
+
+    <p>On the command line, install <code>environs[django]</code>. Note that you’ll probably need to add single quotes, <code>''</code>, around the package if you’re using Zsh as your terminal shell, so run <code>python -m pip install 'environs[django]==9.3.5'</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install 'environs[django]==9.3.5'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then, in <code>django_project/settings.py</code> there are three lines of imports to add near the top of the file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="kn">from</code> <code class="nn">pathlib</code> <code class="kn">import</code> <code class="n">Path</code>
+<code class="kn">from</code> <code class="nn">environs</code> <code class="kn">import</code> <code class="n">Env</code>  <code class="c1"># new</code>
+
+<code class="n">env</code> <code class="o">=</code> <code class="n">Env</code><code class="p">()</code>  <code class="c1"># new</code>
+<code class="n">env</code><code class="o">.</code><code class="n">read_env</code><code class="p">()</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next up, create a new file called <code>.env</code> in the root project directory which will contain our environment variables. We already know that any file or directory starting with a period, <code>.</code>, will be treated as a <em>hidden file</em> and not displayed by default during a directory listing. The file still exists though and needs to be added to a <code>.gitignore</code> file to avoid being added to our Git source control.</p>
+
+    <p>Go ahead and create a new <code>.gitignore</code> file with your text editor in the root project directory. Its contents should include our new <code>.env</code> file and also the <code>.venv</code> directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+.env
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>While we’re at it there are several other files and folders that are convenient to ignore for Python and Django development. These include all <code>*.pyc</code> files and the <code>__pycache__</code> directory. If you’re on a Mac, there’s no need to track <code>.DS_Store</code> which stores information about folder settings.</p>
+
+    <p>The final file to ignore is our local database contained in <code>db.sqlite3</code>. This file can become quite large and contains our <em>entire</em> database. We do not want someone with access to our source code to also have access to all our data. For convenience, we have used SQLite as our production database in previous chapters–that is, deployed on Heroku–but here we will switch over to production-ready PostgreSQL instead for deployment.</p>
+
+    <p>Here is what the final <code>.gitignore</code> file should contain:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+.env
+__pycache__/
+db.sqlite3
+.DS_Store  # Mac only
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Remember that before we can apply Git commits we first must initialize a new directory with <code>git init</code>. Let’s do that now. Check the <code>status</code> to confirm our <code>.gitignore</code> file is working properly and create an initial commit.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git init
+(.venv) &gt; git status
+(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "initial commit"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>It is a good idea to commit early and often on your projects.</p>
+
+    <h3 id="leanpub-auto-debug--allowed-hosts">DEBUG &amp; ALLOWED HOSTS</h3>
+
+    <p>It’s time to configure our environment variable for <code>DEBUG</code>, which by default is set to <code>True</code>. This is helpful for local development, but a major security issue if deployed into production. For example, if you start up the local server with <code>python manage.py runserver</code> and navigate to a page that does not exist, like <code>http://127.0.0.1:8000/debug</code>, you’ll see the following:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_page_not_found.png" alt="Page Not Found" style="width: 100%"/>
+
+        <figcaption>Page Not Found</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>This page lists all the URLs tried and apps loaded, which is a treasure map for any hacker attempting to break into your site. You’ll even see that on the bottom of the error page, it says that Django will display a standard 404 page if <code>DEBUG=False</code>. Within the <code>django_project/settings.py</code> file, change <code>DEBUG</code> to be <code>False</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEBUG</code> <code class="o">=</code> <code class="kc">False</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Oops! If you look at the command line, Django is complaining about a <code>CommandError</code> and has automatically stopped the local server.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>CommandError: You must set settings.ALLOWED_HOSTS if DEBUG is False.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Because <code>DEBUG</code> is set to <code>False</code>, Django assumes we’re trying to push the project into production and comes with a number of warnings like this. <code>ALLOWED_HOSTS</code> should be set to accept both local ports (<code>localhost</code> and <code>127.0.0.1</code>) as well as <code>.herokuapp.com</code> for its Heroku deployment. We can add all three routes to our config.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">ALLOWED_HOSTS</code> <code class="o">=</code> <code class="p">[</code><code class="s2">".herokuapp.com"</code><code class="p">,</code> <code class="s2">"localhost"</code><code class="p">,</code> <code class="s2">"127.0.0.1"</code><code class="p">]</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Re-run the <code>python manage.py runserver</code> command and refresh the page. The descriptive error message is no longer there! Instead, it has been replaced by a generic “Not Found” message.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_not_found.png" alt="Not Found" style="width: 100%"/>
+
+        <figcaption>Not Found</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Our goal is for <code>DEBUG</code> to be <code>True</code> for local development, but set to <code>False</code> in production. The two-step process for adding any environment variable is to first add it to the <code>.env</code> file and then to <code>django_project/settings.py</code>.</p>
+
+    <p>Within the <code>.env</code> file create a new environment variable called <code>DEBUG</code>. We will set its value to <code>True</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.env</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>DEBUG=True
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then in <code>django_project/settings.py</code>, change the <code>DEBUG</code> setting to read the variable <code>"DEBUG"</code> from the <code>.env</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEBUG</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DEBUG"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>It’s easy to be confused here. Our environment variable is named <code>DEBUG</code>, the same as the setting it replaces. But we could have named our environment variable <code>ANYTHING</code> instead. That would have looked like this:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.env</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>ANYTHING=True
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEBUG</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"ANYTHING"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p><code>ANYTHING</code> is a variable so it can have almost any name we desire. In practice, however, most developers will name the environment variable to match the name of the setting it replaces. We will do the same so <code>DEBUG=True</code>.</p>
+
+    <p>One more best practice we will adopt is to set a <code>default</code> value, in this case <code>False</code>, meaning that if an environment variable can’t be found, our production setting will be used. It’s a best practice to default to production settings since they are more secure and if something goes wrong in our code, we won’t default to exposing all our secrets out in the open.</p>
+
+    <p>The final <code>django_project/settings.py</code> line therefore looks as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEBUG</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DEBUG"</code><code class="p">,</code> <code class="n">default</code><code class="o">=</code><code class="kc">False</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the webpage at <code>http://127.0.0.1:8000/debug</code>, you’ll see the full error page is back again. Everything is working properly.</p>
+
+    <h3 id="leanpub-auto-secretkey">SECRET_KEY</h3>
+
+    <p>The next environment variable to set is our <code>SECRET_KEY</code>, a random 50 character string generated each time <code>startproject</code> is run. Starting in Django 3.0 the key begins with <code>django-insecure</code> as an additional prompt to tell developers not to use this specific key in production. Here is the <code>django_project/settings.py</code> value of the <code>SECRET_KEY</code> in my project. Yours will be different.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">SECRET_KEY</code> <code class="o">=</code> <code class="s2">"django-insecure-3$k(g9eheqqbzr@#&amp;tt)r6</code><code class="si">%a</code><code class="s2">b-g1=!j@2c^y7*sl6+ltzys05!"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And here it is, without the double quotes, in the <code>.env</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.env</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>DEBUG=True
+SECRET_KEY=django-insecure-3$k(g9eheqqbzr@#&amp;tt)r6%ab-g1=!j@2c^y7*sl6+ltzys05!
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Update <code>django_project/settings.py</code> so that <code>SECRET_KEY</code> points to this new environment variable.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">SECRET_KEY</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">str</code><code class="p">(</code><code class="s2">"SECRET_KEY"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Our <code>SECRET_KEY</code> is now out of the <code>settings.py</code> file and it is safe, right? Actually <em>no</em>! Because we made an earlier Git commit the value is stored in our Git history no matter what we do. Uh oh.</p>
+
+    <p>The solution is to create a new <code>SECRET_KEY</code> and adding it to the <code>.env</code> file. One way to generate a new one is by invoking Python’s built-in <a href="https://docs.python.org/3/library/secrets.html">secrets</a> module by running <code>python -c 'import secrets; print(secrets.token_urlsafe())'</code> on the command line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -c "import secrets; print(secrets.token_urlsafe())"
+imDnfLXy-8Y-YozfJmP2Rw_81YA_qx1XKl5FeY0mXyY
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Copy and paste this new value into the <code>.env</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.env</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>DEBUG=True
+SECRET_KEY=imDnfLXy-8Y-YozfJmP2Rw_81YA_qx1XKl5FeY0mXyY
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now restart the local server with <code>python manage.py runserver</code> and refresh your website. It will work with the new <code>SECRET_KEY</code> loaded from the <code>.env</code> file but <em>not</em> tracked by Git since <code>.env</code> is in the <code>.gitignore</code> file.</p>
+
+    <h3 id="leanpub-auto-databases">DATABASES</h3>
+
+    <p>Our current <code>DATABASES</code> configuration is for SQLite, but we want to be able to switch to PostgreSQL for production on Heroku. When we installed <code>environs[django]</code> earlier, the Django “goodies” included the elegant <a href="https://github.com/jacobian/dj-database-url">dj-database-url</a> package, which takes all the database configurations needed for our database, SQLite or PostgreSQL, and creates a <code>DATABASE_URL</code> environment variable.</p>
+
+    <p>The updated <code>DATABASES</code> configuration uses <code>dj_db_url</code> from <code>environs[django]</code> to help parse <code>DATABASE_URL</code> and looks as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DATABASES</code> <code class="o">=</code> <code class="p">{</code>
+    <code class="s2">"default"</code><code class="p">:</code> <code class="n">env</code><code class="o">.</code><code class="n">dj_db_url</code><code class="p">(</code><code class="s2">"DATABASE_URL"</code><code class="p">)</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>That’s it! All we need to do now is specify SQL as the local <code>DATABASE_URL</code> value in the <code>.env</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.env</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>DEBUG=True
+SECRET_KEY=imDnfLXy-8Y-YozfJmP2Rw_81YA_qx1XKl5FeY0mXyY
+DATABASE_URL=sqlite:///db.sqlite3
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>I hope you’re wondering now: how do we set <code>DATABASE_URL</code> in production on Heroku? It turns out that when Heroku provisions a new PostgreSQL database, it automatically creates a configuration variable for it named … <code>DATABASE_URL</code>. Since the <code>.env</code> file is not committed to production, our Django project on Heroku will instead use this PostgreSQL configuration. Pretty elegant, no?</p>
+
+    <p>The last step is to install <a href="https://www.psycopg.org/docs/">Psycopg</a>, a database adapter that lets Python apps talk to PostgreSQL databases. If you are on macOS it is necessary to install PostgreSQL first via Homebrew and then <code>psycopg2</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+(.venv) &gt; python -m pip install psycopg2==2.9.3
+
+# macOS
+(.venv) % brew install postgresql
+(.venv) % python -m pip install psycopg2==2.9.3
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We can use this approach because Django’s ORM (Object Relational Mapper) translates our <code>models.py</code> code from Python into the database backend of choice. This works <em>almost</em> all the time without error. It is possible for weird bugs to creep up and it is recommended on a professional project to install PostgreSQL locally, too, to avoid them.</p>
+
+    <h3 id="leanpub-auto-static-files-2">Static Files</h3>
+
+    <p>Surprisingly, we actually don’t have any static files in our <em>Newspaper</em> app at this point. We’ve relied entirely on hosted Bootstrap rather than our own CSS and JavaScript as we did in the <em>Blog</em> app. That is likely to change as the site grows in the future so we may as well set up static files properly now.</p>
+
+    <p>Stop the local server with <code>Control+c</code> and create a new <code>static</code> folder in the same directory as <code>manage.py</code>. Then add folders for <code>css</code> and <code>javascript</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; mkdir static
+(.venv) &gt; mkdir static/css
+(.venv) &gt; mkdir static/js
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>A quirk of Git is that by default it will not track directories that do not contain files. So when we push our code to both GitHub and Heroku these empty directories will not appear! This can cause problems since Heroku automatically runs <code>collectstatic</code> on the server, trying to combine static directories.</p>
+
+    <p>There are two solutions. One approach is to add a <code>.keep</code> file to an otherwise empty directory. Git will see this file and make the directory and file part of the next commit. However, since it is likely we will have files in here in the future, it is simpler to just create new files now to solve the issue. Let’s do that. With your text editor, create new blank files called <code>static/css/base.css</code> and also <code>static/js/base.js</code>.</p>
+
+    <p>Next we’ll also need to install the <a href="http://whitenoise.evans.io/en/stable/">WhiteNoise</a> package since Django does not support serving static files in production itself.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install whitenoise==5.3.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>WhiteNoise must be added to <code>django_project/settings.py</code> in the following locations:</p>
+
+    <ul>
+
+      <li>
+<code>whitenoise</code> above <code>django.contrib.staticfiles</code> in <code>INSTALLED_APPS</code>
+</li>
+
+      <li>
+<code>WhiteNoiseMiddleware</code> above <code>CommonMiddleware</code>
+</li>
+
+      <li>
+<code>STATICFILES_STORAGE</code> configuration pointing to WhiteNoise</li>
+
+    </ul>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="o">...</code>
+    <code class="s2">"whitenoise.runserver_nostatic"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+<code class="p">]</code>
+
+<code class="n">MIDDLEWARE</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.middleware.security.SecurityMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions.middleware.SessionMiddleware"</code><code class="p">,</code>
+    <code class="s2">"whitenoise.middleware.WhiteNoiseMiddleware"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="o">...</code>
+<code class="p">]</code>
+
+<code class="n">STATIC_URL</code> <code class="o">=</code> <code class="s2">"/static/"</code>
+<code class="n">STATICFILES_DIRS</code> <code class="o">=</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"static"</code><code class="p">]</code>  <code class="c1"># new</code>
+<code class="n">STATIC_ROOT</code> <code class="o">=</code> <code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"staticfiles"</code>  <code class="c1"># new</code>
+<code class="n">STATICFILES_STORAGE</code> <code class="o">=</code>
+    <code class="s2">"whitenoise.storage.CompressedManifestStaticFilesStorage"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run the <code>collectstatic</code> command for the first time to compile all the static file directories and files into one self-contained unit suitable for deployment.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py collectstatic
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>As a final step, in order for our templates to display any static files, they must be loaded in so add <code>{% load static %}</code> to the top of the <code>base.html</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+{% load static %}
+<code class="cp">&lt;!DOCTYPE html&gt;</code>
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-deployment-checklist-1">Deployment Checklist</h3>
+
+    <p>It’s easy to lose track of all the steps required for readying a Django website for production. That’s why our checklist exists! We haven’t installed Gunicorn yet as the production web server so do that now.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install gunicorn==20.1.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We also have not created a <code>requirements.txt</code> file with all the packages installed in our local virtual environment. We can do that as well.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip freeze &gt; requirements.txt
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Here is what the contents of my <code>requirements.txt</code> file look like. Yours might look slightly different: for example, Django will likely be on a 4.1.1 or later release because we installed it using <code>~=</code> which means the latest <code>4.0.x</code> version is installed. As I’m writing this book right after Django 4.0 has been released, the current version is still just 4.0.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.4.1
+crispy-bootstrap5==0.6
+dj-database-url==0.5.0
+dj-email-url==1.0.2
+Django==4.0
+django-cache-url==3.2.3
+django-crispy-forms==1.13.0
+environs==9.3.5
+gunicorn==20.1.0
+marshmallow==3.14.1
+psycopg2==2.9.3
+python-dotenv==0.19.2
+sqlparse==0.4.2
+whitenoise==5.3.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We also need a <code>Procfile</code> file since we’re using Heroku. This must be created in the base directory next to the <code>manage.py</code> file. Do so now in your text editor and add the following line to it:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Procfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>web: gunicorn django_project.wsgi --log-file -
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And finally create a new <code>runtime.txt</code> file in the same base directory as the <code>Procfile</code> to specify what version of Python Heroku should use.use the following format. Make sure everything is lowercased!</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>runtime.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>python-3.10.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Here is a recap of what we’ve done so far:</p>
+
+    <ul>
+
+      <li>add environment variables via <code>environs[django]</code>
+</li>
+
+      <li>set <code>DEBUG</code> to <code>False</code>
+</li>
+
+      <li>set <code>ALLOWED_HOSTS</code>
+</li>
+
+      <li>use environment variable for <code>SECRET_KEY</code>
+</li>
+
+      <li>update <code>DATABASES</code> to use SQLite locally and PostgreSQL in production</li>
+
+      <li>configure static files</li>
+
+      <li>install <code>whitenoise</code> for static file hosting</li>
+
+      <li>install <code>gunicorn</code> for a production web server</li>
+
+      <li>create a <code>requirements.txt</code> file</li>
+
+      <li>create a <code>Procfile</code> for Heroku</li>
+
+      <li>create a <code>runtime.txt</code> to set the Python version on Heroku</li>
+
+    </ul>
+
+    <p>Aside from the <code>Procfile</code> file and perhaps the <code>runtime.txt</code> file all these steps are necessary for a proper Django deployment on any platform provider.</p>
+
+    <h3 id="leanpub-auto-github-3">GitHub</h3>
+
+    <p>As a best practice, create a repository on GitHub to store the code as well. <a href="https://github.com/new">Create a new GitHub repo</a> called <code>news-app</code>. Make sure to select the “Private” radio button and then click on the “Create repository” button. On the next page, scroll down to where it says “â€¦or push an existing repository from the command line.” Copy and paste the two commands there into your terminal.</p>
+
+    <p>It should look like the below albeit instead of <code>wsvincent</code> as the username it will be your GitHub username.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git remote add origin https://github.com/wsvincent/news-app.git
+(.venv) &gt; git push -u origin main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>All set! Now we can configure Heroku and finally see our Newspaper project live.</p>
+
+    <h3 id="leanpub-auto-heroku-deployment-2">Heroku Deployment</h3>
+
+    <p>Make sure that you are already logged into your Heroku account via the command line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku login
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The command <code>heroku create</code> makes a new container for our app to live in and by default, Heroku will assign a random name. You can specify a custom name, as we are doing here, but it must be <em>unique on Heroku</em>. Mine is called <code>dfb-news</code> so that name is already taken; you need another combination of letters and numbers!</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku create dfb-news
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>So far so good. A new step at this point is creating a PostgreSQL database on Heroku itself, which we haven’t done before. Heroku has its own hosted PostgreSQL databases we can use which come in multiple tiers. For a learning project like this, the free <code>hobby-dev</code> tier is more than adequate. Run the following command to create this new database. Replace <code>dfb-news</code> with your own custom name.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku addons:create heroku-postgresql:hobby-dev -a dfb-news
+Creating heroku-postgresql:hobby-dev on â¬¢ dfb-news... free
+Database has been created and is available
+ ! This database is empty. If upgrading, you can transfer
+ ! data from another database with pg:copy
+Created postgresql-symmetrical-16853 as DATABASE_URL
+Use heroku addons:docs heroku-postgresql to view documentation
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Did you see that Heroku has created a custom <code>DATABASE_URL</code> to access the database? For mine here, it is <code>postgresql-symmetrical-16853</code>. This is automatically available as a configuration variable within Heroku once we deploy. That’s why we don’t need to set an environment variable for <code>DATABASE_URL</code> in production. We also don’t need to set <code>DEBUG</code> to <code>False</code> because that is the default value in our <code>django_project/settings.py</code> file. The only environment variable to manually add to Heroku is <code>SECRET_KEY</code>, so copy its value from your <code>.env</code> file and run the <code>config:set</code> command, placing the value of the <code>SECRET_KEY</code> itself within double quotes <code>""</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku config:set SECRET_KEY="imDnfLXy-8Y-YozfJmP2Rw_81YA_qx1XKl5FeY0mXyY"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now it’s time to push our code up to Heroku itself and start a web process so our Heroku dyno is running.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git push heroku main
+(.venv) &gt; heroku ps:scale web=1
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The URL of your new app will be in the command line output or you can run <code>heroku open</code> to find it.</p>
+
+    <p>But if you go to this URL now though you’ll see a 500 Server Error message! That’s because the PostgreSQL database exists but has not been setup yet! Previously we used SQLite in production, which is file-based, and was already configured locally and then pushed up to Heroku. But this PostgreSQL database of ours is brand new! Heroku has all our code but we haven’t configured this production database yet.</p>
+
+    <p>The same process used locally of running <code>migrate</code>, creating a <code>superuser</code> account, and entering blog posts in the admin must be followed again. To run a command with Heroku, as opposed to locally, prefix it with <code>heroku run</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku run python manage.py migrate
+(.venv) &gt; heroku run python manage.py createsuperuser
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You will need to log into the live admin site to add newspaper entries and comments since, again, this is a brand-new database and not related to our local SQLite one.</p>
+
+    <p>For larger sites, there are techniques such as using <a href="https://docs.djangoproject.com/en/4.0/howto/initial-data/">fixtures</a> or <a href="https://docs.djangoproject.com/en/4.0/topics/testing/advanced/#django.test.RequestFactory">factories</a> to load data into a local database but doing so is beyond our scope here.</p>
+
+    <p>Refresh your live website and it should work correctly. Note that since the production server will run constantly in the background, you do <em>not</em> need to use the <code>runserver</code> command on Heroku.</p>
+
+    <h3 id="leanpub-auto-conclusion-16">Conclusion</h3>
+
+    <p>Phew! We just covered <em>a ton</em> of material so it’s likely you feel overwhelmed right now. That’s normal. There are many steps involved to configure a website for proper deployment. The good news is that this same list of production settings will hold true for almost every Django project. Don’t worry about memorizing all the steps.</p>
+
+    <p>After you’ve built and deployed several Django websites, these steps will soon feel very familiar. And in fact, we’ve only scratched the surface of additional security measures that can be configured. Django comes with its own <a href="https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/">deployment checklist</a> that can be run via the command line to highlight additional security issues.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku run python manage.py check --deploy
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The other big stumbling block for newcomers is becoming comfortable with the difference between local and production environments. It’s very likely you will forget at some point to push code changes into production and spend minutes or hours wondering why the change isn’t live on your site. Or even worse, you’ll make changes to your local SQLite database and expect them to magically appear in the production PostgreSQL database. It’s part of the learning process. But Django really does make it much smoother than it otherwise would be. And now you know enough to confidently deploy any Django project online.</p>
+
+  </div>
+
+</body>
+
+</html>

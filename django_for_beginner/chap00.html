@@ -1,0 +1,145 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Introduction</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-introduction">Introduction</h2>
+
+    <p>Welcome to <em>Django for Beginners</em>, a project-based approach to learning web development with the <a href="https://djangoproject.com">Django</a> web framework. In this book you will build five progressively more complex web applications, starting with a simple <em>Hello, World</em> app, progressing to a <em>Pages</em> app, a <em>Message Board</em> app, a <em>Blog</em> app with forms and user accounts, and finally a <em>Newspaper</em> app that uses a custom user model, email integration, foreign keys, authorization, permissions, and more. By the end of this book you should feel confident creating your own Django projects from scratch using current best practices.</p>
+
+    <p>Django is a free, open source web framework written in the Python programming language. First released in 2005, Django has been in continuous development since then and today powers many of the largest websites in the world including Instagram, Pinterest, Bitbucket, and Disqus. At the same time, it is flexible enough to be a popular choice for early-stage startups and side projects.</p>
+
+    <h3 id="leanpub-auto-why-django">Why Django</h3>
+
+    <p>A “web framework” is a collection of tools that abstract away much of the difficulty–and repetition–inherent in web development. For example, most websites need the same basic functionality: the ability to connect to a database, set URL routes, display content on a page, handle security properly, and so on. Rather than recreate all of this from scratch, programmers over the years have created web frameworks in all the major programming languages: <em>Django</em> in Python, <em>Rails</em> in Ruby, and <em>Laravel</em> in PHP among many, many others.</p>
+
+    <p>Django inherited Python’s “batteries-included” approach and includes out-of-the box support for common tasks in web development, including:</p>
+
+    <ul>
+
+      <li>user authentication</li>
+
+      <li>testing</li>
+
+      <li>database models, forms, URL routes, and templates</li>
+
+      <li>admin interface</li>
+
+      <li>security and performance upgrades</li>
+
+      <li>support for multiple database backends</li>
+
+    </ul>
+
+    <p>This approach allows web developers to focus on what makes a web application unique rather than reinventing the wheel every time.</p>
+
+    <p>In contrast, some web frameworks like <a href="https://flask.palletsprojects.com/en/2.0.x/">Flask</a> adopt a <em>microframework</em> approach of providing only the bare minimum required for a simple web page. Flask is far more lightweight than Django and allows for maximum flexibility, however this comes at a cost to the developer. To build even a basic website requires adding a dozen or more third-party packages, which may or may not be up-to-date. And the resulting Flask project structure often varies widely, making it more difficult to move between projects and maintain best practices within the community.</p>
+
+    <p>Django remains <a href="https://www.djangoproject.com/download/#supported-versions">under active development</a> with a regular release schedule of monthly security/bug fixes and a major new release every 8 months. Millions of programmers have already used Django to build their websites. It doesn’t make sense to repeat the same code–and mistakes–when a large community of brilliant developers has already solved these problems for us.</p>
+
+    <p>The Django community is also constantly adding new features and security improvements. And best of all, it’s written in the wonderfully readable yet still powerful Python programming language. In short, if you’re building a website from scratch Django is a fantastic choice.</p>
+
+    <h3 id="leanpub-auto-why-this-book">Why This Book</h3>
+
+    <p>I wrote this book because while Django is extremely well documented there is a severe lack of beginner-friendly tutorials available. When I first learned Django years ago, I struggled to even complete the <a href="https://docs.djangoproject.com/en/4.0/intro/tutorial01/">official polls tutorial</a>. Why was this so hard I remember thinking?</p>
+
+    <p>With more experience, I now recognize that the writers of the Django docs faced a difficult choice: they could emphasize Django’s ease-of-use or its depth, but not both. They choose the latter and as a professional developer I appreciate the choice, but as a beginner I found it so… frustrating! My goal with this book is to fill in the gaps and showcase how beginner-friendly Django really can be.</p>
+
+    <h3 id="leanpub-auto-prerequisites">Prerequisites</h3>
+
+    <p><em>Django for Beginners</em> is written for Django 4.0 and Python 3.10. All the code examples work with these versions. By the time you read this, there may be newer versions of both Django and Python available. In general, you should always strive to be on the latest version of Django and Python. As both are mature technologies, any issues that arise in the future as a result will be relatively minor.</p>
+
+    <p>You don’t need previous Python or web development experience to complete this book. It is intentionally written so that even a total beginner can follow along and feel the magic of writing their own web applications from scratch. However, if you are serious about a career in web development, you will eventually need to invest the time to properly learn Python, HTML, and CSS. A list of recommended resources for further study is included in the Conclusion.</p>
+
+    <h3 id="leanpub-auto-book-structure">Book Structure</h3>
+
+    <p>The book begins by demonstrating how to configure a local development environment for both Windows and macOS in <strong>Chapter 1</strong>. The command line is covered in depth along with Git, text editors, and proper installation of Python and Django.</p>
+
+    <p>In <strong>Chapter 2</strong> we build our first project, a minimal <em>Hello, World</em> app that demonstrates how to set up new Django projects. Because establishing good software practices is important, we’ll also save our work with Git and upload a copy to a remote code repository on GitHub.</p>
+
+    <p>In <strong>Chapter 3</strong> we make, test, and deploy a <em>Pages</em> app that introduces templates and class-based views. Templates are how Django allows for DRY (Don’t Repeat Yourself) development with HTML and CSS while class-based views are quite powerful yet require a minimal amount of code. We also add our first tests and deploy to Heroku’s free tier. Using platform-as-a-service providers like Heroku transforms deployment from a painful, time-consuming process into something that takes just a few mouse clicks.</p>
+
+    <p>In <strong>Chapter 4</strong> we build our first database-backed project which is a <em>Message Board</em> app. Django provides a powerful ORM (Object-Relational-Mapper) that translates our Python code into the necessary SQL for multiple different backends. We’ll explore the built-in admin app which provides a graphical way to interact with our data and can be even used as a CMS (Content Management System) similar to Wordpress. Of course, we also write tests for all our code, store a remote copy on GitHub, and deploy to Heroku.</p>
+
+    <p>In <strong>Chapters 5-7</strong> we’re ready for a <em>Blog</em> app that implements CRUD (Create-Read-Update-Delete) functionality. By using Django’s generic class-based views we only have to write only a small amount of actual code for this. Then we’ll add forms and integrate Django’s built-in user authentication system for sign up, log in, and log out functionality.</p>
+
+    <p>The remainder of the book, <strong>Chapters 8-16</strong>, is dedicated to building a robust <em>Newspaper</em> site, starting with the introduction to custom user models in <strong>Chapter 8</strong>, a Django best practice that is rarely addressed in tutorials. <strong>Chapter 9</strong> covers user authentication, <strong>Chapter 10</strong> adds Bootstrap for styling, and <strong>Chapters 11-12</strong> implement password reset and change via email. With <strong>Chapters 13-15</strong> we add articles and comments along with proper permissions and authorizations. We even learn some tricks for customizing the admin to display our growing data.</p>
+
+    <p><strong>Chapter 16</strong> covers production-ready deployment through the use of environment variables and several additional packages. And the <strong>Conclusion</strong> provides an overview of the major concepts introduced in the book and a list of recommended resources for further learning.</p>
+
+    <p>The book’s structure is very deliberate: each chapter introduces a new concept and reinforces past teachings. I highly recommend reading the book in order, even if you’re eager to skip ahead. Later chapters won’t cover previous material in the same depth as earlier chapters.</p>
+
+    <p>By the end of this book you’ll have a solid understanding of how Django works, the ability to build apps on your own, and the background needed to fully take advantage of additional resources for learning intermediate and advanced Django techniques.</p>
+
+    <h3 id="leanpub-auto-book-layout">Book Layout</h3>
+
+    <p>There are many code examples in this book, which are denoted as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># This is Python code</code>
+<code class="nb">print</code><code class="p">(</code><code class="s2">"Hello, World!"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For brevity we will use three dots, <code>...</code>, to denote existing code that remains unchanged in a longer code example. For example, in the function below, the previous content is unchanged and the <code>print()</code> statement has been added. In these cases there will also be a comment, <code># new</code>, indicating where the new code has been added.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="k">def</code> <code class="nf">make_my_website</code><code class="p">:</code>
+    <code class="o">...</code>
+    <code class="nb">print</code><code class="p">(</code><code class="s2">"All done!"</code><code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-advice-on-getting-stuck">Advice on Getting Stuck</h3>
+
+    <p>Getting stuck on an issue is part of being a programmer. It happens to everyone at every level. The only thing that changes is the difficulty of the question being tackled. Part of learning how to be a better developer is accepting this frustration and learning how to find help, ask targeted questions, and determine when you need to take a walk around the block to clear your head versus being truly stuck on something.</p>
+
+    <p>The good news is that whatever error you are having, it is likely that you are not the first! Copy and pasting your error into a search engine like Google or DuckDuckGo will typically bring up something from StackOverflow or a personal blog detailing the exact same issue. In fact, experienced programmers often joke that the only thing that separates them from junior programmers is their ability to Google more quickly towards an answer. There is some truth to this.</p>
+
+    <p>Not everything you read online can be trusted, of course, and with experience you will develop the context to see how the pieces of Django and code in general fit together.</p>
+
+    <p>What to do if you are stuck on something in this book? As a first step, I recommend carefully checking your code against what is in the book. If still stuck, you can look at the official source code which is <a href="https://github.com/wsvincent/djangoforbeginners">available on GitHub</a>. A common error is subtle white spacing differences that are almost impossible to detect to the naked eye. You can try copy and pasting the official source code if you suspect this might be the issue.</p>
+
+    <p>The next step is to walk away from the computer for a bit or even sleep on the problem. It’s amazing what a small amount of rest and distance will do to your mind when it comes to solving problems.</p>
+
+    <p>There are two fantastic online resources where the Django community gathers to ask and answer questions. The first is the <a href="https://forum.djangoproject.com/">official Django Forum</a> and the second is the <a href="https://groups.google.com/g/django-users">Django Users Google Group</a>. Both are a good next step if you need additional help.</p>
+
+    <h3 id="leanpub-auto-community">Community</h3>
+
+    <p>The success of Django owes as much to its community as it does the technological achievement of the framework itself. “Come for the framework, stay for the community” is a common saying among Django developers. It extends to the technical development of Django, which happens online via the <a href="https://docs.djangoproject.com/en/dev/internals/mailing-lists/#django-developers-mailing-list">django-developers</a>, the non-profit <a href="https://www.djangoproject.com/foundation/">Django Software Foundation</a> that oversees Django itself, annual DjangoCon conferences, and local meetups where developers gather to share knowledge and insights.</p>
+
+    <p>No matter what your level of technical expertise becoming involved in Django itself is a great way to learn, to meet other developers, and to enhance your own reputation.</p>
+
+    <h3 id="leanpub-auto-conclusion">Conclusion</h3>
+
+    <p>In the next chapter you’ll learn how to properly set up your computer and create your first Django project. Let’s begin!</p>
+
+  </div>
+
+</body>
+
+</html>

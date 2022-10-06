@@ -1,0 +1,761 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 13: Newspaper App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-13-newspaper-app">Chapter 13: Newspaper App</h2>
+
+    <p>It’s time to build out our <em>Newspaper</em> app. We will have an articles page where journalists can post articles, set up permissions so only the author of an article can edit or delete it, and finally add the ability for other users to write comments on each article which will introduce the concept of foreign keys.</p>
+
+    <h3 id="leanpub-auto-articles-app">Articles App</h3>
+
+    <p>To start create an <code>articles</code> app and define the database models. There are no hard and fast rules around what to name your apps except that you can’t use the name of a built-in app. If you look at the <code>INSTALLED_APPS</code> section of <code>django_project/settings.py</code> you can see which app names are off-limits:</p>
+
+    <ul>
+
+      <li><code>admin</code></li>
+
+      <li><code>auth</code></li>
+
+      <li><code>contenttypes</code></li>
+
+      <li><code>sessions</code></li>
+
+      <li><code>messages</code></li>
+
+      <li>
+<code>staticfiles</code>.</li>
+
+    </ul>
+
+    <p>A general rule of thumb is to use the plural of an app name–<code>posts</code>, <code>payments</code>, <code>users</code>, etc.–unless doing so is obviously wrong as in the common case of <code>blog</code> where the singular makes more sense.</p>
+
+    <p>Start by creating our new <code>articles</code> app.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py startapp articles
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then add it to our <code>INSTALLED_APPS</code> and update the time zone since we’ll be timestamping our articles. You can find your time zone in <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">this Wikipedia list</a>. For example, I live in Boston, MA which is in the Eastern time zone of the United States. Therefore my entry is <code>America/New_York</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="c1"># 3rd Party</code>
+    <code class="s2">"crispy_forms"</code><code class="p">,</code>
+    <code class="s2">"crispy_bootstrap5"</code><code class="p">,</code>
+    <code class="c1"># Local</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>
+    <code class="s2">"articles.apps.ArticlesConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+
+<code class="n">TIME_ZONE</code> <code class="o">=</code> <code class="s2">"America/New_York"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next up we define our database model which contains four fields: <code>title</code>, <code>body</code>, <code>date</code>, and <code>author</code>. Note that we’re letting Django automatically set the time and date based on our <code>TIME_ZONE</code> setting. For the <code>author</code> field we want to <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#django.contrib.auth.get_user_model">reference our custom user model</a> <code>"accounts.CustomUser"</code> which we set in the <code>django_project/settings.py</code> file as <code>AUTH_USER_MODEL</code>. We will also implement the best practice of defining a <code>get_absolute_url</code> and a <code>__str__</code> method for viewing the model in our admin interface.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/models.py</code>
+<code class="kn">from</code> <code class="nn">django.conf</code> <code class="kn">import</code> <code class="n">settings</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">Article</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="n">title</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">255</code><code class="p">)</code>
+    <code class="n">body</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">TextField</code><code class="p">()</code>
+    <code class="n">date</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">DateTimeField</code><code class="p">(</code><code class="n">auto_now_add</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ForeignKey</code><code class="p">(</code>
+        <code class="n">settings</code><code class="o">.</code><code class="n">AUTH_USER_MODEL</code><code class="p">,</code>
+        <code class="n">on_delete</code><code class="o">=</code><code class="n">models</code><code class="o">.</code><code class="n">CASCADE</code><code class="p">,</code>
+    <code class="p">)</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">title</code>
+
+    <code class="k">def</code> <code class="nf">get_absolute_url</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"article_detail"</code><code class="p">,</code> <code class="n">kwargs</code><code class="o">=</code><code class="p">{</code><code class="s2">"pk"</code><code class="p">:</code> <code class="bp">self</code><code class="o">.</code><code class="n">pk</code><code class="p">})</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that there are two main ways to refer to a custom user model: <code>AUTH_USER_MODEL</code> and <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#django.contrib.auth.get_user_model">get_user_model</a>. As general advice:</p>
+
+    <ul>
+
+      <li>
+<code>AUTH_USER_MODEL</code> makes sense for references within a <code>models.py</code> file</li>
+
+      <li>
+<code>get_user_model()</code> is recommended everywhere else such as views, tests, etc.</li>
+
+    </ul>
+
+    <p>Since we have a brand new app and model, it’s time to make a new migration file and then apply it to the database.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py makemigrations articles
+(.venv) &gt; python manage.py migrate
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At this point I like to jump into the admin to play around with the model before building out the urls/views/templates needed to actually display the data on the website. But first we need to update <code>articles/admin.py</code> so our new app is displayed.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Article</code>
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Article</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now we start the server.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And navigate to the admin at <code>http://127.0.0.1:8000/admin/</code> and log in.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_admin_articles.png" alt="Admin page" style="width: 100%"/>
+
+        <figcaption>Admin page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you click on “+ Add” next to “Articles” at the top of the page we can enter in some sample data. You’ll likely have three users available at this point: your <code>superuser</code>, <code>testuser</code>, and <code>testuser2</code> accounts. Use your superuser account as the <code>author</code> of all three articles. I’ve added three new articles as you can see on the updated Articles page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_three_articles.png" alt="Admin three articles" style="width: 100%"/>
+
+        <figcaption>Admin three articles</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you click on an individual article you will see that the <code>title</code>, <code>body</code>, and <code>author</code> are displayed but not the <code>date</code>. That’s because the <code>date</code> was automatically added by Django for us and therefore can’t be changed in the admin. We <em>could</em> make the date editable–in more complex apps it’s common to have both a <code>created_at</code> and <code>updated_at</code> field–but to keep things simple we’ll just have the <code>date</code> be set upon creation by Django for us for now. Even though <code>date</code> is not displayed here we will still be able to access it in our templates so it can be displayed on web pages.</p>
+
+    <h3 id="leanpub-auto-urls-and-views">URLs and Views</h3>
+
+    <p>The next step is to configure our URLs and views. Let’s have our articles appear at <code>articles/</code>. Add a URL pattern for <code>articles</code> in our <code>django_project/urls.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"accounts.urls"</code><code class="p">)),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"django.contrib.auth.urls"</code><code class="p">)),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"articles/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"articles.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next we create a new <code>articles/urls.py</code> file in the text editor and populate it with our routes. Let’s start with the page to list all articles at <code>articles/</code> which will use the view <code>ArticleListView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">ArticleListView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">ArticleListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"article_list"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now create our view using the built-in generic <code>ListView</code> from Django. The only two fields we need to specify are the model <code>Article</code> and our template name which will be <code>article_list.html</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Article</code>
+
+
+<code class="k">class</code> <code class="nc">ArticleListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_list.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The last step is to create a new template file in the text editor called <code>templates/article_list.html</code>. Bootstrap has a built-in component called <a href="https://getbootstrap.com/docs/5.1/components/card/">Cards</a> that we can customize for our individual articles. Recall that <code>ListView</code> returns an object with <code>&lt;model_name&gt;_list</code> that we can iterate over using a <code>for</code> loop.</p>
+
+    <p>Within each <code>article</code> we display the title, body, author, and date. We can even provide links to “edit” and “delete” functionality that we haven’t built yet.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_list.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Articles{% endblock title %}
+
+{% block content %}
+{% for article in article_list %}
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card-header"</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">span</code> <code class="na">class</code><code class="o">=</code><code class="s">"font-weight-bold"</code><code class="p">&gt;</code>{{ article.title }}<code class="p">&lt;/</code><code class="nt">span</code><code class="p">&gt;</code> <code class="ni">&amp;middot;</code>
+      <code class="p">&lt;</code><code class="nt">span</code> <code class="na">class</code><code class="o">=</code><code class="s">"text-muted"</code><code class="p">&gt;</code>by {{ article.author }} |
+      {{ article.date }}<code class="p">&lt;/</code><code class="nt">span</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card-body"</code><code class="p">&gt;</code>
+      {{ article.body }}
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card-footer text-center text-muted"</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"#"</code><code class="p">&gt;</code>Edit<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> | <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"#"</code><code class="p">&gt;</code>Delete<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">br</code> <code class="p">/&gt;</code>
+{% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Spin up the server again with <code>python manage.py runserver</code> and check out our page at <code>http://127.0.0.1:8000/articles/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_articles_page.png" alt="Articles page" style="width: 100%"/>
+
+        <figcaption>Articles page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Not bad eh? If we wanted to get fancy we could create a <a href="https://docs.djangoproject.com/en/4.0/howto/custom-template-tags/">custom template filter</a> so that the date outputted is shown in seconds, minutes, or days. This can be done with some if/else logic and Django’s <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#date">date options</a> but we won’t implement it here.</p>
+
+    <h3 id="leanpub-auto-detaileditdelete">Detail/Edit/Delete</h3>
+
+    <p>The next step is to add detail, edit, and delete options for the articles. That means new urls, views, and templates. Let’s start with the URLs. The Django ORM automatically adds a primary key to each database entry, meaning that the first article has a <code>pk</code> value of <code>1</code>, the second of <code>2</code>, and so on. We can use this to craft our URL paths.</p>
+
+    <p>For our detail page we want the route to be at <code>articles/&lt;int:pk&gt;</code>. The <code>int</code> here is known as a <a href="https://docs.djangoproject.com/en/4.0/topics/http/urls/#path-converters">path converter</a> and essentially tells Django we want this value to be treated as an integer and not another data type like a string. Therefore the URL route for the first article will be at <code>&lt;articles/1/</code>. Since we are in the <code>articles</code> app all URL routes will be prefixed with <code>articles</code> because we set that in <code>django_project/urls.py</code>. We only need to add the <code>&lt;int:pk&gt;</code> part here.</p>
+
+    <p>Next up are the edit and delete routes. They will also use the primary key and be at <code>articles/1/edit/</code> and <code>articles/1/delete/</code> as the eventual routes. Here is how the updated <code>articles/urls.py</code> file should look.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="p">(</code>
+    <code class="n">ArticleListView</code><code class="p">,</code>
+    <code class="n">ArticleDetailView</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="n">ArticleUpdateView</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="n">ArticleDeleteView</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">)</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;int:pk&gt;/"</code><code class="p">,</code> <code class="n">ArticleDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code>
+        <code class="n">name</code><code class="o">=</code><code class="s2">"article_detail"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;int:pk&gt;/edit/"</code><code class="p">,</code> <code class="n">ArticleUpdateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code>
+        <code class="n">name</code><code class="o">=</code><code class="s2">"article_edit"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;int:pk&gt;/delete/"</code><code class="p">,</code> <code class="n">ArticleDeleteView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code>
+        <code class="n">name</code><code class="o">=</code><code class="s2">"article_delete"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">ArticleListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code>
+        <code class="n">name</code><code class="o">=</code><code class="s2">"article_list"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For our views we will use Django’s generic class-based views for <code>DetailView</code>, <code>UpdateView</code> and <code>DeleteView</code>. The detail view only requires listing the model and template name. For the update/edit view we also add the specific fields–<code>title</code> and <code>body</code>–that can be changed. And for the delete view we must add a redirect for where to send the user after deleting the entry. That requires importing <code>reverse_lazy</code> and specifying the <code>success_url</code> along with a corresponding named URL.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.views.generic.edit</code> <code class="kn">import</code> <code class="n">UpdateView</code><code class="p">,</code> <code class="n">DeleteView</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse_lazy</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Article</code>
+
+
+<code class="k">class</code> <code class="nc">ArticleListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_list.html"</code>
+
+
+<code class="k">class</code> <code class="nc">ArticleDetailView</code><code class="p">(</code><code class="n">DetailView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_detail.html"</code>
+
+
+<code class="k">class</code> <code class="nc">ArticleUpdateView</code><code class="p">(</code><code class="n">UpdateView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">fields</code> <code class="o">=</code> <code class="p">(</code>
+        <code class="s2">"title"</code><code class="p">,</code>
+        <code class="s2">"body"</code><code class="p">,</code>
+    <code class="p">)</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_edit.html"</code>
+
+
+<code class="k">class</code> <code class="nc">ArticleDeleteView</code><code class="p">(</code><code class="n">DeleteView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_delete.html"</code>
+    <code class="n">success_url</code> <code class="o">=</code> <code class="n">reverse_lazy</code><code class="p">(</code><code class="s2">"article_list"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you recall the acronym <em>CRUD (Create-Read-Update-Delete)</em> from Chapter 6 you’ll see that we are implementing three of the four functionalities here. We’ll add the fourth, for create, later on in this chapter. Almost every website uses CRUD and this pattern will quickly feel quite natural when using Django or any other web framework.</p>
+
+    <p>The URL paths and views are done so the final step is to add templates. Create three new template files in your text editor:</p>
+
+    <ul>
+
+      <li><code>templates/article_detail.html</code></li>
+
+      <li><code>templates/article_edit.html</code></li>
+
+      <li><code>templates/article_delete.html</code></li>
+
+    </ul>
+
+    <p>We’ll start with the details page which will display the title, date, body, and author with links to edit and delete. It will also link back to all articles. Recall that the Django templating language’s <code>url</code> tag wants the URL name and then any arguments passed in. The name of our edit route is <code>article_edit</code> and we need to pass in its primary key <code>article.pk</code>. The delete route name is <code>article_delete</code> and it also needs a primary key <code>article.pk</code>. Our <code>articles</code> page is a <code>ListView</code> so it does not need any additional arguments passed in.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_detail.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"article-entry"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>{{ object.title }}<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>by {{ object.author }} | {{ object.date }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ object.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_edit' article.pk %}"</code><code class="p">&gt;</code>Edit<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_delete' article.pk %}"</code><code class="p">&gt;</code>Delete<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Back to <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_list' %}"</code><code class="p">&gt;</code>All Articles<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For the edit and delete pages we can use Bootstrap’s <a href="https://getbootstrap.com/docs/5.1/components/buttons/">button styling</a> to make the edit button light blue and the delete button red.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_edit.html --&gt;</code>
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Edit<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">action</code><code class="o">=</code><code class="s">""</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form|crispy }}
+  <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-info ml-2"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Update<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_delete.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Delete<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">action</code><code class="o">=</code><code class="s">""</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Are you sure you want to delete "{{ article.title }}"?<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-danger ml-2"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Confirm<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>As a final step, in the <code>card-footer</code> section of <code>article_list.html</code> we can add our URL routes to the current <code>a href</code> placeholders by using the <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#url">url</a> template tag, the URL name, and the <code>pk</code> of each article.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_list.html --&gt;</code>
+...
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card-footer text-center text-muted"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_edit' article.pk %}"</code><code class="p">&gt;</code>Edit<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_delete' article.pk %}"</code><code class="p">&gt;</code>Delete<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Ok, we’re ready to view our work. Start up the server with <code>python manage.py runserver</code> and navigate to articles page at <code>http://127.0.0.1:8000/articles/</code>. Click the “edit” link next to the first article and you’ll be redirected to <code>http://127.0.0.1:8000/articles/1/edit/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_edit.png" alt="Edit page" style="width: 100%"/>
+
+        <figcaption>Edit page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you update the “title” field by adding “(edited)” at the end and click “Update” you’ll be redirected to the detail page which shows the new change.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_detail.png" alt="Detail page" style="width: 100%"/>
+
+        <figcaption>Detail page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you click on the “Delete” link you’ll be redirected to the delete page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_delete.png" alt="Delete page" style="width: 100%"/>
+
+        <figcaption>Delete page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Press the scary red button for “Confirm” and you’ll be redirected to the articles page which now only has two entries.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_two_articles.png" alt="Articles page two entries" style="width: 100%"/>
+
+        <figcaption>Articles page two entries</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-create-page">Create Page</h3>
+
+    <p>The final step is a create page for new articles which we can implement with Django’s built-in <code>CreateView</code>. Our three steps are to create a view, url, and template. This flow should feel pretty familiar by now.</p>
+
+    <p>In the <code>articles/views.py</code> file add <code>CreateView</code> to the imports at the top and make a new class at the bottom of the file called <code>ArticleCreateView</code> that specifies our model, template, and the fields available.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/views.py</code>
+<code class="o">...</code>
+<code class="kn">from</code> <code class="nn">django.views.generic.edit</code> <code class="kn">import</code> <code class="p">(</code>
+  <code class="n">UpdateView</code><code class="p">,</code> <code class="n">DeleteView</code><code class="p">,</code> <code class="n">CreateView</code> <code class="c1"># new</code>
+<code class="p">)</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">ArticleCreateView</code><code class="p">(</code><code class="n">CreateView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_new.html"</code>
+    <code class="n">fields</code> <code class="o">=</code> <code class="p">(</code>
+        <code class="s2">"title"</code><code class="p">,</code>
+        <code class="s2">"body"</code><code class="p">,</code>
+        <code class="s2">"author"</code><code class="p">,</code>
+    <code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that our <code>fields</code> has <code>author</code> since we want to associate a new article with an author, however once an article has been created we do not want a user to be able to change the <code>author</code> which is why <code>ArticleUpdateView</code> only has the fields <code>['title', 'body',]</code>.</p>
+
+    <p>Now update the <code>articles/urls.py</code> file with the new route for the view.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="p">(</code>
+    <code class="n">ArticleListView</code><code class="p">,</code>
+    <code class="n">ArticleDetailView</code><code class="p">,</code>
+    <code class="n">ArticleUpdateView</code><code class="p">,</code>
+    <code class="n">ArticleDeleteView</code><code class="p">,</code>
+    <code class="n">ArticleCreateView</code><code class="p">,</code> <code class="c1"># new</code>
+<code class="p">)</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;int:pk&gt;/"</code><code class="p">,</code>
+        <code class="n">ArticleDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"article_detail"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;int:pk&gt;/edit/"</code><code class="p">,</code>
+        <code class="n">ArticleUpdateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"article_edit"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;int:pk&gt;/delete/"</code><code class="p">,</code>
+        <code class="n">ArticleDeleteView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"article_delete"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"new/"</code><code class="p">,</code> <code class="n">ArticleCreateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"article_new"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">ArticleListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"article_list"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To complete the new create functionality add a new template named <code>templates/article_new.html</code> and update it with the following HTML code.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_new.html --&gt;</code>
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>New article<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">action</code><code class="o">=</code><code class="s">""</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form|crispy }}
+  <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-success ml-2"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Save<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Finally, we should add the URL link for creating new articles to our navbar so it is accessible everywhere on the site to logged-in users.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+...
+{% if user.is_authenticated %}
+  <code class="p">&lt;</code><code class="nt">li</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_new' %}"</code>
+    <code class="na">class</code><code class="o">=</code><code class="s">"nav-link px-2 link-dark"</code><code class="p">&gt;</code>+ New<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you need help to make sure your HTML file is accurate now, please refer to the <a href="https://github.com/wsvincent/djangoforbeginners/blob/master/ch13-newspaper-app/templates/base.html">official source code</a>.</p>
+
+    <p>We’re all done. Let’s just confirm everything works as expected. Click on “Newspaper” link in the top navbar which directs users to the homepage. Then click on the link for “+ New” in the top navbar and you’ll be redirected to our create page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/13_new.png" alt="Create page" style="width: 100%"/>
+
+        <figcaption>Create page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Go ahead and create a new article. Then click on the “Save” button. You will be redirected to the detail page. Why? Because in our <code>models.py</code> file we set the <code>get_absolute_url</code> method to <code>article_detail</code>. This is a good approach because if we later change the url pattern for the detail page to, say, <code>articles/details/4/</code>, the redirect will still work. Whatever route is associated with <code>article_detail</code> will be used. There is no hardcoding of the route itself.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_article_four.png" alt="Detail page" style="width: 100%"/>
+
+        <figcaption>Detail page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Note also that the primary key here is <code>4</code> in the URL. Even though we’re only displaying three articles right now, Django doesn’t reorder the primary keys just because we deleted one. In practice, most real-world sites don’t actually delete anything; instead they “hide” deleted fields since this makes it easier to maintain the integrity of a database and gives the option to “undelete” later on if needed. With our current approach though once something is deleted it’s gone for good!</p>
+
+    <p>Click on the link for “All Articles” to see our new <code>/articles</code> page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_final_articles_page.png" alt="Updated articles page" style="width: 100%"/>
+
+        <figcaption>Updated articles page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>There’s our new article entry on the bottom as expected.</p>
+
+    <h3 id="leanpub-auto-conclusion-13">Conclusion</h3>
+
+    <p>We have created a dedicated <code>articles</code> app with CRUD functionality. Articles can be created, read, updated, deleted, and even viewed as an entire list. But there are no permissions or authorizations yet, which means anyone can do anything! If a logged-out user knows the correct URLs they can make edits or deletes to an existing article, even one that’s not their own! In the next chapter we will add permissions and authorizations to our project to fix this.</p>
+
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,1113 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 5: Blog App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-5-blog-app">Chapter 5: Blog App</h2>
+
+    <p>In this chapter we will build a <em>Blog</em> application that allows users to create, edit, and delete posts. The homepage will list all blog posts and there will be a dedicated detail page for each individual blog post. We’ll also introduce CSS for styling and learn how Django works with static files.</p>
+
+    <h3 id="leanpub-auto-initial-set-up-3">Initial Set Up</h3>
+
+    <p>As covered in previous chapters, our steps for setting up a new Django project are as follows:</p>
+
+    <ul>
+
+      <li>make a new directory for our code called <code>blog</code>
+</li>
+
+      <li>install Django in a new virtual environment called <code>.venv</code>
+</li>
+
+      <li>create a new Django project called <code>django_project</code>
+</li>
+
+      <li>create a new app <code>blog</code>
+</li>
+
+      <li>perform a migration to set up the database</li>
+
+      <li>update <code>django_project/settings.py</code>
+</li>
+
+    </ul>
+
+    <p>Let’s implement them now in a new command line terminal.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; cd onedrive\desktop\code
+&gt; mkdir blog
+&gt; cd blog
+&gt; python -m venv .venv
+&gt; .venv\Scripts\Activate.ps1
+(.venv) &gt; python -m pip install django~=4.0.0
+(.venv) &gt; django-admin startproject django_project .
+(.venv) &gt; python manage.py startapp blog
+(.venv) &gt; python manage.py migrate
+
+# macOS
+% cd ~/desktop/code
+% mkdir blog
+% cd blog
+% python3 -m venv .venv
+% source .venv/bin/activate
+(.venv) % python3 -m pip install django~=4.0.0
+(.venv) % django-admin startproject django_project .
+(.venv) % python3 manage.py startapp blog
+(.venv) % python3 manage.py migrate
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To ensure Django knows about our new app, open your text editor and add the new app to <code>INSTALLED_APPS</code> in the <code>django_project/settings.py</code> file:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"blog.apps.BlogConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Spin up the local server using the <code>runserver</code> command.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you navigate to <code>http://127.0.0.1:8000/</code> in your web browser you should see the friendly Django welcome page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/00_welcome40.png" alt="Django welcome page" style="width: 100%"/>
+
+        <figcaption>Django welcome page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Ok, initial installation complete! Next we’ll create our database model for blog posts.</p>
+
+    <h3 id="leanpub-auto-database-models">Database Models</h3>
+
+    <p>What are the characteristics of a typical blog application? In our case, let’s keep things simple and assume each post has a title, author, and body. We can turn this into a database model by opening the <code>blog/models.py</code> file and entering the code below:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/models.py</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">Post</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="n">title</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ForeignKey</code><code class="p">(</code>
+        <code class="s2">"auth.User"</code><code class="p">,</code>
+        <code class="n">on_delete</code><code class="o">=</code><code class="n">models</code><code class="o">.</code><code class="n">CASCADE</code><code class="p">,</code>
+    <code class="p">)</code>
+    <code class="n">body</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">TextField</code><code class="p">()</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">title</code>
+
+    <code class="k">def</code> <code class="nf">get_absolute_url</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"post_detail"</code><code class="p">,</code> <code class="n">kwargs</code><code class="o">=</code><code class="p">{</code><code class="s2">"pk"</code><code class="p">:</code> <code class="bp">self</code><code class="o">.</code><code class="n">pk</code><code class="p">})</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top, we’re importing the class <code>models</code> and the handy utility function <a href="https://docs.djangoproject.com/en/4.0/ref/urlresolvers/#reverse">reverse</a> that allows us to reference an object by its URL template name. More on this shortly.</p>
+
+    <p>Next we create a subclass of <code>models.Model</code> called <code>Post</code> which provides access to everything within <a href="https://docs.djangoproject.com/en/4.0/topics/db/models/">django.db.models.Models</a>. Then we can add additional fields and methods as desired. There are many field types available in Django which can <a href="https://docs.djangoproject.com/en/4.0/topics/db/models/#fields">be viewed here</a>.</p>
+
+    <p>Our model has three fields: <code>title</code> which is limited to the length to 200 characters; <code>body</code> which uses a TextField to automatically expand as needed to fit the user’s text, and an <code>author</code> <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#django.db.models.ForeignKey">ForeignKey</a> that allows for a <em>many-to-one</em> relationship. This means that a given user can be the author of many different blog posts but not the other way around. The reference is to the built-in <code>User</code> model that Django provides for authentication. For all many-to-one relationships such as a ForeignKey we must also specify an <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#django.db.models.ForeignKey.on_delete">on_delete</a> option.</p>
+
+    <p>A <code>__str__</code> method is added to provide a human-readable version of the model in the admin or Django shell. And we also add a <a href="https://docs.djangoproject.com/en/4.0/ref/models/instances/#django.db.models.Model.get_absolute_url">get_absolute_url</a> method, which we haven’t seen before, that tells Django how to calculate the canonical URL for our model object. It says to use the URL named <code>post_detail</code> and pass in the <code>pk</code>. More on this later as we build out our blog app.</p>
+
+    <p>Now that our new database model is created we need to create a new migration record for it and migrate the change into our database. Stop the server with <code>Control+c</code>. This two-step process can be completed with the commands below:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py makemigrations blog
+(.venv) &gt; python manage.py migrate
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Our database is configured! What’s next?</p>
+
+    <h3 id="leanpub-auto-admin">Admin</h3>
+
+    <p>We need a way to access our data. Enter the Django admin! First, create a superuser account by typing the command below and following the prompts to set up an email and password. Note that when typing your password, it will not appear on the screen for security reasons.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py createsuperuser
+Username (leave blank to use 'wsv'): wsv
+Email:
+Password:
+Password (again):
+Superuser created successfully.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now start running the Django server again with the command <code>python manage.py runserver</code> and navigate over to the admin at <code>127.0.0.1:8000/admin/</code>. Log in with your new superuser account.</p>
+
+    <p>Oops! Where’s our new <code>Post</code> model? We forgot to update <code>blog/admin.py</code> so let’s do that now.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Post</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the page you’ll see the update.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/05_admin_posts.png" alt="Admin homepage" style="width: 100%"/>
+
+        <figcaption>Admin homepage</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Let’s add two blog posts so we have some sample data to work with. Click on the <code>+ Add</code> button next to <code>Posts</code> to create a new entry. Make sure to add an “author” to each post too since by default all model fields are required.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/05_admin_first_post.png" alt="Admin first post" style="width: 100%"/>
+
+        <figcaption>Admin first post</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Then create a second post as well.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/05_admin_second_post.png" alt="Admin second post" style="width: 100%"/>
+
+        <figcaption>Admin second post</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you try to enter a post without an author you will see an error. If we wanted to change this, we could add <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#field-options">field options</a> to our model to make a given field optional or fill it with a default value.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/05_admin_home_two_posts.png" alt="Admin homepage with two posts" style="width: 100%"/>
+
+        <figcaption>Admin homepage with two posts</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now that our database model is complete we need to create the necessary views, URLs, and templates so we can display the information on our web application.</p>
+
+    <h3 id="leanpub-auto-urls-1">URLs</h3>
+
+    <p>We want to display our blog posts on the homepage so, as in previous chapters, we’ll first configure our <code>django_project/urls.py</code> file and then our app-level <code>blog/urls.py</code> file to achieve this.</p>
+
+    <p>In your text editor, create a new file called <code>urls.py</code> within the <code>blog</code> app and update it with the code below.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">BlogListView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BlogListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re importing our soon-to-be-created views at the top. The empty string, <code>""</code>, tells Python to match all values and we make it a named URL, <code>home</code>, which we can refer to in our views later on. While it’s optional to add a <a href="https://docs.djangoproject.com/en/4.0/topics/http/urls/#reverse-resolution-of-urls">named URL</a> it’s a best practice you should adopt as it helps keep things organized as your number of URLs grows.</p>
+
+    <p>We also should update our <code>django_project/urls.py</code> file so that it knows to forward all requests directly to the <code>blog</code> app.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"blog.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’ve added <code>include</code> on the second line and a URL pattern using an empty string regular expression, <code>""</code>, indicating that URL requests should be redirected as is to <code>blog</code>’s URLs for further instructions.</p>
+
+    <h3 id="leanpub-auto-views">Views</h3>
+
+    <p>We’re going to use class-based views but if you want to see a function-based way to build a blog application, I highly recommend the <a href="https://tutorial.djangogirls.org/en/">Django Girls Tutorial</a>. It is excellent.</p>
+
+    <p>In our views file, add the code below to display the contents of our <code>Post</code> model using <code>ListView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">BlogListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On the top two lines we import <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-display/#listview">ListView</a> and our database model <code>Post</code>. Then we subclass <code>ListView</code> and add links to our model and template. This saves us a lot of code versus implementing it all from scratch.</p>
+
+    <h3 id="leanpub-auto-templates-1">Templates</h3>
+
+    <p>With our URLs and views now complete, we’re only missing the third piece of the puzzle: templates. As we already saw in <strong>Chapter 4</strong>, we can inherit from other templates to keep our code clean. Thus we’ll start off with a <code>base.html</code> file and a <code>home.html</code> file that inherits from it. Then later when we add templates for creating and editing blog posts, they too can inherit from <code>base.html</code>.</p>
+
+    <p>Start by creating our new <code>templates</code> directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; mkdir templates
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your text editor, create two new template files within it called <code>templates/base.html</code> and <code>templates/home.html</code>.</p>
+
+    <p>Then update <code>django_project/settings.py</code> so Django knows to look there for our templates.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">TEMPLATES</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="p">{</code>
+        <code class="o">...</code>
+        <code class="s2">"DIRS"</code><code class="p">:</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"templates"</code><code class="p">],</code>  <code class="c1"># new</code>
+        <code class="o">...</code>
+    <code class="p">},</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And update the <code>base.html</code> template as follows.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>Django blog<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">body</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">header</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'home' %}"</code><code class="p">&gt;</code>Django blog<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">header</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      {% block content %}
+      {% endblock content %}
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">body</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">html</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that code between <code>{% block content %}</code> and <code>{% endblock content %}</code> can be filled by other templates. Speaking of which, here is the code for <code>home.html</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+{% for post in post_list %}
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"post-entry"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">""</code><code class="p">&gt;</code>{{ post.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ post.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+{% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top, we note that this template extends <code>base.html</code> and then wrap our desired code with <code>content</code> blocks. We use the Django Templating Language to set up a simple <em>for loop</em> for each blog post. Note that <code>post_list</code> comes from <code>ListView</code> and contains all the objects in our view of the model <code>post</code>.</p>
+
+    <p>If you start the Django server again with <code>python manage.py runserver</code> and refresh the homepage we can see it is working.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/05_homepage_no_styling.png" alt="Blog homepage with two posts" style="width: 100%"/>
+
+        <figcaption>Blog homepage with two posts</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>But it looks terrible. Let’s fix that!</p>
+
+    <h3 id="leanpub-auto-static-files">Static Files</h3>
+
+    <p>We need to add some CSS to our project to improve the styling. CSS, JavaScript, and images are a core piece of any modern web application and within the Django world are referred to as “static files.” Django provides tremendous flexibility around <em>how</em> these files are used, but this can lead to quite a lot of confusion for newcomers.</p>
+
+    <p>By default, Django will look within each app for a folder called <code>static</code>. In other words, a folder called <code>blog/static/</code>. If you recall, this is similar to how <code>templates</code> are treated as well.</p>
+
+    <p>As Django projects grow in complexity over time and have multiple apps, it is often simpler to reason about static files if they are stored in a single, project-level directory instead. That is the approach we will take here.</p>
+
+    <p>Quit the local server with <code>Control+c</code> and create a new directory called <code>static</code> in the same folder as the <code>manage.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; mkdir static
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then we need to tell Django to look for this new folder when loading static files. If you look at the bottom of the <code>django_project/settings.py</code> file, there is already a single line of configuration:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">STATIC_URL</code> <code class="o">=</code> <code class="s2">"/static/"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p><a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-STATIC_URL">STATIC_URL</a> is the <em>URL location</em> of static files in our project, aka at <code>/static/</code>.</p>
+
+    <p>By configuring <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#staticfiles-dirs">STATICFILES_DIRS</a>, we can tell Django where to look for static files beyond just <code>app/static</code> folder. In your <code>django_project/settings.py</code> file, at the bottom, add the following new line which tells Django to look within our newly-created <code>static</code> folder for static files.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">STATIC_URL</code> <code class="o">=</code> <code class="s2">"/static/"</code>
+<code class="n">STATICFILES_DIRS</code> <code class="o">=</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"static"</code><code class="p">]</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next create a <code>css</code> directory within <code>static</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; mkdir static/css
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your text editor, create a new file within this directory called <code>static/css/base.css</code>.</p>
+
+    <p>What should we put in our file? How about changing the title to be red?</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">/* static/css/base.css */</code>
+<code class="nt">header</code> <code class="nt">h1</code> <code class="nt">a</code> <code class="p">{</code>
+  <code class="k">color</code><code class="p">:</code> <code class="kc">red</code><code class="p">;</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Last step now. We need to add the static files to our templates by adding <code>{% load static %}</code> to the top of <code>base.html</code>. Because our other templates inherit from <code>base.html</code>, we only have to add this once. Include a new line at the bottom of the <code>&lt;head&gt;&lt;/head&gt;</code> code that explicitly references our new <code>base.css</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+{% load static %}
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>Django blog<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">link</code> <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% static 'css/base.css' %}"</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+  ...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Phew! That was a bit of a pain but it’s a one-time hassle. Now we can add static files to our <code>static</code> directory and they’ll automatically appear in all our templates.</p>
+
+    <p>Start up the server again with <code>python manage.py runserver</code> and look at our updated homepage at <code>http://127.0.0.1:8000/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/05_homepage_red_title.png" alt="Blog homepage with red title" style="width: 100%"/>
+
+        <figcaption>Blog homepage with red title</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you see an error <code>TemplateSyntaxError at /</code> that means you forgot to add the <code>{% load static %}</code> line at the top. Even after all my years of using Django I still make this mistake all the time! Fortunately, Django’s error message says “Invalid block tag on line 4: ‘static’. Did you forget to register or load this tag?”. This is a pretty accurate description of what happened.</p>
+
+    <p>Even with this new styling we can still do a little better. How about if we add a custom font and some more CSS? Since this book is not a tutorial on CSS simply insert the following between <code>&lt;head&gt;&lt;/head&gt;</code> tags to add <a href="https://fonts.google.com/specimen/Source+Sans+Pro">Source Sans Pro</a>, a free font from Google.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+{% load static %}
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>Django blog<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">link</code> <code class="na">href</code><code class="o">=</code><code class="s">"https://fonts.googleapis.com/css?family=Source+Sans+Pro:400"</code>
+    <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">link</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% static 'css/base.css' %}"</code> <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+  ...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then update our css file by copy and pasting the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">/* static/css/base.css */</code>
+<code class="nt">body</code> <code class="p">{</code>
+  <code class="k">font-family</code><code class="p">:</code> <code class="s1">'Source Sans Pro'</code><code class="p">,</code> <code class="kc">sans-serif</code><code class="p">;</code>
+  <code class="k">font-size</code><code class="p">:</code> <code class="mi">18</code><code class="kt">px</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="nt">header</code> <code class="p">{</code>
+  <code class="k">border-bottom</code><code class="p">:</code> <code class="mi">1</code><code class="kt">px</code> <code class="kc">solid</code> <code class="mh">#999</code><code class="p">;</code>
+  <code class="k">margin-bottom</code><code class="p">:</code> <code class="mi">2</code><code class="kt">rem</code><code class="p">;</code>
+  <code class="k">display</code><code class="p">:</code> <code class="kc">flex</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="nt">header</code> <code class="nt">h1</code> <code class="nt">a</code> <code class="p">{</code>
+  <code class="k">color</code><code class="p">:</code> <code class="kc">red</code><code class="p">;</code>
+  <code class="k">text-decoration</code><code class="p">:</code> <code class="kc">none</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="p">.</code><code class="nc">nav-left</code> <code class="p">{</code>
+  <code class="k">margin-right</code><code class="p">:</code> <code class="kc">auto</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="p">.</code><code class="nc">nav-right</code> <code class="p">{</code>
+  <code class="k">display</code><code class="p">:</code> <code class="kc">flex</code><code class="p">;</code>
+  <code class="k">padding-top</code><code class="p">:</code> <code class="mi">2</code><code class="kt">rem</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="p">.</code><code class="nc">post-entry</code> <code class="p">{</code>
+  <code class="k">margin-bottom</code><code class="p">:</code> <code class="mi">2</code><code class="kt">rem</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="p">.</code><code class="nc">post-entry</code> <code class="nt">h2</code> <code class="p">{</code>
+  <code class="k">margin</code><code class="p">:</code> <code class="mf">0.5</code><code class="kt">rem</code> <code class="mi">0</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="p">.</code><code class="nc">post-entry</code> <code class="nt">h2</code> <code class="nt">a</code><code class="o">,</code>
+<code class="p">.</code><code class="nc">post-entry</code> <code class="nt">h2</code> <code class="nt">a</code><code class="p">:</code><code class="nd">visited</code> <code class="p">{</code>
+  <code class="k">color</code><code class="p">:</code> <code class="kc">blue</code><code class="p">;</code>
+  <code class="k">text-decoration</code><code class="p">:</code> <code class="kc">none</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="p">.</code><code class="nc">post-entry</code> <code class="nt">p</code> <code class="p">{</code>
+  <code class="k">margin</code><code class="p">:</code> <code class="mi">0</code><code class="p">;</code>
+  <code class="k">font-weight</code><code class="p">:</code> <code class="mi">400</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="p">.</code><code class="nc">post-entry</code> <code class="nt">h2</code> <code class="nt">a</code><code class="p">:</code><code class="nd">hover</code> <code class="p">{</code>
+  <code class="k">color</code><code class="p">:</code> <code class="kc">red</code><code class="p">;</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the homepage at <code>http://127.0.0.1:8000/</code> and you should see the following.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/05_homepage_css.png" alt="Blog homepage with CSS" style="width: 100%"/>
+
+        <figcaption>Blog homepage with CSS</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-individual-blog-pages">Individual Blog Pages</h3>
+
+    <p>Now we can add the functionality for individual blog pages. How do we do that? We need to create a new view, url, and template. I hope you’re noticing a pattern in development with Django now!</p>
+
+    <p>Start with the view. We can use the generic class-based <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-display/#django.views.generic.detail.DetailView">DetailView</a> to simplify things. At the top of the file, add <code>DetailView</code> to the list of imports and then create a new view called <code>BlogDetailView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">BlogListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+
+
+<code class="k">class</code> <code class="nc">BlogDetailView</code><code class="p">(</code><code class="n">DetailView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_detail.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In this new view, we define the model we’re using, <code>Post</code>, and the template we want it associated with, <code>post_detail.html</code>. By default, <code>DetailView</code> will provide a context object we can use in our template called either <code>object</code> or the lowercased name of our model, which would be <code>post</code>. Also, <code>DetailView</code> expects either a primary key or a slug passed to it as the identifier. More on this shortly.</p>
+
+    <p>In your text editor create a new template file for a post detail called <code>templates/post_detail.html</code>. Then type in the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/post_detail.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"post-entry"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>{{ post.title }}<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ post.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top we specify that this template inherits from <code>base.html</code>. Then display the <code>title</code> and <code>body</code> from our context object, which <code>DetailView</code> makes accessible as <code>post</code>.</p>
+
+    <p>Personally, I found the naming of context objects in generic views extremely confusing when first learning Django. Because our context object from DetailView is either our model name <code>post</code> or <code>object</code> we <em>could</em> also update our template as follows and it would work exactly the same.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/post_detail.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"post-entry"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>{{ object.title }}<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ object.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you find using <code>post</code> or <code>object</code> confusing it is possible to explicitly name the context object in our view using <a href="https://docs.djangoproject.com/en/4.0/topics/class-based-views/generic-display/#making-friendly-template-contexts">context_object_name</a>.</p>
+
+    <p>The “magic” naming of the context object is a price you pay for the ease and simplicity of using generic views, which are great if you know what they’re doing but take a little research in the official documentation to customize.</p>
+
+    <p>Ok, what’s next? How about adding a new URL path for our view, which we can do as follows.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">BlogListView</code><code class="p">,</code> <code class="n">BlogDetailView</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/&lt;int:pk&gt;/"</code><code class="p">,</code> <code class="n">BlogDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"post_detail"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BlogListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>All blog post entries will start with <code>post/</code>. Next is the primary key for our post entry which will be represented as an integer, <code>&lt;int:pk&gt;</code>. What’s the primary key you’re probably asking? Django automatically adds an <a href="https://docs.djangoproject.com/en/4.0/topics/db/models/#automatic-primary-key-fields">auto-incrementing primary key</a> to our database models. So while we only declared the fields <code>title</code>, <code>author</code>, and <code>body</code> on our <code>Post</code> model, under-the-hood Django also added another field called <code>id</code>, which is our primary key. We can access it as either <code>id</code> or <code>pk</code>.</p>
+
+    <p>The <code>pk</code> for our first “Hello, World” post is 1. For the second post, it is 2. And so on. Therefore when we go to the individual entry page for our first post, we can expect that its URL pattern will be <code>post/1/</code>.</p>
+
+    <p>If you look back to the <code>get_absolute_url</code> method on our <code>Post</code> model it passes in a <code>pk</code> argument because the URL here requires it. Understanding how primary keys and <code>get_absolute_url</code> methods work is a very common place of confusion for beginners. It’s worth re-reading the previous two paragraphs a few times if it doesn’t click. With practice it will become second nature.</p>
+
+    <p>If you now start up the server with <code>python manage.py runserver</code> you’ll see a dedicated page for our first blog post at <code>http://127.0.0.1:8000/post/1/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/05_blog_detail_one.png" alt="Blog post one detail" style="width: 100%"/>
+
+        <figcaption>Blog post one detail</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Woohoo! You can also go to <code>http://127.0.0.1:8000/post/2/</code> to see the second entry.</p>
+
+    <p>To make our life easier, we should update the link on the homepage so we can directly access individual blog posts from there. Swap out the current empty link, <code>&lt;a href=""&gt;</code>, for <code>&lt;a href="{% url 'post_detail' post.pk %}"&gt;</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+{% for post in post_list %}
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"post-entry"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'post_detail' post.pk %}"</code><code class="p">&gt;</code>{{ post.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ post.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+{% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We start off by using Django’s <code>url</code> template tag and specify the URL pattern name of <code>post_detail</code>. If you look at <code>post_detail</code> in our URLs file it expects to be passed an argument <code>pk</code> representing the primary key for the blog post. Fortunately, Django has already created and included this <code>pk</code> field on our <code>post</code> object but we must pass it into the URL by adding it to the template as <code>post.pk</code>.</p>
+
+    <p>To confirm everything works, refresh the main page at <code>http://127.0.0.1:8000/</code> and click on the title of each blog post to confirm the new links work.</p>
+
+    <h3 id="leanpub-auto-tests-2">Tests</h3>
+
+    <p>Our <em>Blog</em> project has added new functionality we hadn’t seen or tested before this chapter. The <code>Post</code> model has multiple fields, we have a user for the first time, and there is both a list view of all blog posts and a detail view for each individual blog post. Quite a lot to test!</p>
+
+    <p>To begin we can set up our test data and check the <code>Post</code> model’s content. Here’s how that might look.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">BlogTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+    <code class="nd">@classmethod</code>
+    <code class="k">def</code> <code class="nf">setUpTestData</code><code class="p">(</code><code class="bp">cls</code><code class="p">):</code>
+        <code class="bp">cls</code><code class="o">.</code><code class="n">user</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create_user</code><code class="p">(</code>
+            <code class="n">username</code><code class="o">=</code><code class="s2">"testuser"</code><code class="p">,</code> <code class="n">email</code><code class="o">=</code><code class="s2">"test@email.com"</code><code class="p">,</code> <code class="n">password</code><code class="o">=</code><code class="s2">"secret"</code>
+        <code class="p">)</code>
+
+        <code class="bp">cls</code><code class="o">.</code><code class="n">post</code> <code class="o">=</code> <code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code>
+            <code class="n">title</code><code class="o">=</code><code class="s2">"A good title"</code><code class="p">,</code>
+            <code class="n">body</code><code class="o">=</code><code class="s2">"Nice body content"</code><code class="p">,</code>
+            <code class="n">author</code><code class="o">=</code><code class="bp">cls</code><code class="o">.</code><code class="n">user</code><code class="p">,</code>
+        <code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_post_model</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">title</code><code class="p">,</code> <code class="s2">"A good title"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">body</code><code class="p">,</code> <code class="s2">"Nice body content"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">author</code><code class="o">.</code><code class="n">username</code><code class="p">,</code> <code class="s2">"testuser"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="nb">str</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="p">),</code> <code class="s2">"A good title"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">get_absolute_url</code><code class="p">(),</code> <code class="s2">"/post/1/"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top we imported <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#django.contrib.auth.get_user_model">get_user_model()</a> to refer to our User and then added <code>TestCase</code> and the <code>Post</code> model. Our class <code>BlogTests</code> contains set up data for both a test user and a test post. At the moment, all the tests are focused on the <code>Post</code> model so we name our test <code>test_post_model</code>. It checks that all three model fields return the expected values. There are also new tests for the <code>__str__</code> and <code>get_absolute_url</code> methods on our model.</p>
+
+    <p>Go ahead and run the tests.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.110s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>What else to add? We have two types of pages now: a homepage that lists all blog posts and a detail page for each blog post containing its primary key in the URL. In the previous two chapters we implemented tests to check that:</p>
+
+    <ul>
+
+      <li>expected URLs exist and return a 200 status code</li>
+
+      <li>URL names work and return a 200 status code</li>
+
+      <li>correct template name is used</li>
+
+      <li>correct template content is outputted</li>
+
+    </ul>
+
+    <p>All four tests need to be included. We <em>could</em> have eight new unit tests: four for each of our two page types. Or we could combine them a bit. There isn’t really a right or wrong answer here so long as tests are implemented to test functionality and it is clear from their names what went wrong if an error arises.</p>
+
+    <p>Here is one way to add these checks to our code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>  <code class="c1"># new</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">BlogTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+    <code class="nd">@classmethod</code>
+    <code class="k">def</code> <code class="nf">setUpTestData</code><code class="p">(</code><code class="bp">cls</code><code class="p">):</code>
+        <code class="bp">cls</code><code class="o">.</code><code class="n">user</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create_user</code><code class="p">(</code>
+            <code class="n">username</code><code class="o">=</code><code class="s2">"testuser"</code><code class="p">,</code> <code class="n">email</code><code class="o">=</code><code class="s2">"test@email.com"</code><code class="p">,</code> <code class="n">password</code><code class="o">=</code><code class="s2">"secret"</code>
+        <code class="p">)</code>
+
+        <code class="bp">cls</code><code class="o">.</code><code class="n">post</code> <code class="o">=</code> <code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code>
+            <code class="n">title</code><code class="o">=</code><code class="s2">"A good title"</code><code class="p">,</code> <code class="n">body</code><code class="o">=</code><code class="s2">"Nice body content"</code><code class="p">,</code> <code class="n">author</code><code class="o">=</code><code class="bp">cls</code><code class="o">.</code><code class="n">user</code><code class="p">,</code>
+        <code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_post_model</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">title</code><code class="p">,</code> <code class="s2">"A good title"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">body</code><code class="p">,</code> <code class="s2">"Nice body content"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">author</code><code class="o">.</code><code class="n">username</code><code class="p">,</code> <code class="s2">"testuser"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="nb">str</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="p">),</code> <code class="s2">"A good title"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">get_absolute_url</code><code class="p">(),</code> <code class="s2">"/post/1/"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location_listview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location_detailview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/post/1/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_post_listview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Nice body content"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_post_detailview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"post_detail"</code><code class="p">,</code>
+          <code class="n">kwargs</code><code class="o">=</code><code class="p">{</code><code class="s2">"pk"</code><code class="p">:</code> <code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">pk</code><code class="p">}))</code>
+        <code class="n">no_response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/post/100000/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">no_response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">404</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"A good title"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"post_detail.html"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>First we check that URL exists at the proper location for both views. Then we import <a href="https://docs.djangoproject.com/en/4.0/ref/urlresolvers/#reverse">reverse</a> at the top and create <code>test_post_listview</code> to confirm that the named URL is used, returns a 200 status code, contains the expected content, and uses the <code>home.html</code> template. For <code>test_post_detailview</code> we have to pass in the <code>pk</code> of the our test post to the response. The same template is used but we add new tests for what we <em>don’t want</em> to see. For example, we don’t want a response at the URL <code>/post/100000/</code> because we have not created that many posts yet! And we don’t want a 404 HTTP status response either. It is always good to sprinkle in examples of incorrect tests that <em>should</em> fail to make sure your tests aren’t all blindly passing for some reason.</p>
+
+    <p>Run the new tests to confirm everything is working.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.129s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>A common gotcha when testing URLs is failing to include the preceding slash <code>/</code>. For example, if <code>test_url_exists_at_correct_location_detailview</code> checked in the response for <code>"post/1/"</code> that would throw a 404 error. However if you check <code>"/post/1/"</code> it will be a 200 status response.</p>
+
+    <h3 id="leanpub-auto-git-1">Git</h3>
+
+    <p>Now is also a good time for our first Git commit. First, initialize our directory. Then review all the content we’ve added by checking the <code>status</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git init
+(.venv) &gt; git status
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Oops, there is the <code>.venv</code> directory we do not want to include! In your text editor create a <code>.gitignore</code> file and add one line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run <code>git status</code> again to confirm the <code>.venv</code> directory is no longer included. Then add the rest of our work along with a commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git status
+(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "initial commit"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-conclusion-5">Conclusion</h3>
+
+    <p>We’ve now built a basic blog application from scratch! Using the Django admin we can create, edit, or delete the content. And we used DetailView for the first time to create a detailed individual view of each blog post entry.</p>
+
+    <p>In the next section, <strong>Chapter 6: Forms</strong>, we’ll add forms so we don’t have to use the Django admin at all for these changes.</p>
+
+  </div>
+
+</body>
+
+</html>

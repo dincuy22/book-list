@@ -1,0 +1,360 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 8: Custom User Model</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-8-custom-user-model">Chapter 8: Custom User Model</h2>
+
+    <p>Django’s built-in <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/auth/#django.contrib.auth.models.User">User model</a> allows us to start working with users right away, as we just did with our <em>Blog app</em> in the previous chapters. However, the <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project">official Django documentation</a> <em>highly recommends</em> using a custom user model for new projects. The reason is that if you want to make any changes to the User model down the road–-for example adding an <code>age</code> field-–using a custom user model from the beginning makes this quite easy. But if you do not create a custom user model, updating the default User model in an existing Django project is very, very challenging.</p>
+
+    <p>So <strong>always use a custom user model</strong> for all new Django projects. But the approach demonstrated in the official documentation <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#a-full-example">example</a> is actually not what many Django experts recommend. It uses the quite complex <code>AbstractBaseUser</code> when if we just use <code>AbstractUser</code> instead things are far simpler and still customizable.</p>
+
+    <p>Thus we will use <code>AbstractUser</code> in this chapter where we start a new <em>Newspaper</em> app properly with environment variables and a custom user model. The choice of a newspaper app pays homage to Django’s roots as a web framework built for editors and journalists at the Lawrence Journal-World.</p>
+
+    <h3 id="leanpub-auto-initial-set-up-4">Initial Set Up</h3>
+
+    <p>The first step is to create a new Django project from the command line. We need to do our familiar steps of creating a new directory called <code>news</code>, install and activate a new virtual environment called <code>.venv</code>, install Django, make a new Django project called <code>django_project</code> and then a new app called <code>accounts</code>.</p>
+
+    <p>Here are the commands to run:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; cd onedrive\desktop\code
+&gt; mkdir news
+&gt; cd news
+&gt; python -m venv .venv
+&gt; .venv\Scripts\Activate.ps1
+(.venv) &gt; python -m pip install django~=4.0.0
+(.venv) &gt; django-admin startproject django_project .
+(.venv) &gt; python manage.py startapp accounts
+
+# macOS
+% cd ~/desktop/code
+% mkdir news
+% cd news
+% python3 -m venv .venv
+% source .venv/bin/activate
+(.venv) % python3 -m pip install django~=4.0.0
+(.venv) % django-admin startproject django_project .
+(.venv) % python3 manage.py startapp accounts
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that we <strong>did not</strong> run <code>migrate</code> to configure our database. It’s important to wait until <strong>after</strong> we’ve created our new custom user model before doing so given how tightly connected the user model is to the rest of Django.</p>
+
+    <p>If you navigate to <code>http://127.0.0.1:8000</code> in your web browser you’ll see the familiar Django welcome screen.</p>
+
+    <h3 id="leanpub-auto-custom-user-model">Custom User Model</h3>
+
+    <p>Creating our custom user model requires four steps:</p>
+
+    <ul>
+
+      <li>update <code>django_project/settings.py</code>
+</li>
+
+      <li>create a new <code>CustomUser</code> model</li>
+
+      <li>create new forms for <code>UserCreationForm</code> and <code>UserChangeForm</code>
+</li>
+
+      <li>update <code>accounts/admin.py</code>
+</li>
+
+    </ul>
+
+    <p>In <code>django_project/settings.py</code> we’ll add the <code>accounts</code> app to our <code>INSTALLED_APPS</code>. Then at the bottom of the file use the <code>AUTH_USER_MODEL</code> config to tell Django to use our new custom user model in place of the built-in <code>User</code> model. We’ll call our custom user model <code>CustomUser</code>. Since it exists within our <code>accounts</code> app we should refer to it as <code>accounts.CustomUser</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+<code class="o">...</code>
+<code class="n">AUTH_USER_MODEL</code> <code class="o">=</code> <code class="s2">"accounts.CustomUser"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now update <code>accounts/models.py</code> with a new User model called <code>CustomUser</code> that extends the existing <code>AbstractUser</code>. We also include our a custom field for <code>age</code> here.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/models.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.models</code> <code class="kn">import</code> <code class="n">AbstractUser</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUser</code><code class="p">(</code><code class="n">AbstractUser</code><code class="p">):</code>
+    <code class="n">age</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">PositiveIntegerField</code><code class="p">(</code><code class="n">null</code><code class="o">=</code><code class="kc">True</code><code class="p">,</code> <code class="n">blank</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you read the <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#specifying-a-custom-user-model">official documentation on custom user models</a> it recommends using <code>AbstractBaseUser</code> not <code>AbstractUser</code>. This needlessly complicates things in my opinion, especially for beginners.</p>
+
+    <p><code>AbstractBaseUser</code> requires a very fine level of control and customization. We essentially rewrite Django. This <em>can be</em> helpful, but if we just want a custom user model that can be updated with additional fields, the better choice is <code>AbstractUser</code> which subclasses <code>AbstractBaseUser</code>. In other words, we write much less code and have less opportunity to mess things up. It’s the better choice unless you really know what you’re doing with Django!</p>
+
+    <p>Note that we use both <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#null">null</a> and <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#blank">blank</a> with our <code>age</code> field. These two terms are easy to confuse but quite distinct:</p>
+
+    <ul>
+
+      <li>
+<code>null</code> is <strong>database-related</strong>. When a field has <code>null=True</code> it can store a database entry as <code>NULL</code>, meaning no value.</li>
+
+      <li>
+<code>blank</code> is <strong>validation-related</strong>. If <code>blank=True</code> then a form will allow an empty value, whereas if <code>blank=False</code> then a value is required.</li>
+
+    </ul>
+
+    <p>In practice, <code>null</code> and <code>blank</code> are commonly used together in this fashion so that a form allows an empty value and the database stores that value as <code>NULL</code>.</p>
+
+    <p>A common gotcha to be aware of is that the <strong>field type</strong> dictates how to use these values. Whenever you have a string-based field like <code>CharField</code> or <code>TextField</code>, setting both <code>null</code> and <code>blank</code> as we’ve done will result in two possible values for “no data” in the database. Which is a bad idea. The Django convention is instead to use the empty string <code>""</code>, not <code>NULL</code>.</p>
+
+    <h3 id="leanpub-auto-forms">Forms</h3>
+
+    <p>If we step back for a moment, what are the two ways in which we would interact with our new <code>CustomUser</code> model? One case is when a user signs up for a new account on our website. The other is within the <code>admin</code> app which allows us, as superusers, to modify existing users. So we’ll need to update the two built-in forms for this functionality: <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#django.contrib.auth.forms.UserCreationForm">UserCreationForm</a> and <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#django.contrib.auth.forms.UserChangeForm">UserChangeForm</a>.</p>
+
+    <p>Create a new file called <code>accounts/forms.py</code> and update it with the following code to extend the existing <code>UserCreationForm</code> and <code>UserChangeForm</code> forms.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/forms.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.forms</code> <code class="kn">import</code> <code class="n">UserCreationForm</code><code class="p">,</code> <code class="n">UserChangeForm</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">CustomUser</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserCreationForm</code><code class="p">(</code><code class="n">UserCreationForm</code><code class="p">):</code>
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">(</code><code class="n">UserCreationForm</code><code class="p">):</code>
+        <code class="n">model</code> <code class="o">=</code> <code class="n">CustomUser</code>
+        <code class="n">fields</code> <code class="o">=</code> <code class="n">UserCreationForm</code><code class="o">.</code><code class="n">Meta</code><code class="o">.</code><code class="n">fields</code> <code class="o">+</code> <code class="p">(</code><code class="s2">"age"</code><code class="p">,)</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserChangeForm</code><code class="p">(</code><code class="n">UserChangeForm</code><code class="p">):</code>
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">:</code>
+        <code class="n">model</code> <code class="o">=</code> <code class="n">CustomUser</code>
+        <code class="n">fields</code> <code class="o">=</code> <code class="n">UserChangeForm</code><code class="o">.</code><code class="n">Meta</code><code class="o">.</code><code class="n">fields</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For both new forms we are using the <a href="https://docs.djangoproject.com/en/4.0/topics/forms/modelforms/#overriding-the-default-fields">Meta class</a> to override the default fields by setting the <code>model</code> to our <code>CustomUser</code> and using the default fields via <code>Meta.fields</code> which includes <em>all</em> default fields. To add our custom <code>age</code> field we simply tack it on at the end and it will display automatically on our future sign up page. Pretty slick, no?</p>
+
+    <p>The concept of fields on a form can be confusing at first so let’s take a moment to explore it further. Our <code>CustomUser</code> model contains all the fields of the default <code>User</code> model <strong>and</strong> our additional <code>age</code> field which we set.</p>
+
+    <p>But what are these default fields? It turns out there <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/auth/#django.contrib.auth.models.User">are many</a> including <code>username</code>, <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>password</code>, <code>groups</code>, and more. Yet when a user signs up for a new account on Django the default form only asks for a <code>username</code>, <code>email</code>, and <code>password</code>. This tells us that the default setting for fields on <code>UserCreationForm</code> is just <code>username</code>, <code>email</code>, and <code>password</code> even though there are many more fields available.</p>
+
+    <p>This might not click for you since understanding forms and models properly takes some time. In the next chapter we will create our own sign up, log in, and log out pages which will tie together our <code>CustomUser</code> model and forms more clearly. So hang tight!</p>
+
+    <p>The final step we need is to update our <code>admin.py</code> file since Admin is tightly coupled to the default User model. We will extend the existing <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#extending-the-existing-user-model">UserAdmin</a> class to use our new <code>CustomUser</code> model. To control which fields are listed we use <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/admin/#django.contrib.admin.ModelAdmin.list_display">list_display</a>. But to actually edit and add new custom fields, like <code>age</code>, we must also add <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#custom-users-and-django-contrib-admin">fieldsets</a> (for fields used in editing users) and <code>add_fieldsets</code> (for fields used when creating a user).</p>
+
+    <p>Here is what the complete code looks like:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.admin</code> <code class="kn">import</code> <code class="n">UserAdmin</code>
+
+<code class="kn">from</code> <code class="nn">.forms</code> <code class="kn">import</code> <code class="n">CustomUserCreationForm</code><code class="p">,</code> <code class="n">CustomUserChangeForm</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">CustomUser</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserAdmin</code><code class="p">(</code><code class="n">UserAdmin</code><code class="p">):</code>
+    <code class="n">add_form</code> <code class="o">=</code> <code class="n">CustomUserCreationForm</code>
+    <code class="n">form</code> <code class="o">=</code> <code class="n">CustomUserChangeForm</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">CustomUser</code>
+    <code class="n">list_display</code> <code class="o">=</code> <code class="p">[</code>
+        <code class="s2">"email"</code><code class="p">,</code>
+        <code class="s2">"username"</code><code class="p">,</code>
+        <code class="s2">"age"</code><code class="p">,</code>
+        <code class="s2">"is_staff"</code><code class="p">,</code>
+    <code class="p">]</code>
+    <code class="n">fieldsets</code> <code class="o">=</code> <code class="n">UserAdmin</code><code class="o">.</code><code class="n">fieldsets</code> <code class="o">+</code> <code class="p">((</code><code class="kc">None</code><code class="p">,</code> <code class="p">{</code><code class="s2">"fields"</code><code class="p">:</code> <code class="p">(</code><code class="s2">"age"</code><code class="p">,)}),)</code>
+    <code class="n">add_fieldsets</code> <code class="o">=</code> <code class="n">UserAdmin</code><code class="o">.</code><code class="n">add_fieldsets</code> <code class="o">+</code> <code class="p">((</code><code class="kc">None</code><code class="p">,</code> <code class="p">{</code><code class="s2">"fields"</code><code class="p">:</code> <code class="p">(</code><code class="s2">"age"</code><code class="p">,)}),)</code>
+
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">CustomUser</code><code class="p">,</code> <code class="n">CustomUserAdmin</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Ok we’re done! Type <code>Control+c</code> to stop the local server and go ahead and run <code>makemigrations</code> and <code>migrate</code> for the first time to create a new database that uses the custom user model.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py makemigrations accounts
+Migrations for 'accounts':
+  accounts/migrations/0001_initial.py
+    - Create model CustomUser
+
+(.venv) &gt; python manage.py migrate
+Operations to perform:
+  Apply all migrations: accounts, admin, auth, contenttypes, sessions
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying accounts.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying sessions.0001_initial... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-superuser">Superuser</h3>
+
+    <p>Let’s create a superuser account to confirm that everything is working as expected. On the command line type the following command and go through the prompts.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py createsuperuser
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Make sure your superuser email account is one that actually works. We will use it later on to verify email integration. But the fact that this flow here works is the first proof our custom user model works is set up correctly. Let’s view things in the admin too to be extra sure.</p>
+
+    <p>Start up the web server.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then navigate to the admin at <code>http://127.0.0.1:8000/admin</code> and log in. If you click on the link for “Users” you should see your superuser account as well as the default fields of Email Address, Username, Age, and Staff Status. These were set in <code>list_display</code> in our <code>admin.py</code> file.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/08_admin_select_user_to_change.png" alt="Admin select user to change" style="width: 100%"/>
+
+        <figcaption>Admin select user to change</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>The <code>age</code> field is empty because we have yet to set it yet. The default prompt for creating a superuser does not ask for it however in the next chapter we will see it is automatically included in our sign up form.</p>
+
+    <p>If you do wish to set the age now that is possible because we set the <code>fieldsets</code> section. Click on the highlighted link for your superuser’s email address which brings up the edit user interface.</p>
+
+    <p>Refresh the page and you should see the update. If you scroll to the bottom there is the <code>age</code> field we added. Go ahead and enter your age. Then click on “Save”.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/08_admin_edit_age.png" alt="Admin edit age" style="width: 100%"/>
+
+        <figcaption>Admin edit age</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>It will automatically redirect back to the main Users page listing our superuser. Note that the age field is now updated.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/08_admin_updated_age.png" alt="Admin updated age" style="width: 100%"/>
+
+        <figcaption>Admin updated age</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-conclusion-8">Conclusion</h3>
+
+    <p>With our custom user model complete, we can now focus on building out the rest of our <em>Newspaper</em> website. In the next chapter we will configure and customize sign up, log in, and log out pages.</p>
+
+  </div>
+
+</body>
+
+</html>

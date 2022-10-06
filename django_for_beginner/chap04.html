@@ -1,0 +1,1030 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 4: Message Board App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-4-message-board-app">Chapter 4: Message Board App</h2>
+
+    <p>In this chapter we will use a database for the first time to build a basic <em>Message Board</em> application where users can post and read short messages. We’ll explore Django’s powerful built-in admin interface which provides a visual way to make changes to our data. And after adding tests we will push our code to GitHub and deploy the app on Heroku.</p>
+
+    <p>Thanks to the powerful Django ORM (Object-Relational Mapper), there is built-in support for multiple database backends: PostgreSQL, MySQL, MariaDB, Oracle, and SQLite. This means that we, as developers, can write the same Python code in a <code>models.py</code> file and it will automatically be translated into the correct SQL for each database. The only configuration required is to update the <a href="https://docs.djangoproject.com/en/4.0/ref/databases/">DATABASES</a> section of our <code>django_project/settings.py</code> file. This is truly an impressive feature!</p>
+
+    <p>For local development, Django defaults to using <a href="https://www.sqlite.org/">SQLite</a> because it is file-based and therefore far simpler to use than the other database options that require a dedicated server to be running separate from Django itself.</p>
+
+    <h3 id="leanpub-auto-initial-set-up-2">Initial Set Up</h3>
+
+    <p>Since we’ve already set up several Django projects at this point in the book, we can quickly run through the standard commands to begin a new one. We need to do the following:</p>
+
+    <ul>
+
+      <li>make a new directory for our code called <code>message-board</code>
+</li>
+
+      <li>install Django in a new virtual environment</li>
+
+      <li>create a new project called <code>django_project</code>
+</li>
+
+      <li>create a new app call <code>posts</code>
+</li>
+
+      <li>update <code>django_project/settings.py</code>
+</li>
+
+    </ul>
+
+    <p>In a new command line console, enter the following commands:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; cd onedrive\desktop\code
+&gt; mkdir message-board
+&gt; cd message-board
+&gt; python -m venv .venv
+&gt; .venv\Scripts\Activate.ps1
+(.venv) &gt; python -m pip install django~=4.0.0
+(.venv) &gt; django-admin startproject django_project .
+(.venv) &gt; python manage.py startapp posts
+
+# macOS
+% cd ~/desktop/code
+% mkdir message-board
+% cd message-board
+% python3 -m venv .venv
+% source .venv/bin/activate
+(.venv) % python3 -m pip install django~=4.0.0
+(.venv) % django-admin startproject django_project .
+(.venv) % python3 manage.py startapp posts
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next we must alert Django to the new app, <code>posts</code>, by adding it to the top of the <code>INSTALLED_APPS</code> section of our <code>django_project/settings.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"posts.apps.PostsConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then execute the <code>migrate</code> command to create an initial database based on Django’s default settings.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py migrate
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you look inside our directory with the <code>ls</code> command, you’ll see the <code>db.sqlite3</code> file representing our SQLite database.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; ls
+.venv     db.sqlite3     django_project     manage.py     posts
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Technically, a <code>db.sqlite3</code> file is created the first time you run <em>either</em> <code>migrate</code> or <code>runserver</code>, however <code>migrate</code> will sync the database with the current state of any database models contained in the project and listed in <code>INSTALLED_APPS</code>. In other words, to make sure the database reflects the current state of your project you’ll need to run <code>migrate</code> (and also <code>makemigrations</code>) each time you update a model. More on this shortly.</p>
+
+    <p>To confirm everything works correctly, spin up our local server.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your web browser, navigate to <code>http://127.0.0.1:8000/</code> to see the familiar Django welcome page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/00_welcome40.png" alt="Django welcome page" style="width: 100%"/>
+
+        <figcaption>Django welcome page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-create-a-database-model">Create a Database Model</h3>
+
+    <p>Our first task is to create a database model where we can store and display posts from our users. Django’s ORM will automatically turn this model into a database table for us. In a real-world Django project, there are often many complex, interconnected database models but in our simple message board app we only need one.</p>
+
+    <p>Open the <code>posts/models.py</code> file and look at the default code which Django provides:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/models.py</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+
+<code class="c1"># Create your models here</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Django imports a module, <code>models</code>, to help us build new database models which will “model” the characteristics of the data in our database. We want to create a model to store the textual content of a message board post, which we can do as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/models.py</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+
+
+<code class="k">class</code> <code class="nc">Post</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">text</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">TextField</code><code class="p">()</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that we’ve created a new database model called <code>Post</code> which has the database field <code>text</code>. We’ve also specified the <em>type of content</em> it will hold, <code>TextField()</code>. Django provides many <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/">model fields</a> supporting common types of content such as characters, dates, integers, emails, and so on.</p>
+
+    <h3 id="leanpub-auto-activating-models">Activating models</h3>
+
+    <p>Now that our new model is created we need to activate it. Going forward, whenever we create or modify an existing model we’ll need to update Django in a two-step process:</p>
+
+    <ol class="numeric">
+
+      <li>First, we create a migrations file with the <code>makemigrations</code> command. Migration files create a reference of any changes to the database models which means we can track changes–and debug errors as necessary–over time.</li>
+
+      <li>Second, we build the actual database with the <code>migrate</code> command which executes the instructions in our migrations file.</li>
+
+    </ol>
+
+    <p>Make sure the local server is stopped by typing <code>Control+c</code> on the command line and then run the commands <code>python manage.py makemigrations posts</code> and <code>python manage.py migrate</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py makemigrations posts
+Migrations for 'posts':
+  posts/migrations/0001_initial.py
+    - Create model Post
+
+(.venv) &gt; python manage.py migrate
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, posts, sessions
+Running migrations:
+  Applying posts.0001_initial... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that you don’t <em>have</em> to include a name after <code>makemigrations</code>. If you simply run <code>python manage.py makemigrations</code>, a migrations file will be created for <em>all</em> available changes throughout the Django project. That is fine in a small project such as ours with only a single app, but most Django projects have more than one app! Therefore ,if you made model changes in multiple apps the resulting migrations file would include <em>all</em> those changes!  This is not ideal. Migrations file should be as small and concise as possible as this makes it easier to debug in the future or even roll back changes as needed. Therefore, as a best practice, adopt the habit of always including the name of an app when executing the <code>makemigrations</code> command!</p>
+
+    <h3 id="leanpub-auto-django-admin">Django Admin</h3>
+
+    <p>One of Django’s killer features is its robust admin interface that provides a visual way to interact with data. It came about because <a href="https://docs.djangoproject.com/en/4.0/faq/general/">Django was originally built</a> as a newspaper CMS (Content Management System). The idea was that journalists could write and edit their stories in the admin without needing to touch “code.” Over time, the built-in admin app has evolved into a fantastic, out-of-the-box tool for managing all aspects of a Django project.</p>
+
+    <p>To use the Django admin, we first need to create a <code>superuser</code> who can log in. In your command line console, type <code>python manage.py createsuperuser</code> and respond to the prompts for a username, email, and password:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py createsuperuser
+Username (leave blank to use 'wsv'): wsv
+Email: will@wsvincent.com
+Password:
+Password (again):
+Superuser created successfully.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>When you type your password, it will not appear visible in the command line console for security reasons. Restart the Django server with <code>python manage.py runserver</code> and in your web browser go to <code>http://127.0.0.1:8000/admin/</code>. You should see the log in screen for the admin:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/04_django_admin_login.png" alt="Admin log in page" style="width: 100%"/>
+
+        <figcaption>Admin log in page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Log in by entering the username and password you just created. You will see the Django admin homepage next:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/04_django_admin_home.png" alt="Admin homepage" style="width: 100%"/>
+
+        <figcaption>Admin homepage</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>But where is our <code>posts</code> app? It’s not displayed on the main admin page! Just as we must explicitly add new apps to the <code>INSTALLED_APPS</code> config, so, too, must we update an app’s <code>admin.py</code> file for it to appear in the admin.</p>
+
+    <p>In your text editor open up <code>posts/admin.py</code> and add the following code so that the Post model is displayed.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Post</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Django now knows that it should display our <code>posts</code> app and its database model <code>Post</code> on the admin page. If you refresh your browser you’ll see that it appears:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/04_django_admin_app.png" alt="Admin homepage updated" style="width: 100%"/>
+
+        <figcaption>Admin homepage updated</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Let’s create our first message board post for our database. Click on the <code>+ Add</code> button opposite <code>Posts</code> and enter your own content in the <code>Text</code> form field.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/04_django_admin_first_entry.png" alt="Admin new entry" style="width: 100%"/>
+
+        <figcaption>Admin new entry</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Then click the “Save” button, which will redirect you to the main Post page. However if you look closely, there’s a problem: our new entry is called “Post object (1)” which isn’t very descriptive!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/04_django_admin_post_object.png" alt="Admin posts list" style="width: 100%"/>
+
+        <figcaption>Admin posts list</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Let’s change that. Within the <code>posts/models.py</code> file, add a new function <code>__str__</code> as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/models.py</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+
+
+<code class="k">class</code> <code class="nc">Post</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="n">text</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">TextField</code><code class="p">()</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">text</code><code class="p">[:</code><code class="mi">50</code><code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This will display the first 50 characters of the <code>text</code> field. If you refresh your Admin page in the browser, you’ll see it’s changed to a much more descriptive and helpful representation of our database entry.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/04_django_admin_post_str.png" alt="Admin posts readable" style="width: 100%"/>
+
+        <figcaption>Admin posts readable</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Much better! It’s a best practice to add <code>str()</code> methods to all of your models to improve their readability.</p>
+
+    <h3 id="leanpub-auto-viewstemplatesurls">Views/Templates/URLs</h3>
+
+    <p>In order to display our database content on our homepage, we have to wire up our views, templates, and URLs. This pattern should start to feel familiar now.</p>
+
+    <p>Let’s begin with the view. Earlier in the book we used the built-in generic <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/base/#django.views.generic.base.TemplateView">TemplateView</a> to display a template file on our homepage. Now we want to list the contents of our database model. Fortunately this is also a common task in web development and Django comes equipped with the generic class-based  <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-display/#listview">ListView</a>.</p>
+
+    <p>In the <code>posts/views.py</code> file enter the Python code below:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">HomePageView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On the first line we’re importing <code>ListView</code> and in the second line we import the <code>Post</code> model. In the view, <code>HomePageView</code>, we subclass <code>ListView</code> and specify the correct model and template.</p>
+
+    <p>Our view is complete which means we still need to configure our URLs and make our template. Let’s start with the template. Create a new directory called <code>templates</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; mkdir templates
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then update the <code>DIRS</code> field in our <code>django_project/settings.py</code> file so that Django knows to look in this new templates directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">TEMPLATES</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="p">{</code>
+        <code class="o">...</code>
+        <code class="s2">"DIRS"</code><code class="p">:</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"templates"</code><code class="p">],</code>  <code class="c1"># new</code>
+        <code class="o">...</code>
+    <code class="p">},</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your text editor, create a new file called <code>templates/home.html</code>. ListView automatically returns to us a context variable called <code>&lt;model&gt;_list</code>, where <code>&lt;model&gt;</code> is our model name, that we can loop over via the built-in <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#std:templatetag-for">for</a> template tag. We’ll create our own variable called <code>post</code> and can then access the desired field we want displayed, <code>text</code>, as <code>post.text</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Message board homepage<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">ul</code><code class="p">&gt;</code>
+  {% for post in post_list %}
+    <code class="p">&lt;</code><code class="nt">li</code><code class="p">&gt;</code>{{ post.text }}<code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+  {% endfor %}
+<code class="p">&lt;/</code><code class="nt">ul</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The last step is to set up our URLs. Let’s start with the <code>django_project/urls.py</code> file where we include our <code>posts</code> app and add <code>include</code> on the second line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"posts.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then in your text editor create a new <code>urls.py</code> file within the <code>posts</code> app and update it like so:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">HomePageView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">HomePageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Restart the server with <code>python manage.py runserver</code> and navigate to our homepage, which now lists out our message board post.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/04_homepage_helloworld.png" alt="Homepage with posts" style="width: 100%"/>
+
+        <figcaption>Homepage with posts</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>We’re basically done at this point, but let’s create a few more message board posts in the Django admin to confirm that they will display correctly on the homepage.</p>
+
+    <h3 id="leanpub-auto-adding-new-posts">Adding New Posts</h3>
+
+    <p>To add new posts to our message board, go back into the Admin and create two more posts. If you then return to the homepage you’ll see it automatically displays the formatted posts. Woohoo!</p>
+
+    <p>Everything works so it is a good time to initialize our directory and create a <code>.gitignore file</code>. In your text editor create a new <code>.gitignore</code> file and add one line:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then run <code>git status</code> again to confirm the <code>.venv</code> directory is being ignored, use <code>git add -A</code> to add the intended files/directories, and add an initial commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git status
+(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "initial commit"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git init
+(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "initial commit"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-tests-1">Tests</h3>
+
+    <p>In the previous chapter we were only testing static pages so we used <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.SimpleTestCase">SimpleTestCase</a>. Now that our project works with a database, we need to use <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.TestCase">TestCase</a>, which will let us create a test database we can check against. In other words, we don’t need to run tests on our <em>actual</em> database but instead can make a separate test database, fill it with sample data, and then test against it which is a much safer and more performant approach.</p>
+
+    <p>We will use the hook <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.TestCase.setUpTestData">setUpTestData()</a> to create our test data. This was added to Django 1.8 and is much faster than using the <code>setUp()</code> hook from Python’s unittest because it creates the test data only once per test case rather than per test. It is still common, however, to see Django projects that rely on <code>setUp()</code> instead. Converting any such tests over to <code>setUpTestData</code> is a reliable way to speed up a test suite and should be done!</p>
+
+    <p>Our <code>Post</code> model contains only one field, <code>text</code>, so let’s set up our data and then check that it is stored correctly in the database. All test methods must start with the phrase <code>test*</code> so that Django knows to test them! The code will look like this:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">PostTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+    <code class="nd">@classmethod</code>
+    <code class="k">def</code> <code class="nf">setUpTestData</code><code class="p">(</code><code class="bp">cls</code><code class="p">):</code>
+        <code class="bp">cls</code><code class="o">.</code><code class="n">post</code> <code class="o">=</code> <code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code><code class="n">text</code><code class="o">=</code><code class="s2">"This is a test!"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_model_content</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">text</code><code class="p">,</code> <code class="s2">"This is a test!"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top we import <code>TestCase</code> and our <code>Post</code> model. Then we create a test class, <code>PostTests</code>, that extends <code>TestCase</code> and uses the built-in method <code>setUpTestData</code> to create initial data. In this instance, we only have one item stored as <code>cls.post</code> that can then be referred to in any subsequent tests within the class as <code>self.post</code>. Our first test, <code>test_model_content</code>, uses <code>assertEqual</code> to check that the content of the <code>text</code> field matches what we expect.</p>
+
+    <p>Go ahead and run the test on the command line with command <code>python manage.py test</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>It passed! Why does the output say only one test was run when we have two functions? Again, only functions that start with the name <code>test*</code> will be run! So while we can use set up functions and classes to help with our tests, unless a function is so named it won’t be run on its own as a standalone test when we execute the <code>python manage.py test</code> command.</p>
+
+    <p>Moving along it is time to check our URLs, views, and templates in a manner similar to the previous chapter. We will want to check the following four things for our message board page:</p>
+
+    <ul>
+
+      <li>URL exists at <code>/</code> and returns a 200 HTTP status code</li>
+
+      <li>URL is available by its name of “home”</li>
+
+      <li>Correct template is used called “home.html”</li>
+
+      <li>Homepage content matches what we expect in the database</li>
+
+    </ul>
+
+    <p>We can include all of these tests in our existing <code>PostTests</code> class since there is only one webpage in this project. Make sure to import <code>reverse</code> at the top of the page and add the four tests as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>  <code class="c1"># new</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">PostTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+    <code class="nd">@classmethod</code>
+    <code class="k">def</code> <code class="nf">setUpTestData</code><code class="p">(</code><code class="bp">cls</code><code class="p">):</code>
+        <code class="bp">cls</code><code class="o">.</code><code class="n">post</code> <code class="o">=</code> <code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code><code class="n">text</code><code class="o">=</code><code class="s2">"This is a test!"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_model_content</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">text</code><code class="p">,</code> <code class="s2">"This is a test!"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_available_by_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_template_name_correct</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_template_content</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"This is a test!"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you run our tests again you should see that they all pass.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.
+----------------------------------------------------------------------
+Ran 5 tests in 0.009s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In the previous chapter we discussed how unit tests work best when they are self-contained and extremely verbose. However there is an argument to be made here that the bottom three tests are really just testing that the homepage works as expected: it uses the correct URL name, the intended template name, and contains expected content. We can combine these three tests into one single unit test, <code>test_homepage</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># posts/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">PostTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+    <code class="nd">@classmethod</code>
+    <code class="k">def</code> <code class="nf">setUpTestData</code><code class="p">(</code><code class="bp">cls</code><code class="p">):</code>
+        <code class="bp">cls</code><code class="o">.</code><code class="n">post</code> <code class="o">=</code> <code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code><code class="n">text</code><code class="o">=</code><code class="s2">"This is a test!"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_model_content</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">post</code><code class="o">.</code><code class="n">text</code><code class="p">,</code> <code class="s2">"This is a test!"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home.html"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"This is a test!"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run the tests one last time to confirm that they all pass.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.008s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Ultimately, we want our test suite to cover as much code functionality as possible while also being easy for us to reason about, both the error messages <em>and</em> the testing code itself. In my view, this update is easier to read and understand.</p>
+
+    <p>We’re done adding code for our testing so it’s time to commit the changes to git.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "added tests"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-github-1">GitHub</h3>
+
+    <p>We also need to store our code on GitHub. You should already have a GitHub account from previous chapters so go ahead and create a new repo called <code>message-board</code>. Select the “Private” radio button.</p>
+
+    <p>On the next page scroll down to where it says “or push an existing repository from the command line.” Copy and paste the two commands there into your terminal, which should look like like the below after replacing <code>wsvincent</code> (my username) with your GitHub username:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git remote add origin https://github.com/wsvincent/message-board.git
+(.venv) &gt; git push -u origin main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-heroku-configuration">Heroku Configuration</h3>
+
+    <p>You should already have a Heroku account set up and installed from Chapter 3. Our deployment checklist contains the same five steps:</p>
+
+    <ul>
+
+      <li>install <code>Gunicorn</code>
+</li>
+
+      <li>create a <code>requirements.txt</code> file</li>
+
+      <li>update <code>ALLOWED_HOSTS</code> in <code>django_project/settings.py</code>
+</li>
+
+      <li>create a <code>Procfile</code>
+</li>
+
+      <li>create a <code>runtime.txt</code> file</li>
+
+    </ul>
+
+    <p>First, install <code>Gunicorn</code> with Pip.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install gunicorn==20.1.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then output the contents of our virtual environment to a <code>requirements.txt</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip freeze &gt; requirements.txt
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Previously, we set <code>ALLOWED_HOSTS</code> to <code>*</code>, meaning accept all hosts, but that was a dangerous shortcut. We can–and should–be more specific. The two local hosts Django runs on are <code>localhost:8000</code> and <code>127.0.0.1:8000</code>. We also know, having deployed on Heroku previously, that any Heroku site will end with <code>.herokuapp.com</code>. We can add all three hosts to our <code>ALLOWED_HOSTS</code> configuration.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">ALLOWED_HOSTS</code> <code class="o">=</code> <code class="p">[</code><code class="s2">".herokuapp.com"</code><code class="p">,</code> <code class="s2">"localhost"</code><code class="p">,</code> <code class="s2">"127.0.0.1"</code><code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Fourth in your text editor create a new <code>Procfile</code> in the base directory, next to the <code>manage.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Procfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>web: gunicorn django_project.wsgi --log-file -
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And the fifth and final step is to create a <code>runtime.txt</code> file, also in the base directory, that specifies what version of Python to run within Heroku.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>runtime.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>python-3.10.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re all done! Add and commit our new changes to git and then push them up to GitHub.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git status
+(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "New updates for Heroku deployment"
+(.venv) &gt; git push -u origin main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-heroku-deployment">Heroku Deployment</h3>
+
+    <p>Make sure you’re logged into your correct Heroku account.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku login
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then run the <code>create</code> command and Heroku will randomly generate an app name.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku create
+Creating app... done, â¬¢ sleepy-brook-64719
+https://sleepy-brook-64719.herokuapp.com/ |
+https://git.heroku.com/sleepy-brook-64719.git
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For now, continue to instruct Heroku to ignore static files. We’ll cover them in the next section while deploying our <em>Blog</em> app.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku config:set DISABLE_COLLECTSTATIC=1
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Push the code to Heroku and add free scaling so it’s actually running online, otherwise the code is just sitting there!</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git push heroku main
+(.venv) &gt; heroku ps:scale web=1
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can open the URL of the new project from the command line by typing <code>heroku open</code> which will launch a new browser window. To finish up, deactivate the current virtual environment by typing <code>deactivate</code> on the command line.</p>
+
+    <h3 id="leanpub-auto-conclusion-4">Conclusion</h3>
+
+    <p>We’ve now built, tested, and deployed our first database-driven app. While it’s deliberately quite basic, we learned how to create a database model, update it with the admin panel, and then display the contents on a web page. That’s the good news. The bad news is that if you check your Heroku site in a few days, it’s likely whatever posts you’ve added will be deleted! This is related to how Heroku handles SQLite, but really it’s an indication that we should be using a production database like PostgreSQL for deployments, even if we still want to stick with SQLite locally. This is covered in Chapter 16!</p>
+
+    <p>In the next section, we’ll learn how to deploy with PostgreSQL and build a <em>Blog</em> application so that users can create, edit, and delete posts on their own. No admin access required! We’ll also add styling via CSS so the site looks better.</p>
+
+  </div>
+
+</body>
+
+</html>

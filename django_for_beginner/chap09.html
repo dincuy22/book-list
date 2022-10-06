@@ -1,0 +1,579 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 9: User Authentication</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-9-user-authentication">Chapter 9: User Authentication</h2>
+
+    <p>Now that we have a working custom user model we can add the functionality every website needs: the ability to sign up, log in, and log out users. Django provides everything we need for log in and log out but we will need to create our own form to sign up new users. We’ll also build a basic homepage with links to all three features so we don’t have to type in the URLs by hand every time.</p>
+
+    <h3 id="leanpub-auto-templates-2">Templates</h3>
+
+    <p>By default, the Django template loader looks for templates in a nested structure within each app. The structure <code>accounts/templates/accounts/home.html</code> would be needed for a <code>home.html</code> template within the <code>accounts</code> app. But a single <code>templates</code> directory  within <code>django_project</code> approach is cleaner and scales better so that’s what we’ll use.</p>
+
+    <p>Let’s create a new <code>templates</code> directory and within it a <code>registration</code> directory as that’s where Django will look for templates related to log in and sign up.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; mkdir templates
+(.venv) &gt; mkdir templates/registration
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now we need to tell Django about this new directory by updating the configuration for <code>"DIRS"</code> in <code>django_project/settings.py</code>. This is a one-line change.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">TEMPLATES</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="p">{</code>
+        <code class="o">...</code>
+        <code class="s2">"DIRS"</code><code class="p">:</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"templates"</code><code class="p">],</code>  <code class="c1"># new</code>
+        <code class="o">...</code>
+    <code class="p">}</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you think about what happens when you log in or log out of a site, you are immediately redirected to a subsequent page. We need to tell Django where to send users in each case. The <code>LOGIN_REDIRECT_URL</code> and <code>LOGOUT_REDIRECT_URL</code> settings do that. We’ll configure both to redirect to our homepage which will have the named URL of <code>'home'</code>.</p>
+
+    <p>Remember that when we create our URL routes we have the option to add a <code>name</code> to each one. So when we make the homepage URL we’ll make sure to call it <code>'home'</code>.</p>
+
+    <p>Add these two lines at the bottom of the <code>django_project/settings.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">LOGIN_REDIRECT_URL</code> <code class="o">=</code> <code class="s2">"home"</code>  <code class="c1"># new</code>
+<code class="n">LOGOUT_REDIRECT_URL</code> <code class="o">=</code> <code class="s2">"home"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now we can create four new templates within our text editor:</p>
+
+    <ul>
+
+      <li><code>templates/base.html</code></li>
+
+      <li><code>templates/home.html</code></li>
+
+      <li><code>templates/registration/login.html</code></li>
+
+      <li><code>templates/registration/signup.html</code></li>
+
+    </ul>
+
+    <p>Here’s the HTML code for each file to use. The <code>base.html</code> will be inherited by every other template in our project. By using a block like <code>{% block content %}</code> we can later override the content <em>just in this place</em> in other templates.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+<code class="cp">&lt;!DOCTYPE html&gt;</code>
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">meta</code> <code class="na">charset</code><code class="o">=</code><code class="s">"utf-8"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>{% block title %}Newspaper App{% endblock title %}<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">body</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">main</code><code class="p">&gt;</code>
+    {% block content %}
+    {% endblock content %}
+  <code class="p">&lt;/</code><code class="nt">main</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">body</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">html</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock title %}
+
+{% block content %}
+{% if user.is_authenticated %}
+  Hi {{ user.username }}!
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'logout' %}"</code><code class="p">&gt;</code>Log Out<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% else %}
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>You are not logged in<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'login' %}"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'signup' %}"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+{% endif %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/login.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Log In{% endblock title %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form.as_p }}
+  <code class="p">&lt;</code><code class="nt">button</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/signup.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Sign Up{% endblock title %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form.as_p }}
+  <code class="p">&lt;</code><code class="nt">button</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Our templates are now all set. Still to go are the related URLs and views.</p>
+
+    <h3 id="leanpub-auto-urls-2">URLs</h3>
+
+    <p>Let’s start with the URL routes. In our <code>django_project/urls.py</code> file, we want to have our <code>home.html</code> template appear as the homepage, but we don’t want to build a dedicated <code>pages</code> app just yet. We can use the shortcut of importing <code>TemplateView</code> and setting the <code>template_name</code> right in our url pattern.</p>
+
+    <p>Next, we want to “include” both the <code>accounts</code> app and the built-in <code>auth</code> app. The reason is that the built-in <code>auth</code> app already provides views and urls for log in and log out. But for sign up we will need to create our own view and url. To ensure that our URL routes are consistent we place them <em>both</em> at <code>accounts/</code> so the eventual URLS will be <code>/accounts/login</code>, <code>/accounts/logout</code>, and <code>/accounts/signup</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.views.generic.base</code> <code class="kn">import</code> <code class="n">TemplateView</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"accounts.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"django.contrib.auth.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">TemplateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(</code><code class="n">template_name</code><code class="o">=</code><code class="s2">"home.html"</code><code class="p">),</code>
+      <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now create a file with your text editor called <code>accounts/urls.py</code> and update it with the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">SignUpView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"signup/"</code><code class="p">,</code> <code class="n">SignUpView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"signup"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The last step is our <code>views.py</code> file which will contain the logic for our sign up form. We’re using Django’s generic <code>CreateView</code> here and telling it to use our <code>CustomUserCreationForm</code>, to redirect to <code>login</code> once a user signs up successfully, and that our template is named <code>signup.html</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/views.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse_lazy</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">CreateView</code>
+
+<code class="kn">from</code> <code class="nn">.forms</code> <code class="kn">import</code> <code class="n">CustomUserCreationForm</code>
+
+
+<code class="k">class</code> <code class="nc">SignUpView</code><code class="p">(</code><code class="n">CreateView</code><code class="p">):</code>
+    <code class="n">form_class</code> <code class="o">=</code> <code class="n">CustomUserCreationForm</code>
+    <code class="n">success_url</code> <code class="o">=</code> <code class="n">reverse_lazy</code><code class="p">(</code><code class="s1">'login'</code><code class="p">)</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"registration/signup.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Ok, phew! We’re done. Let’s test things out. Start up the server with <code>python manage.py runserver</code> and go to the homepage.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_home_loggedin.png" alt="Homepage logged in" style="width: 100%"/>
+
+        <figcaption>Homepage logged in</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>We logged in to the admin in the previous chapter so you should see a personalized greeting here. Click on the “Log Out” link.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_home_logged_out.png" alt="Homepage logged out" style="width: 100%"/>
+
+        <figcaption>Homepage logged out</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now we’re on the logged out homepage. Go ahead and click on <em>Log In</em> link and use your <strong>superuser</strong> credentials.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_login.png" alt="Log in" style="width: 100%"/>
+
+        <figcaption>Log in</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Upon successfully logging in you’ll be redirected back to the homepage and see the same personalized greeting. It works! Now use the “Log Out” link to return to the homepage and this time click on the “Sign Up” link. You’ll be redirected to our signup page. See that the <code>age</code> field is included!</p>
+
+    <p>Create a new user. Mine is called <code>testuser</code> and I’ve set the age to <code>25</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_signup.png" alt="Sign up page" style="width: 100%"/>
+
+        <figcaption>Sign up page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>After successfully submitting the form you’ll be redirected to the log in page. Log in with your new user and you’ll again be redirected to the homepage with a personalized greeting for the new user. But since we have the new <code>age</code> field, let’s add that to the <code>home.html</code> template. It is a field on the <code>user</code> model, so to display it we only need to use <code>{{ user.age }}</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock title %}
+
+{% block content %}
+{% if user.is_authenticated %}
+  Hi {{ user.username }}! You are {{ user.age }} years old.
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'logout' %}"</code><code class="p">&gt;</code>Log Out<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% else %}
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>You are not logged in<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'login' %}"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'signup' %}"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+{% endif %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Save the file and refresh the homepage.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/09_testuser.png" alt="Homepage for testuser" style="width: 100%"/>
+
+        <figcaption>Homepage for testuser</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Everything works as expected.</p>
+
+    <h3 id="leanpub-auto-admin-1">Admin</h3>
+
+    <p>Navigate to the admin at <code>http://127.0.0.1:8000/admin</code> in your web browser and then log in to view the two user accounts.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_admin_login_wrong.png" alt="Admin log in wrong" style="width: 100%"/>
+
+        <figcaption>Admin log in wrong</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>What’s this! Why can’t we log in? Well we’re logged in with our new <code>testuser</code> account not our superuser account. Only a superuser account has the permissions to log in to the admin! So use your superuser account to log in instead.</p>
+
+    <p>After you’ve done that you should see the normal admin homepage. Click on <code>Users</code> and you can see our two users: the <code>testuser</code> account we just created and your previous superuser name (mine is <code>wsv</code>).</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_admin_users.png" alt="Users in the Admin" style="width: 100%"/>
+
+        <figcaption>Users in the Admin</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Everything is working but you may notice that there is no “Email address” for our <code>testuser</code>. Why is that? Well, our sign up page has no email field because it was not included in <code>accounts/forms.py</code>. This is an important point: just because the <code>user</code> model has a field does not mean it will be included in our custom sign up form unless it is explicitly added. Let’s do so now.</p>
+
+    <p>Currently, in <code>accounts/forms.py</code> under <code>fields</code> we’re using <code>Meta.fields</code>, which just displays the default settings of username/age/password. But we can also explicitly set which fields we want displayed so let’s update it to ask for a username/email/age/password by setting it to <code>('username', 'email', 'age',)</code>. We don’t need to include the <code>password</code> fields because they are required! All the other fields can be configured however we choose.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/forms.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.forms</code> <code class="kn">import</code> <code class="n">UserCreationForm</code><code class="p">,</code> <code class="n">UserChangeForm</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">CustomUser</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserCreationForm</code><code class="p">(</code><code class="n">UserCreationForm</code><code class="p">):</code>
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">(</code><code class="n">UserCreationForm</code><code class="p">):</code>
+        <code class="n">model</code> <code class="o">=</code> <code class="n">CustomUser</code>
+        <code class="n">fields</code> <code class="o">=</code> <code class="p">(</code>
+            <code class="s2">"username"</code><code class="p">,</code>
+            <code class="s2">"email"</code><code class="p">,</code>
+            <code class="s2">"age"</code><code class="p">,</code>
+        <code class="p">)</code>  <code class="c1"># new</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserChangeForm</code><code class="p">(</code><code class="n">UserChangeForm</code><code class="p">):</code>
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">:</code>
+        <code class="n">model</code> <code class="o">=</code> <code class="n">CustomUser</code>
+        <code class="n">fields</code> <code class="o">=</code> <code class="p">(</code>
+            <code class="s2">"username"</code><code class="p">,</code>
+            <code class="s2">"email"</code><code class="p">,</code>
+            <code class="s2">"age"</code><code class="p">,</code>
+        <code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now if you try <code>http://127.0.0.1:8000/accounts/signup/</code> again you can see the additional “Email address” field is there.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/09_new_signup.png" alt="New sign up page" style="width: 100%"/>
+
+        <figcaption>New sign up page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Sign up with a new user account. I’ve named mine <code>testuser2</code> with an age of <code>18</code> and an email address of <code>testuser2@email.com</code>. Continue to log in and you’ll see a personalized greeting on the homepage.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/09_testuser2_homepage.png" alt="testuser2 homepage greeting" style="width: 100%"/>
+
+        <figcaption>testuser2 homepage greeting</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Then switch back to the admin page–log in using our superuser account to do so–and all three users are on display. Note that I’ve closed the side nav bar of the admin in this screenshot by clicking on the arrows <code>&gt;&gt;</code> to make it more readable.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_admin_three_users.png" alt="Three users in the Admin" style="width: 100%"/>
+
+        <figcaption>Three users in the Admin</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Django’s user authentication flow requires a little bit of set up but you should be starting to see that it also provides us incredible flexibility to configure sign up and log in <em>exactly</em> how we want.</p>
+
+    <h3 id="leanpub-auto-tests-4">Tests</h3>
+
+    <p>The new sign up page has its own view, URL, and template which should all be tested. Open up the <code>accounts/tests.py</code> file and add the following code which we will review below.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">SignupPageTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location_signupview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/accounts/signup/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_signup_view_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"signup"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"registration/signup.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_signup_form</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">post</code><code class="p">(</code>
+            <code class="n">reverse</code><code class="p">(</code><code class="s2">"signup"</code><code class="p">),</code>
+            <code class="p">{</code>
+                <code class="s2">"username"</code><code class="p">:</code> <code class="s2">"testuser"</code><code class="p">,</code>
+                <code class="s2">"email"</code><code class="p">:</code> <code class="s2">"testuser@email.com"</code><code class="p">,</code>
+                <code class="s2">"password1"</code><code class="p">:</code> <code class="s2">"testpass123"</code><code class="p">,</code>
+                <code class="s2">"password2"</code><code class="p">:</code> <code class="s2">"testpass123"</code><code class="p">,</code>
+            <code class="p">},</code>
+        <code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">302</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">all</code><code class="p">()</code><code class="o">.</code><code class="n">count</code><code class="p">(),</code> <code class="mi">1</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">all</code><code class="p">()[</code><code class="mi">0</code><code class="p">]</code><code class="o">.</code><code class="n">username</code><code class="p">,</code> <code class="s2">"testuser"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">all</code><code class="p">()[</code><code class="mi">0</code><code class="p">]</code><code class="o">.</code><code class="n">email</code><code class="p">,</code> <code class="s2">"testuser@email.com"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top we import <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#django.contrib.auth.get_user_model">get_user_model()</a> so we can test our sign up form. Then we also import <code>TestCase</code> to run tests that touch the database and <code>reverse</code> so we can verify the URL and view work properly.</p>
+
+    <p>Our class of tests is called <code>SignupPageTests</code> and extends <code>TestCase</code>. The first test checks that our sign up page is at the correct URL and returns a 200 status code. The second test checks the view. It reverses <code>signup</code> which is the URL name, confirms a 200 status code, and that our <code>signup.html</code> template is being used.</p>
+
+    <p>The third test checks our form by sending a <code>post</code> request to fill it out. We expect a <code>302</code> redirect after the form is submitted and then confirm that there is now one user in the test database with a matching username and email address. We do not check the password because Django automatically encrypts them by default. That is why if you look in the admin view of a user you can change a password but you can’t see what the current one actually is.</p>
+
+    <p>Run the tests with <code>python manage.py test</code> to check that everything passes as expected.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+Found 3 test(s).
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.183s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-conclusion-9">Conclusion</h3>
+
+    <p>So far our <em>Newspaper</em> app has a custom user model and working sign up, log in, and log out pages. But you may have noticed our site doesn’t look very good. In the next chapter we’ll add styling with Bootstrap and create a dedicated <code>pages</code> app.</p>
+
+  </div>
+
+</body>
+
+</html>

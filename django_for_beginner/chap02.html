@@ -1,0 +1,777 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 2: Hello World App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-2-hello-world-app">Chapter 2: Hello World App</h2>
+
+    <p>In this chapter we will build a Django project that simply says “Hello, World” on the homepage. This is the traditional way to start a new programming language or framework. We’ll also work with Git for the first time and deploy our code to GitHub.</p>
+
+    <p>If you become stuck at any point, complete source code for this and all future chapters is available online on <a href="https://github.com/wsvincent/djangoforbeginners">the official GitHub repo</a> for the book.</p>
+
+    <h3 id="leanpub-auto-initial-set-up">Initial Set Up</h3>
+
+    <p>To begin, open up a new command line shell or use the built-in terminal on VS Code. For the latter click on “Terminal” at the top and then “New Terminal” to bring it up on the bottom of the screen.</p>
+
+    <p>Make sure you are not in an existing virtual environment by checking there is nothing in parentheses before your command line prompt. You can even type <code>deactivate</code> to be completely sure. Then navigate to the <code>code</code> directory on your Desktop and create a <code>helloworld</code> directory with the following commands.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; cd onedrive\desktop\code
+&gt; mkdir helloworld
+&gt; cd helloworld
+
+# macOS
+% cd ~/desktop/code
+% mkdir helloworld
+% cd helloworld
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Create a new virtual environment called <code>.venv</code>, activate it, and install Django with Pip as we did in the previous chapter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; python -m venv .venv
+&gt; .venv\Scripts\Activate.ps1
+(.venv) &gt; python -m pip install django~=4.0.0
+
+# macOS
+% python3 -m venv .venv
+% source .venv/bin/activate
+(.venv) % python3 -m pip install django~=4.0.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now we’ll use the Django <code>startproject</code> command to make a new project called <code>django_project</code>. Don’t forget to include the period (<code>.</code>) at the end of the command so that it is installed in our current directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; django-admin startproject django_project .
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Let’s pause for a moment to examine the default project structure Django has provided for us. You examine this visually if you like by opening the new directory with your mouse on the Desktop. The <code>.venv</code> directory may not be initially visible because it is “hidden” but nonetheless still there.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>├── django_project
+│   ├── __init__.py
+|   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── manage.py
+└── .venv/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The <code>.venv</code> directory was created with our virtual environment but Django has added a <code>django_project</code> directory and a <code>manage.py</code> file. Within <code>django_project</code> are five new files:</p>
+
+    <ul>
+
+      <li>
+<code>__init__.py</code> indicates that the files in the folder are part of a Python package. Without this file, we cannot import files from another directory which we will be doing a lot of in Django!</li>
+
+      <li>
+<code>asgi.py</code> allows for an optional <a href="https://asgi.readthedocs.io/en/latest/specs/main.html">Asynchronous Server Gateway Interface</a> to be run</li>
+
+      <li>
+<code>settings.py</code> controls our Django project’s overall settings</li>
+
+      <li>
+<code>urls.py</code> tells Django which pages to build in response to a browser or URL request</li>
+
+      <li>
+<code>wsgi.py</code> stands for <a href="https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface">Web Server Gateway Interface</a> which helps Django serve our eventual web pages.</li>
+
+    </ul>
+
+    <p>The <code>manage.py</code> file is not part of <code>django_project</code> but is used to execute various Django commands such as running the local web server or creating a new app.</p>
+
+    <p>Let’s try out our new project by using Django’s lightweight built-in web server for local development purposes. The command we’ll use is <code>runserver</code> which is located in <code>manage.py</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+(.venv) &gt; python manage.py runserver
+
+# macOS
+(.venv) % python3 manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you visit <code>http://127.0.0.1:8000/</code> you should see the following image:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/00_welcome40.png" alt="Django welcome page" style="width: 100%"/>
+
+        <figcaption>Django welcome page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Note that the full command line output will contain additional information including a warning about <code>18 unapplied migrations</code>. Technically, this warning doesn’t matter at this point. Django is complaining that we have not yet “migrated” our initial database. Since we won’t actually use a database in this chapter the warning won’t affect the end result.</p>
+
+    <p>However, since warnings are still annoying to see, we can remove it by first stopping the local server with the command <code>Control+c</code> and then running <code>python manage.py migrate</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; python manage.py migrate
+
+# macOS
+% python3 manage.py migrate
+
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, sessions
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying sessions.0001_initial... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>What Django has done here is create a SQLite database and migrated its built-in apps provided for us. This is represented by the new file <code>db.sqlite3</code> in our directly.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>├── django_project
+│   ├── __init__.py
+|   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── db.sqlite3  # new
+├── manage.py
+└── .venv/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For now, if you execute <code>python manage.py runserver</code> again you should no longer see any warnings.</p>
+
+    <h3 id="leanpub-auto-http-requestresponse-cycle">HTTP Request/Response Cycle</h3>
+
+    <p><a href="https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol">HTTP (Hypertext Transfer Protocol)</a> was initially created by Tim Berners-Lee in 1989 and is the foundation of the World Wide Web. A network protocol is a set of rules for formatting and processing data. It is like a common language for computers that allows them to communicate with one another even if they are located on opposite sides of the earth and have vastly different hardware and software.</p>
+
+    <p>HTTP is a request-response protocol that works in a client-server computing model. Every time you visit a webpage an initial “request” is sent by the “client” (ie your computer) and a “response” is sent back by a “server.” The client doesn’t have to be a computer though, it could also be a mobile phone or any internet-connected device. But the process is the same: an HTTP request is sent to a URL by a client and a server sends back an HTTP response.</p>
+
+    <p>Ultimately, all a web framework like Django does is accept HTTP requests to a given URL and return a HTTP response containing the information necessary to render a webpage. That’s it. Generally this process involves identifying the proper URL, connecting to a database, adding some logic, applying style with HTML/CSS/JavaScript/static assets, and then return the HTTP response. That’s it.</p>
+
+    <p>The abstract flow looks something like this:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Web Framework</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>HTTP Request -&gt; URL -&gt; Django combines database, logic, styling -&gt; HTTP Response
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-model-view-controller-vs-model-view-template">Model-View-Controller vs Model-View-Template</h3>
+
+    <p>Over time the <strong>Model-View-Controller (MVC)</strong> pattern has emerged as a popular way to <em>internally</em> separate the data, logic, and display of an application into separate components. This makes it easier for a developer to reason about the code. The MVC pattern is widely used among web frameworks including Ruby on Rails, Spring (Java), Laravel (PHP), ASP.NET (C#) and many others.</p>
+
+    <p>In the traditional MVC pattern there are three major components:</p>
+
+    <ul>
+
+      <li>Model: Manages data and core business logic</li>
+
+      <li>View: Renders data from the model in a particular format</li>
+
+      <li>Controller: Accepts user input and performs application-specific logic</li>
+
+    </ul>
+
+    <p>Django only loosely follows the traditional MVC approach with its own version often called <strong>Model-View-Template (MVT)</strong>. This can be initially confusing to developers with previous web framework experience. In reality, Django’s approach is really it is a 4-part pattern that also incorporates URL Configuration so something like <em>MVTU</em> would be a more accurate description.</p>
+
+    <p>The Django MVT pattern is as follows:</p>
+
+    <ul>
+
+      <li>Model: Manages data and core business logic</li>
+
+      <li>View: Describes <em>which</em> data is sent to the user but not its presentation</li>
+
+      <li>Template: Presents the data as HTML with optional CSS, JavaScript, and Static Assets</li>
+
+      <li>URL Configuration: Regular-expression components configured to a View</li>
+
+    </ul>
+
+    <p>This interaction is fundamental to Django yet <strong>very confusing</strong> to newcomers so let’s map out the order of a given HTTP request/response cycle. When you type in a URL, such as <code>https://djangoproject.com</code>, the first thing that happens within our Django project is a URL pattern (contained in <code>urls.py</code>) is found that matches it. The URL pattern is linked to a single view (contained in <code>views.py</code>) which combines the data from the model (stored in <code>models.py</code>) and the styling from a template (any file ending in <code>.html</code>). The view then returns a HTTP response to the user.</p>
+
+    <p>The complete Django flow looks like this:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Django request/response cycle</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>HTTP Request -&gt; URL -&gt; View -&gt; Model and Template -&gt; HTTP Response
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you are brand new to web development the distinction between MVC and MVT will not matter much. This book demonstrates the Django way of doing things so there won’t be confusion. However if you are a web developer with previous MVC experience, it can take a little while to shift your thinking to the “Django way” of doing things which is more loosely coupled and allows for easier modifications.</p>
+
+    <h3 id="leanpub-auto-create-an-app">Create An App</h3>
+
+    <p>Django uses the concept of projects and apps to keep code clean and readable. A single top-level Django project can contain multiple apps. Each app controls an isolated piece of functionality. For example, an e-commerce site might have one app for user authentication, another app for payments, and a third app to power item listing details. That’s three distinct apps that all live within one top-level project. How and when you split functionality into apps is somewhat subjective, but in general, each app should have a clear function.</p>
+
+    <p>To add a new app go to the command line and quit the running server with <code>Control+c</code>. Then use the <code>startapp</code> command followed by the name of our app which will be <code>pages</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+(.venv) &gt; python manage.py startapp pages
+
+# macOS
+(.venv) % python3 manage.py startapp pages
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you look visually at the <code>helloworld</code> directory Django has created within it a new <code>pages</code> directory containing the following files:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>├── pages
+│   ├── __init__.py
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   └── __init__.py
+│   ├── models.py
+│   ├── tests.py
+│   └── views.py
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Let’s review what each new <code>pages</code> app file does:</p>
+
+    <ul>
+
+      <li>
+<code>admin.py</code> is a configuration file for the built-in Django Admin app</li>
+
+      <li>
+<code>apps.py</code> is a configuration file for the app itself</li>
+
+      <li>
+<code>migrations/</code> keeps track of any changes to our <code>models.py</code> file so it stays in sync with our database</li>
+
+      <li>
+<code>models.py</code> is where we define our database models which Django automatically translates into database tables</li>
+
+      <li>
+<code>tests.py</code> is for app-specific tests</li>
+
+      <li>
+<code>views.py</code> is where we handle the request/response logic for our web app</li>
+
+    </ul>
+
+    <p>Notice that the model, view, and url from the MVT pattern are present from the beginning. The only thing missing is a template which we’ll add shortly.</p>
+
+    <p>Even though our new app exists within the Django project, Django doesn’t “know” about it until we explicitly add it to the <code>django_project/settings.py</code> file. In your text editor open the file up and scroll down to <code>INSTALLED_APPS</code> where you’ll see six built-in Django apps already there. Add <code>pages.apps.PagesConfig</code> at the bottom.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you have Black installed in your text editor on “save” it will change all the single quotes <code>''</code> here to double quotes <code>""</code>. That’s fine. As noted previously, Django has plans to adopt Black Python formatting fully in the future.</p>
+
+    <p>What is <code>PagesConfig</code> you might ask? Well, it is the name of the solitary function within the <code>pages/apps.py</code> file at this point.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/apps.py</code>
+<code class="kn">from</code> <code class="nn">django.apps</code> <code class="kn">import</code> <code class="n">AppConfig</code>
+
+
+<code class="k">class</code> <code class="nc">PagesConfig</code><code class="p">(</code><code class="n">AppConfig</code><code class="p">):</code>
+    <code class="n">default_auto_field</code> <code class="o">=</code> <code class="s2">"django.db.models.BigAutoField"</code>
+    <code class="n">name</code> <code class="o">=</code> <code class="s2">"pages"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Don’t worry if you are confused at this point: it takes practice to internalize how Django projects and apps are structured. Over the course of this book we will build many projects and apps and the patterns will soon become familiar.</p>
+
+    <h3 id="leanpub-auto-hello-world">Hello, World</h3>
+
+    <p>In Django, four separate files aligning with this MVT pattern are required to power one single dynamic (aka linked to a database) webpage:</p>
+
+    <ul>
+
+      <li><code>models.py</code></li>
+
+      <li><code>views.py</code></li>
+
+      <li>
+<code>template.html</code> (any HTML file will do)</li>
+
+      <li><code>urls.py</code></li>
+
+    </ul>
+
+    <p>However, to create a static webpage (not linked to a database) we can hardcode the data into a view so the model is not needed. That’s what we’ll do here to keep things simple. From Chapter 4 onwards we’ll be using the model in all our projects.</p>
+
+    <p>The next step is therefore to create our first view. Start by updating the <code>views.py</code> file in our <code>pages</code> app to look as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/views.py</code>
+<code class="kn">from</code> <code class="nn">django.http</code> <code class="kn">import</code> <code class="n">HttpResponse</code>
+
+
+<code class="k">def</code> <code class="nf">homePageView</code><code class="p">(</code><code class="n">request</code><code class="p">):</code>
+    <code class="k">return</code> <code class="n">HttpResponse</code><code class="p">(</code><code class="s2">"Hello, World!"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Basically, we’re saying whenever the view function <code>homePageView</code> is called, return the text “Hello, World!” More specifically, we’ve imported the built-in
+<a href="https://docs.djangoproject.com/en/4.0/ref/request-response/#django.http.HttpResponse">HttpResponse</a> method so we can return a response object to the user. We’ve created a function called <code>homePageView</code> that accepts the <code>request</code> object and returns a <code>response</code> with the string “Hello, World!”</p>
+
+    <p>There are two types of views in Django: function-based views (FBVs) and class-based views (CBVs). Our code in this example is a function-based view: it is relatively simple to implement and explicit. Django originally started with only FBVs but over time added CBVs which allow for much greater code reusability, keeps things DRY (Don’t-Repeat-Yourself), and can be extended via mixins. The additional abstraction of CBVs makes them quite powerful and concise, however it also makes them harder to read for Django newcomers.</p>
+
+    <p>Because web development quickly becomes repetitive Django also comes with a number of built-in generic class-based views (GCBVs) to handle common use cases such as creating a new object, forms, list views, pagination, and so on. We will be using GCBVs heavily in this book in later chapters.</p>
+
+    <p>There are therefore technically three ways to write a view in Django: function-based views (FBVs), class-based views (CBVs), and generic class-based views (GCBVs). This customization is helpful for advanced developers but confusing for newcomers. Many Django developers–including your author–prefer to use GCBVs when possible and revert to CBVs or FBVs when required. By the end of this book you will have used all three and can make up your own mind on which approach you prefer.</p>
+
+    <p>Moving along we need to configure our URLs. In your text editor, create a new file called <code>urls.py</code> within the <code>pages</code> app. Then update it with the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">homePageView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">homePageView</code><code class="p">,</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On the top line we import <code>path</code> from Django to power our URL pattern and on the next line we import our views. By referring to the <code>views.py</code> file as <code>.views</code> we are telling Django to look within the current directory for a <code>views.py</code> file and import the view <code>homePageView</code> from there.</p>
+
+    <p>Our URL pattern has three parts:</p>
+
+    <ul>
+
+      <li>a Python regular expression for the empty string <code>""</code>
+</li>
+
+      <li>a reference to the view called <code>homePageView</code>
+</li>
+
+      <li>an optional <a href="https://docs.djangoproject.com/en/4.0/topics/http/urls/#naming-url-patterns">named URL pattern</a> called <code>"home"</code>
+</li>
+
+    </ul>
+
+    <p>In other words, if the user requests the homepage represented by the empty string <code>""</code>, Django should use the view called <code>homePageView</code>.</p>
+
+    <p>We’re <em>almost</em> done at this point. The last step is to update our <code>django_project/urls.py</code> file. It’s common to have multiple apps within a single Django project, like <code>pages</code> here, and they each need their own dedicated URL path.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’ve imported <code>include</code> on the second line next to <code>path</code> and then created a new URL pattern for our <code>pages</code> app. Now whenever a user visits the homepage, they will first be routed to the <code>pages</code> app and then to the <code>homePageView</code> view set in the <code>pages/urls.py</code> file.</p>
+
+    <p>This need for two separate <code>urls.py</code> files is often confusing to beginners. Think of the top-level <code>django_project/urls.py</code> as the gateway to various url patterns distinct to each app.</p>
+
+    <p>We have all the code we need now. To confirm everything works as expected, restart our Django server:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+(.venv) &gt; python manage.py runserver
+
+# macOS
+(.venv) % python3 manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the browser for <code>http://127.0.0.1:8000/</code> it now displays the text “Hello, World!”</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/02_helloworld.png" alt="Hello World homepage" style="width: 100%"/>
+
+        <figcaption>Hello World homepage</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-git">Git</h3>
+
+    <p>In the previous chapter we installed the version control system Git. Let’s use it here. The first step is to initialize (or add) Git to our repository. Make sure you’ve stopped the local server with <code>Control+c</code>, then run the command <code>git init</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git init
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you then type <code>git status</code> you’ll see a list of changes since the last Git commit. Since this is our first commit, this list is all of our changes so far.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git status
+On branch main
+
+No commits yet
+
+Untracked files:
+  (use "git add &lt;file&gt;..." to include in what will be committed)
+
+        .venv
+        django_project/
+        db.sqlite3
+        manage.py
+        pages/
+
+nothing added to commit but untracked files present (use "git add" to track)
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that our virtual environment <code>.venv</code> is included which is <em>not</em> a best practice. It should be kept out of Git source control since secret information such as API keys and the like are often included in it. The solution is to create a new file called <code>.gitignore</code> which tells Git what to ignore. The period at the beginning indicates this is a “hidden” file. The file still exists but it is a way to communicate to developers that the contents are probably meant for configuration and not source control. In this new file, add a single line for <code>.venv</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you run <code>git status</code> again you will see that <code>.venv</code> is not longer there. It has been “ignored” by Git.</p>
+
+    <p>At the same time, we <em>do</em> want a record of packages installed in our virtual environment. The current best practice is to create a <code>requirements.txt</code> file with this information. The command <code>pip freeze</code> will output the contents of your current virtual environment and by using the <code>&gt;</code> operator we can do all this in one step: output the contents into a new file called <code>requirements.txt</code>. If your server is still running enter <code>Ctrl+c</code> and <code>Enter</code> to exit before entering this command.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; pip freeze &gt; requirements.txt
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>A new <code>requirements.txt</code> file will appear with all our installed packages and their dependencies. If you look <em>inside</em> this file you’ll see there are actually four packages even though we have installed only one.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.4.1
+Django==4.0
+sqlparse==0.4.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>That’s because Django relies on <em>other</em> packages for support, too. It is often the case that when you install one Python package you’re often installing several others it depends on as well. Since it is difficult to keep track of all the packages a <code>requirements.txt</code> file is very important.</p>
+
+    <p>We next want to add <em>all</em> recent changes by using the command <code>add -A</code> and then <code>commit</code> the changes along with a message (<code>-m</code>) describing what has changed.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "initial commit"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In professional projects a <code>.gitignore</code> file is typically quite lengthy. For efficiency and security reasons, there are often quite a few directories and files that should be removed from source control. We will cover this more thoroughly in Chapter 16 when we do a professional-grade deployment.</p>
+
+    <h3 id="leanpub-auto-github">GitHub</h3>
+
+    <p>It’s a good habit to create a remote repository of your code for each project. This way you have a backup in case anything happens to your computer and more importantly, it allows for collaboration with other software developers. Popular choices include GitHub, Bitbucket, and GitLab. When you’re learning web development, it’s best to stick to private rather than public repositories so you don’t inadvertently post critical information such as passwords online.</p>
+
+    <p>We will use GitHub in this book but all three services offer similar functionality for newcomers. Sign up for a free account on GitHub’s homepage and verify your email address. Then navigate to the “Create a new repository” page located at <a href="https://github.com/new">https://github.com/new</a>.</p>
+
+    <p>Enter the repository name <code>hello-world</code> and click on the radio button next to “Private” rather than “Public.” Then click on the button at the bottom for “Create Repository.”</p>
+
+    <p>Your first repository is now created! However there is no code in it yet. Scroll down on the page to where it says “…or push an existing repository from the command line.” That’s what we want. Copy the text immediately under this headline and paste it into your command line. Here is what it looks like for me with my GitHub username of <code>wsvincent</code>. Your username will be different.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>&gt; git remote add origin https://github.com/wsvincent/hello-world.git
+&gt; git branch -M main
+&gt; git push -u origin main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The first line syncs the local directory on our computer with the remote repository on the GitHub website. The next line establishes the default branch as <code>main</code> which is what we want. And then the third line “pushes” the code up to GitHub’s servers.</p>
+
+    <p>Assuming everything worked properly, you can now go back to your GitHub webpage and refresh it. Your local code is now hosted online!</p>
+
+    <h3 id="leanpub-auto-ssh-keys">SSH Keys</h3>
+
+    <p>Unfortunately, there is a good chance that the last command yielded an error if you are a new developer and do not have SSH keys already configured.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>ERROR: Repository not found.
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This cryptic message means we need to configure SSH keys. This is a one-time thing but a bit of a hassle to be honest.</p>
+
+    <p>SSH is a protocol used to ensure private connections with a remote server. Think of it as an additional layer of privacy on top of username/password. The process involves generating unique SSH keys and storing them on your computer so only GitHub can access them.</p>
+
+    <p>First, check whether you have existing SSH keys. Github has <a href="https://help.github.com/en/articles/checking-for-existing-ssh-keys">a guide to this</a> that works for Mac, Windows, and Linux. If you <em>don’t</em> have existing public and private keys, you’ll need to generate them. GitHub, again, has <a href="https://help.github.com/en/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent">a guide on doing this</a>.</p>
+
+    <p>Once complete you should be able to execute the <code>git push -u origin main</code> command successfully!</p>
+
+    <p>It’s normal to feel overwhelmed and frustrated if you become stuck with SSH keys. GitHub has a lot of resources to walk you through it but the reality is its very intimidating the first time. If you’re truly stuck, continue with the book and come back to SSH Keys and GitHub with a full nights sleep. I can’t count the number of times a clear head has helped me process a difficult programming issue.</p>
+
+    <p>Assuming success with GitHub, go ahead and exit our virtual environment with the <code>deactivate</code> command.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; deactivate
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You should no longer see parentheses on your command line, indicating the virtual environment is no longer active.</p>
+
+    <h3 id="leanpub-auto-conclusion-2">Conclusion</h3>
+
+    <p>Congratulations! We’ve covered a lot of fundamental concepts in this chapter. We built our first Django application and learned about Django’s project/app structure. We started to learn about views, urls, and the internal Django web server. And we worked with Git to track our changes and pushed our code into a private repo on GitHub.</p>
+
+    <p>If you became stuck at any point make sure to compare your code against the <a href="https://github.com/wsvincent/djangoforbeginners">official repo</a>.</p>
+
+    <p>Continue on to <strong>Chapter 3: Pages app</strong> where we’ll build and deploy a more complex Django application using templates and class-based views.</p>
+
+  </div>
+
+</body>
+
+</html>

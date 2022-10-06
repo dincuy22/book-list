@@ -1,0 +1,674 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 6: Forms</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-6-forms">Chapter 6: Forms</h2>
+
+    <p>In this chapter we’ll continue working on our Blog application from <strong>Chapter 5</strong> by adding forms so a user can create, edit, or delete any of their blog entries. HTML forms are one of the more complicated and error-prone aspects of web development because any time you accept user input there are security concerns. All forms must be properly rendered, validated, and saved to the database.</p>
+
+    <p>Writing this code by hand would be time-consuming and difficult so Django comes with powerful <a href="https://docs.djangoproject.com/en/4.0/topics/forms/">built-in Forms</a> that abstract away much of the difficulty for us. Django also comes with <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-editing/">generic editing views</a> for common tasks like displaying, creating, updating, or deleting a form.</p>
+
+    <h3 id="leanpub-auto-createview">CreateView</h3>
+
+    <p>To start, update our base template to display a link to a page for entering new blog posts. It will take the form <code>&lt;a href="{% url 'post_new' %}"&gt;&lt;/a&gt;</code> where <code>post_new</code> is the name for our URL.</p>
+
+    <p>Your updated file should look as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+{% load static %}
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>Django blog<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">link</code> <code class="na">href</code><code class="o">=</code><code class="s">"https://fonts.googleapis.com/css?family=\</code>
+<code class="s">      Source+Sans+Pro:400"</code> <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">link</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% static 'css/base.css' %}"</code> <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">body</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">header</code><code class="p">&gt;</code>
+        <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-left"</code><code class="p">&gt;</code>
+          <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'home' %}"</code><code class="p">&gt;</code>Django blog<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+        <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+        <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-right"</code><code class="p">&gt;</code>
+          <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'post_new' %}"</code><code class="p">&gt;</code>+ New Blog Post<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+        <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;/</code><code class="nt">header</code><code class="p">&gt;</code>
+      {% block content %}
+      {% endblock content %}
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">body</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">html</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Let’s add a new URL for <code>post_new</code> now. Import <code>BlogCreateView</code> (which has not been created yet) at the top and then add a URL path for <code>post/new/</code>. We will give it the URL name of <code>post_new</code> so it can be referred to later in our templates.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">BlogListView</code><code class="p">,</code> <code class="n">BlogDetailView</code><code class="p">,</code> <code class="n">BlogCreateView</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/new/"</code><code class="p">,</code> <code class="n">BlogCreateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"post_new"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/&lt;int:pk&gt;/"</code><code class="p">,</code> <code class="n">BlogDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"post_detail"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BlogListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Simple, right? It’s the same url, views, template pattern we’ve seen before. Now let’s create our view by importing a new generic class called <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-editing/#createview">CreateView</a> at the top and then subclass it to create a new view called <code>BlogCreateView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code>
+<code class="kn">from</code> <code class="nn">django.views.generic.edit</code> <code class="kn">import</code> <code class="n">CreateView</code>  <code class="c1"># new</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">BlogListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+
+
+<code class="k">class</code> <code class="nc">BlogDetailView</code><code class="p">(</code><code class="n">DetailView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_detail.html"</code>
+
+
+<code class="k">class</code> <code class="nc">BlogCreateView</code><code class="p">(</code><code class="n">CreateView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_new.html"</code>
+    <code class="n">fields</code> <code class="o">=</code> <code class="p">[</code><code class="s2">"title"</code><code class="p">,</code> <code class="s2">"author"</code><code class="p">,</code> <code class="s2">"body"</code><code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Within <code>BlogCreateView</code> we specify our database model, <code>Post</code>, the name of our template, <code>post_new.html</code>, and explicitly set the database <code>fields</code> we want to expose which are <code>title</code>, <code>author</code>, and <code>body</code>.</p>
+
+    <p>The last step is to create our template called <code>post_new.html</code> in the text editor. Then add the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/post_new.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>New post<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">action</code><code class="o">=</code><code class="s">""</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form.as_p }}
+  <code class="p">&lt;</code><code class="nt">input</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code> <code class="na">value</code><code class="o">=</code><code class="s">"Save"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Let’s breakdown what we’ve done:</p>
+
+    <ul>
+
+      <li>On the top line we inherit from our base template.</li>
+
+      <li>Use HTML <code>&lt;form&gt;</code> tags with the <em>POST</em> method since we’re <em>sending</em> data. If we were receiving data from a form, for example in a search box, we would use GET.</li>
+
+      <li>Add a <a href="https://docs.djangoproject.com/en/4.0/ref/csrf/">{% csrf_token %}</a> which Django provides to protect our form from cross-site request forgery. <strong>You should use it for all your Django forms.</strong>
+</li>
+
+      <li>Then to output our form data we use <code>{{ form.as_p }}</code> which renders the specified fields within paragraph <code>&lt;p&gt;</code> tags.</li>
+
+      <li>Finally, specify an input type of submit and assign it the value “Save”.</li>
+
+    </ul>
+
+    <p>To view our work, start the server with <code>python manage.py runserver</code> and go to the homepage at <code>http://127.0.0.1:8000/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/06_new_button.png" alt="Homepage with new button" style="width: 100%"/>
+
+        <figcaption>Homepage with new button</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Click the “+ New Blog Post” link in the upper righthand corner. It will redirect to web page at <code>http://127.0.0.1:8000/post/new/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/06_new_page.png" alt="Blog new page" style="width: 100%"/>
+
+        <figcaption>Blog new page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Go ahead and try to create a new blog post and submit it by clicking the “Save” button.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/06_new_third_post.png" alt="Blog third post save" style="width: 100%"/>
+
+        <figcaption>Blog third post save</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Upon completion it will redirect to a detail page at <code>http://127.0.0.1:8000/post/3/</code> with the post itself. Success!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/06_new_third_post_page.png" alt="Blog third post page" style="width: 100%"/>
+
+        <figcaption>Blog third post page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-updateview">UpdateView</h3>
+
+    <p>The process for creating an update form so users can edit blog posts should feel familiar. We’ll again use a built-in Django class-based generic view, <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-editing/#django.views.generic.edit.UpdateView">UpdateView</a>, and create the requisite template, url, and view.</p>
+
+    <p>To start, let’s add a new link to <code>post_detail.html</code> so that the option to edit a blog post appears on an individual blog page.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/post_detail.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"post-entry"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>{{ post.title }}<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ post.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+
+<code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'post_edit' post.pk %}"</code><code class="p">&gt;</code>+ Edit Blog Post<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’ve added a link using <code>&lt;a href&gt;...&lt;/a&gt;</code> and the Django template engine’s <code>{% url ... %}</code> tag. Within it, we’ve specified the target name of our url, which will be called <code>post_edit</code> and also passed the parameter needed, which is the primary key of the post <code>post.pk</code>.</p>
+
+    <p>Next we create the template file for our edit page called <code>post_edit.html</code> and add the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/post_edit.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Edit post<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">action</code><code class="o">=</code><code class="s">""</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form.as_p }}
+<code class="p">&lt;</code><code class="nt">input</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code> <code class="na">value</code><code class="o">=</code><code class="s">"Update"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We again use HTML <code>&lt;form&gt;&lt;/form&gt;</code> tags, Django’s <code>csrf_token</code> for security, <code>form.as_p</code> to display our form fields with paragraph tags, and finally give it the value “Update” on the submit button.</p>
+
+    <p>Now to our view. We need to import <code>UpdateView</code> on the second-from-the-top line and then subclass it in our new view <code>BlogUpdateView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code>
+<code class="kn">from</code> <code class="nn">django.views.generic.edit</code> <code class="kn">import</code> <code class="n">CreateView</code><code class="p">,</code> <code class="n">UpdateView</code>  <code class="c1"># new</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">BlogListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+
+
+<code class="k">class</code> <code class="nc">BlogDetailView</code><code class="p">(</code><code class="n">DetailView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_detail.html"</code>
+
+
+<code class="k">class</code> <code class="nc">BlogCreateView</code><code class="p">(</code><code class="n">CreateView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_new.html"</code>
+    <code class="n">fields</code> <code class="o">=</code> <code class="p">[</code><code class="s2">"title"</code><code class="p">,</code> <code class="s2">"author"</code><code class="p">,</code> <code class="s2">"body"</code><code class="p">]</code>
+
+
+<code class="k">class</code> <code class="nc">BlogUpdateView</code><code class="p">(</code><code class="n">UpdateView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_edit.html"</code>
+    <code class="n">fields</code> <code class="o">=</code> <code class="p">[</code><code class="s2">"title"</code><code class="p">,</code> <code class="s2">"body"</code><code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Notice that in <code>BlogUpdateView</code> we are explicitly listing the fields we want to use <code>["title", "body"]</code> rather than using <code>"__all__"</code>. This is because we assume that the author of the post is not changing; we only want the title and text to be editable.</p>
+
+    <p>The final step is to update our <code>urls.py</code> file as follows. Add the <code>BlogUpdateView</code> up top and then the new route at the top of the existing <code>urlpatterns</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="p">(</code>
+    <code class="n">BlogListView</code><code class="p">,</code>
+    <code class="n">BlogDetailView</code><code class="p">,</code>
+    <code class="n">BlogCreateView</code><code class="p">,</code>
+    <code class="n">BlogUpdateView</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">)</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/new/"</code><code class="p">,</code> <code class="n">BlogCreateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"post_new"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/&lt;int:pk&gt;/"</code><code class="p">,</code> <code class="n">BlogDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"post_detail"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/&lt;int:pk&gt;/edit/"</code><code class="p">,</code> <code class="n">BlogUpdateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"post_edit"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BlogListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top we add our view <code>BlogUpdateView</code> to the list of imported views, then created a new url pattern for <code>/post/pk/edit</code> and gave it the name <code>post_edit</code>.</p>
+
+    <p>Now if you click on a blog entry you’ll see our new Edit button.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/06_post_with_edit.png" alt="Blog page with edit button" style="width: 100%"/>
+
+        <figcaption>Blog page with edit button</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you click on “+ Edit Blog Post” you’ll be redirected to <code>/post/1/edit/</code> if it is your first blog post, hence the <code>1</code> in the URL. Note that the form is pre-filled with our database’s existing data for the post. Let’s make a change…</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/06_edited.png" alt="Blog edit page" style="width: 100%"/>
+
+        <figcaption>Blog edit page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>And after clicking the “Update” button we are redirected to the detail view of the post where you can see the change. This is because of our <code>get_absolute_url</code> setting. Navigate to the homepage and you can see the change next to all the other entries.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/06_homepage_edited_post.png" alt="Blog homepage with edited post" style="width: 100%"/>
+
+        <figcaption>Blog homepage with edited post</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-deleteview">DeleteView</h3>
+
+    <p>The process for creating a form to delete blog posts is very similar to that for updating a post. We’ll use yet another generic class-based view, <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-editing/#deleteview">DeleteView</a>, create the necessary view, url, and template.</p>
+
+    <p>Let’s start by adding a link to delete blog posts on our individual blog page, <code>post_detail.html</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/post_detail.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"post-entry"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>{{ post.title }}<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ post.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'post_edit' post.pk %}"</code><code class="p">&gt;</code>+ Edit Blog Post<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'post_delete' post.pk %}"</code><code class="p">&gt;</code>+ Delete Blog Post<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then create a new file for our delete page template. It will be called <code>templates/post_delete.html</code> and contain the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/post_delete.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Delete post<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">action</code><code class="o">=</code><code class="s">""</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Are you sure you want to delete "{{ post.title }}"?<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">input</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code> <code class="na">value</code><code class="o">=</code><code class="s">"Confirm"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note we are using <code>post.title</code> here to display the title of our blog post. We could also just use <code>object.title</code> as it too is provided by <code>DetailView</code>.</p>
+
+    <p>Now update the <code>blog/views.py</code> file, by importing <code>DeleteView</code> and <code>reverse_lazy</code> at the top, then create a new view that subclasses <code>DeleteView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code>
+<code class="kn">from</code> <code class="nn">django.views.generic.edit</code> <code class="kn">import</code> <code class="n">CreateView</code><code class="p">,</code> <code class="n">UpdateView</code><code class="p">,</code> <code class="n">DeleteView</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse_lazy</code>  <code class="c1"># new</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Post</code>
+
+
+<code class="k">class</code> <code class="nc">BlogListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+
+
+<code class="k">class</code> <code class="nc">BlogDetailView</code><code class="p">(</code><code class="n">DetailView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_detail.html"</code>
+
+
+<code class="k">class</code> <code class="nc">BlogCreateView</code><code class="p">(</code><code class="n">CreateView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_new.html"</code>
+    <code class="n">fields</code> <code class="o">=</code> <code class="p">[</code><code class="s2">"title"</code><code class="p">,</code> <code class="s2">"author"</code><code class="p">,</code> <code class="s2">"body"</code><code class="p">]</code>
+
+
+<code class="k">class</code> <code class="nc">BlogUpdateView</code><code class="p">(</code><code class="n">UpdateView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_edit.html"</code>
+    <code class="n">fields</code> <code class="o">=</code> <code class="p">[</code><code class="s2">"title"</code><code class="p">,</code> <code class="s2">"body"</code><code class="p">]</code>
+
+
+<code class="k">class</code> <code class="nc">BlogDeleteView</code><code class="p">(</code><code class="n">DeleteView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Post</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"post_delete.html"</code>
+    <code class="n">success_url</code> <code class="o">=</code> <code class="n">reverse_lazy</code><code class="p">(</code><code class="s2">"home"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The DeleteView specifies a model which is <code>Post</code>, a template <code>post_delete.html</code>, and a third field called <code>success_url</code>. What does this do? Well, after a blog post is deleted we want to <em>redirect</em> the user to another page which is, in our case, the homepage at <code>home</code>.</p>
+
+    <p>An astute reader might notice that both CreateView and UpdateView also have redirects yet we did not have to specify a <code>success_url</code>. This is because Django will automatically use <code>get_absolute_url()</code> on the model object if it is available. And the only way to know about this trait is to very closely read and remember the docs, where it <a href="https://docs.djangoproject.com/en/4.0/topics/class-based-views/generic-editing/#model-forms">talks about model forms</a> and <code>success_url</code>. Or more likely to have an error crop up and backtrack to sort out this internal Django behavior.</p>
+
+    <p>One final point: we use <a href="https://docs.djangoproject.com/en/4.0/ref/urlresolvers/#reverse-lazy">reverse_lazy</a> here as opposed to just <a href="https://docs.djangoproject.com/en/4.0/ref/urlresolvers/#reverse">reverse</a> so that it won’t execute the URL redirect until our view has finished deleting the blog post.</p>
+
+    <p>As a final step, create a URL by importing our view <code>BlogDeleteView</code> and adding a new pattern:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="p">(</code>
+    <code class="n">BlogListView</code><code class="p">,</code>
+    <code class="n">BlogDetailView</code><code class="p">,</code>
+    <code class="n">BlogCreateView</code><code class="p">,</code>
+    <code class="n">BlogUpdateView</code><code class="p">,</code>
+    <code class="n">BlogDeleteView</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">)</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/new/"</code><code class="p">,</code> <code class="n">BlogCreateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"post_new"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/&lt;int:pk&gt;/"</code><code class="p">,</code> <code class="n">BlogDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"post_detail"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/&lt;int:pk&gt;/edit/"</code><code class="p">,</code> <code class="n">BlogUpdateView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code>
+        <code class="n">name</code><code class="o">=</code><code class="s2">"post_edit"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"post/&lt;int:pk&gt;/delete/"</code><code class="p">,</code> <code class="n">BlogDeleteView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code>
+        <code class="n">name</code><code class="o">=</code><code class="s2">"post_delete"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BlogListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you start the server again with the command <code>python manage.py runserver</code> and refresh any individual post page you’ll see our “Delete Blog Post” link.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/06_delete_view.png" alt="Blog delete post" style="width: 100%"/>
+
+        <figcaption>Blog delete post</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Clicking on the link takes us to the delete page for the blog post, which displays the name of the blog post.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/06_delete_page.png" alt="Blog delete post page" style="width: 100%"/>
+
+        <figcaption>Blog delete post page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you click on the “Confirm” button, it redirects you to the homepage where the blog post has been deleted!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/06_homepage_deleted_post.png" alt="Homepage with post deleted" style="width: 100%"/>
+
+        <figcaption>Homepage with post deleted</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>So it works!</p>
+
+    <h3 id="leanpub-auto-tests-3">Tests</h3>
+
+    <p>Time for tests to make sure everything works now–and in the future–as expected. We’ve added new views for create, update, and delete so that means three new tests:</p>
+
+    <ul>
+
+      <li><code>def test_post_createview</code></li>
+
+      <li><code>def test_post_updateview</code></li>
+
+      <li><code>def test_post_deleteview</code></li>
+
+    </ul>
+
+    <p>Update your existing <code>tests.py</code> file with new tests below <code>test_post_detailview</code> as follows.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># blog/tests.py</code>
+    <code class="o">...</code>
+    <code class="k">def</code> <code class="nf">test_post_createview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">post</code><code class="p">(</code>
+            <code class="n">reverse</code><code class="p">(</code><code class="s2">"post_new"</code><code class="p">),</code>
+            <code class="p">{</code>
+                <code class="s2">"title"</code><code class="p">:</code> <code class="s2">"New title"</code><code class="p">,</code>
+                <code class="s2">"body"</code><code class="p">:</code> <code class="s2">"New text"</code><code class="p">,</code>
+                <code class="s2">"author"</code><code class="p">:</code> <code class="bp">self</code><code class="o">.</code><code class="n">user</code><code class="o">.</code><code class="n">id</code><code class="p">,</code>
+            <code class="p">},</code>
+        <code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">302</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">last</code><code class="p">()</code><code class="o">.</code><code class="n">title</code><code class="p">,</code> <code class="s2">"New title"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">last</code><code class="p">()</code><code class="o">.</code><code class="n">body</code><code class="p">,</code> <code class="s2">"New text"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_post_updateview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">post</code><code class="p">(</code>
+            <code class="n">reverse</code><code class="p">(</code><code class="s2">"post_edit"</code><code class="p">,</code> <code class="n">args</code><code class="o">=</code><code class="s2">"1"</code><code class="p">),</code>
+            <code class="p">{</code>
+                <code class="s2">"title"</code><code class="p">:</code> <code class="s2">"Updated title"</code><code class="p">,</code>
+                <code class="s2">"body"</code><code class="p">:</code> <code class="s2">"Updated text"</code><code class="p">,</code>
+            <code class="p">},</code>
+        <code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">302</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">last</code><code class="p">()</code><code class="o">.</code><code class="n">title</code><code class="p">,</code> <code class="s2">"Updated title"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">Post</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">last</code><code class="p">()</code><code class="o">.</code><code class="n">body</code><code class="p">,</code> <code class="s2">"Updated text"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_post_deleteview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">post</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"post_delete"</code><code class="p">,</code> <code class="n">args</code><code class="o">=</code><code class="s2">"1"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">302</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For <code>test_post_createview</code> we create a new response and check that the page has a 302 redirect status code and the <code>last()</code> object created on our model matches the new response. Then <code>test_post_updateview</code> sees if we can update the initial post created in <code>setUpTestData</code> since that data is available throughout our entire test class. The last new test, <code>test_post_deleteview</code>, confirms that a 302 redirect occurs when deleting a post.</p>
+
+    <p>There are always more tests that can be added but at least we have some coverage on all our new functionality. Stop the local web server with <code>Control+c</code> and run these tests now. They should all pass.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.129s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-conclusion-6">Conclusion</h3>
+
+    <p>With a small amount of code we’ve built a Blog application that allows for creating, reading, updating, and deleting blog posts. This core functionality is known by the acronym <em>CRUD: Create-Read-Update-Delete</em>. While there are multiple ways to achieve this same functionality–we could have used function-based views or written our own class-based views–we’ve demonstrated how little code it takes in Django to make this happen.</p>
+
+    <p>Note, however, a potential security concern: currently <em>any</em> user can update or delete blog entries, not just the creator! This is not ideal and indeed Django comes with built-in features to restrict access based on permissions, which we’ll cover in-depth in Chapter 14.</p>
+
+    <p>But for now our Blog application is working and in the next chapter we’ll add user accounts so users can sign up, log in, and log out of the web app.</p>
+
+  </div>
+
+</body>
+
+</html>

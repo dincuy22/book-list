@@ -1,0 +1,660 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 15: Comments</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-15-comments">Chapter 15: Comments</h2>
+
+    <p>There are two ways we could add comments to our <em>Newspaper</em> site. The first is to create a dedicated <em>comments</em> app and link it to <em>articles</em>, however that seems like over-engineering at this point. Instead, we can simply add an additional model called <code>Comment</code> to our <em>articles</em> app and link it to the <code>Article</code> model through a foreign key. We will take the simpler approach since it’s always easy to add more complexity later.</p>
+
+    <p>The whole structure within Django of one project and multiple smaller apps is designed to help the developer reason about the website. The computer doesn’t care how the code is structured. Breaking functionality out into smaller pieces helps us–and any future teammates–understand the logic in a web application. But you don’t need to prematurely optimize. If your eventual comments logic becomes quite lengthy then yes, by all means, spin it off into its own <code>comments</code> app. But the first thing to do is make the code work, then make sure it is performant, and lastly structure it so it’s understandable to you or someone else months later.</p>
+
+    <p>What do we need to add comments functionality to our website? We already know it will involve models, urls, views, templates, and in this case also forms. All will be needed for the final solution but the order in which we tackle them is largely up to us. That said, many Django developers find that going in this order–models -&gt; urls -&gt; views -&gt; templates/forms–works best so that is what we will use here. By the end of this chapter, users will be able to add comments to any existing article on our website.</p>
+
+    <h3 id="leanpub-auto-model">Model</h3>
+
+    <p>Let’s begin by adding another table to our existing database called <code>Comment</code>. This model will have a many-to-one foreign key relationship to <code>Article</code>: one article can have many comments, but not the other way around. Traditionally the name of the foreign key field is simply the model it links to, so this field will be called <code>article</code>. The other two fields will be <code>comment</code> and <code>author</code>.</p>
+
+    <p>Open up the file <code>articles/models.py</code> and underneath the existing code add the following. Note that we are including both a <code>__str__</code> and <code>get_absolute_url</code> method as a best practice.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/models.py</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">Comment</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">article</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ForeignKey</code><code class="p">(</code><code class="n">Article</code><code class="p">,</code> <code class="n">on_delete</code><code class="o">=</code><code class="n">models</code><code class="o">.</code><code class="n">CASCADE</code><code class="p">)</code>
+    <code class="n">comment</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">140</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ForeignKey</code><code class="p">(</code>
+        <code class="n">settings</code><code class="o">.</code><code class="n">AUTH_USER_MODEL</code><code class="p">,</code>
+        <code class="n">on_delete</code><code class="o">=</code><code class="n">models</code><code class="o">.</code><code class="n">CASCADE</code><code class="p">,</code>
+    <code class="p">)</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">comment</code>
+
+    <code class="k">def</code> <code class="nf">get_absolute_url</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"article_list"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Since we’ve updated our models it’s time to make a new migration file and then apply it. Note that by adding <code>articles</code> at the end of the <code>makemigrations</code> command–which is optional–we are specifying we want to use just the <code>articles</code> app here. This is a good habit to use. For example, what if we made changes to models in two different apps? If we <strong>did not</strong> specify an app, then both apps’s changes would be incorporated in the same migrations file which makes it harder, in the future, to debug errors. Keep each migration as small and contained as possible.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py makemigrations articles
+(.venv) &gt; python manage.py migrate
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-admin-2">Admin</h3>
+
+    <p>After making a new model it’s good to play around with it in the admin app before displaying it on our actual website. Add <code>Comment</code> to our <code>admin.py</code> file so it will be visible.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Article</code><code class="p">,</code> <code class="n">Comment</code>  <code class="c1"># new</code>
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Article</code><code class="p">)</code>
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Comment</code><code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then start up the server with <code>python manage.py runserver</code> and navigate to our main page <code>http://127.0.0.1:8000/admin/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_admin_with_comments.png" alt="Admin page with comments" style="width: 100%"/>
+
+        <figcaption>Admin page with comments</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Under our app “Articles” you’ll see our two tables: Comments and Articles. Click on the “+ Add” next to Comments. There are dropdowns for Article, Author, and a text field next to Comment.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_admin_comments.png" alt="Admin comments" style="width: 100%"/>
+
+        <figcaption>Admin comments</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Select an Article, write a comment, and then choose an author that is not your superuser, perhaps <code>testuser</code> as I’ve done in the picture. Then click on the “Save” button.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_testuser_comment.png" alt="Admin testuser comment" style="width: 100%"/>
+
+        <figcaption>Admin testuser comment</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>You should next see your comment on the “Comments” page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_article_comment.png" alt="Admin comment one" style="width: 100%"/>
+
+        <figcaption>Admin comment one</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>At this point we could add an additional admin field so we’d see the comment and the article on this page. But wouldn’t it be better to just see all <code>Comment</code> models related to a single <code>Article</code> model? It turns out we can with a Django admin feature called <em>inlines</em> which displays foreign key relationships in a visual way.</p>
+
+    <p>There are two main inline views used: <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/admin/#django.contrib.admin.TabularInline">TabularInline</a> and <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/admin/#django.contrib.admin.StackedInline">StackedInline</a>. The only difference between the two is the template for displaying information. In a TabularInline all model fields appear on one line while in a StackedInline each field has its own line. We’ll implement both so you can decide which one you prefer.</p>
+
+    <p>Update <code>articles/admin.py</code> as follows in your text editor to add the StackedInline view.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Article</code><code class="p">,</code> <code class="n">Comment</code>
+
+
+<code class="k">class</code> <code class="nc">CommentInline</code><code class="p">(</code><code class="n">admin</code><code class="o">.</code><code class="n">StackedInline</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Comment</code>
+
+
+<code class="k">class</code> <code class="nc">ArticleAdmin</code><code class="p">(</code><code class="n">admin</code><code class="o">.</code><code class="n">ModelAdmin</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">inlines</code> <code class="o">=</code> <code class="p">[</code>
+        <code class="n">CommentInline</code><code class="p">,</code>
+    <code class="p">]</code>
+
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Article</code><code class="p">,</code> <code class="n">ArticleAdmin</code><code class="p">)</code>  <code class="c1"># new</code>
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Comment</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now go back to the main admin page at <code>http://127.0.0.1:8000/admin/</code> and click on “Articles.” Select the article which you just added a comment for which was “4th article” in my case.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_stacked.png" alt="Admin change page" style="width: 100%"/>
+
+        <figcaption>Admin change page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Better, right? We can see and modify all our related articles and comments in one place. Note that by default, the Django admin will display 3 empty rows here. You can change the default number that appear with the <code>extra</code> field. So if you wanted no extra fields by default, the code would look like this:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/admin.py</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">CommentInline</code><code class="p">(</code><code class="n">admin</code><code class="o">.</code><code class="n">StackedInline</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Comment</code>
+    <code class="n">extra</code> <code class="o">=</code> <code class="mi">0</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_no_extra_comments.png" alt="Admin no extra comments" style="width: 100%"/>
+
+        <figcaption>Admin no extra comments</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Personally, though, I prefer using <code>TabularInline</code> as it shows more information in less space. To switch to it we only need to change our <code>CommentInline</code> from <code>admin.StackedInline</code> to <code>admin.TabularInline</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Article</code><code class="p">,</code> <code class="n">Comment</code>
+
+
+<code class="k">class</code> <code class="nc">CommentInline</code><code class="p">(</code><code class="n">admin</code><code class="o">.</code><code class="n">TabularInline</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Comment</code>
+
+
+<code class="k">class</code> <code class="nc">ArticleAdmin</code><code class="p">(</code><code class="n">admin</code><code class="o">.</code><code class="n">ModelAdmin</code><code class="p">):</code>
+    <code class="n">inlines</code> <code class="o">=</code> <code class="p">[</code>
+        <code class="n">CommentInline</code><code class="p">,</code>
+    <code class="p">]</code>
+
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Article</code><code class="p">,</code> <code class="n">ArticleAdmin</code><code class="p">)</code>
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Comment</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the current admin page for Articles and you’ll see the new change: all fields for each model are displayed on the same line.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_tabular.png" alt="TabularInline page" style="width: 100%"/>
+
+        <figcaption>TabularInline page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Much better. Now we need to display the comments on our website by updating our template.</p>
+
+    <h3 id="leanpub-auto-template">Template</h3>
+
+    <p>We want comments to appear on the articles list page and allow logged-in users to add a comment on the detail page for an article. That means updating the template files <code>article_list.html</code> and <code>article_detail.html</code>.</p>
+
+    <p>Let’s start with <code>article_list.html</code>. If you look at the <code>articles/models.py</code> file again it is clear that Comment has a foreign key relationship to Article. To display <strong>all</strong> comments related to a specific article we will <a href="https://docs.djangoproject.com/en/4.0/topics/db/queries/#following-relationships-backward">follow the relationship backward</a> via a “query,” which is a way to ask the database for a specific bit of information. Django has a built-in syntax for this known as <code>FOO_set</code> where <code>FOO</code> is the lowercased source model name. So for our <code>Article</code> model, in order to view all related comments, we use the syntax <code>{% for comment in article.comment_set.all %}</code>. And then within this <code>for</code> loop we can specify what to display such as the <code>comment</code> itself and <code>author</code>.</p>
+
+    <p>Here is what the updated <code>article_list.html</code> file looks like. The changes start after the <code>"card-body"</code> div class.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_list.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Articles{% endblock title %}
+
+{% block content %}
+{% for article in article_list %}
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card-header"</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">span</code> <code class="na">class</code><code class="o">=</code><code class="s">"font-weight-bold"</code><code class="p">&gt;</code>{{ article.title }}<code class="p">&lt;/</code><code class="nt">span</code><code class="p">&gt;</code> <code class="ni">&amp;middot;</code>
+      <code class="p">&lt;</code><code class="nt">span</code> <code class="na">class</code><code class="o">=</code><code class="s">"text-muted"</code><code class="p">&gt;</code>by {{ article.author }} |
+      {{ article.date }}<code class="p">&lt;/</code><code class="nt">span</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card-body"</code><code class="p">&gt;</code>
+      <code class="c">&lt;!-- Changes start here! --&gt;</code>
+      <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ article.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_edit' article.pk %}"</code><code class="p">&gt;</code>Edit<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+      <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_delete' article.pk %}"</code><code class="p">&gt;</code>Delete<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"card-footer"</code><code class="p">&gt;</code>
+      {% for comment in article.comment_set.all %}
+        <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>
+          <code class="p">&lt;</code><code class="nt">span</code> <code class="na">class</code><code class="o">=</code><code class="s">"font-weight-bold"</code><code class="p">&gt;</code>
+            {{ comment.author }} <code class="ni">&amp;middot;</code>
+          <code class="p">&lt;/</code><code class="nt">span</code><code class="p">&gt;</code>
+          {{ comment }}
+        <code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+      {% endfor %}
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+    <code class="c">&lt;!-- Changes end here! --&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">br</code> <code class="p">/&gt;</code>
+{% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the articles page at <code>http://127.0.0.1:8000/articles/</code> we can see our new comment displayed on the page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_articles_with_comments.png" alt="Articles page with comments" style="width: 100%"/>
+
+        <figcaption>Articles page with comments</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>It works! We can see comments listed underneath the initial message. Let’s also add comments to the detail page for each article. We’ll use the exact same technique of following the relationship backwards to access comments as a foreign key of the article model.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_detail.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"article-entry"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>{{ object.title }}<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>by {{ object.author }} | {{ object.date }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ object.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+
+<code class="c">&lt;!-- Changes start here! --&gt;</code>
+<code class="p">&lt;</code><code class="nt">hr</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">h4</code><code class="p">&gt;</code>Comments<code class="p">&lt;/</code><code class="nt">h4</code><code class="p">&gt;</code>
+{% for comment in article.comment_set.all %}
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ comment.author }} <code class="ni">&amp;middot;</code> {{ comment }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endfor %}
+<code class="p">&lt;</code><code class="nt">hr</code><code class="p">&gt;</code>
+<code class="c">&lt;!-- Changes end here! --&gt;</code>
+
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_edit' article.pk %}"</code><code class="p">&gt;</code>Edit<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_delete' article.pk %}"</code><code class="p">&gt;</code>Delete<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Back to <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_list' %}"</code><code class="p">&gt;</code>All Articles<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Navigate to the detail page of your article with a comment and any comments will be visible.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_article_details_with_comments.png" alt="Article details page with comments" style="width: 100%"/>
+
+        <figcaption>Article details page with comments</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>We won’t win any design awards for this layout but this is a book on Django so outputting the correct content is our goal.</p>
+
+    <h3 id="leanpub-auto-comment-form">Comment Form</h3>
+
+    <p>The comments are now visible but we need to add a form so users can add them in the website itself. On the web forms are a very complicated topic since security is essential: any time you are accepting data from a user that will be stored in a database you must be extremely cautious. The good news is Django forms handle most of this work for us.</p>
+
+    <p><a href="https://docs.djangoproject.com/en/4.0/topics/forms/modelforms/#modelform">ModelForm</a> is a helper class designed to translate database models into forms. We can use it to create a form called, appropriately enough, <code>CommentForm</code>. We <em>could</em> put this form in our existing <code>articles/models.py</code> file but generally the best practice is to put all forms in a dedicated <code>forms.py</code> file within your app. That’s the approach we’ll use here.</p>
+
+    <p>With your text editor create a new file called <code>articles/forms.py</code>. At the top import <code>forms</code> which has <code>ModelForm</code> as a module. Then import our model, <code>Comment</code>, as well since we’ll need to add that. And finally create the class <code>CommentForm</code> specifying both the underlying model and specific fields we wish to expose, which will be <code>comment</code> and <code>author</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/forms.py</code>
+<code class="kn">from</code> <code class="nn">django</code> <code class="kn">import</code> <code class="n">forms</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Comment</code>
+
+
+<code class="k">class</code> <code class="nc">CommentForm</code><code class="p">(</code><code class="n">forms</code><code class="o">.</code><code class="n">ModelForm</code><code class="p">):</code>
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">:</code>
+        <code class="n">model</code> <code class="o">=</code> <code class="n">Comment</code>
+        <code class="n">fields</code> <code class="o">=</code> <code class="p">(</code><code class="s2">"comment"</code><code class="p">,</code> <code class="s2">"author"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Web forms can be incredibly complex but Django has thankfully abstracted away much of the complexity for us.</p>
+
+    <h3 id="leanpub-auto-comment-view">Comment View</h3>
+
+    <p>Currently we rely on the generic class-based <code>DetailView</code> to power our <code>ArticleDetailView</code>. It is well designed to display individual entries but it is not, by default, configured to add additional information like a form. Class-based views are powerful because their inheritance structure means that, if we know where to look, there is often a specific module we can override to attain our desired outcome.</p>
+
+    <p>The one we want in this case is called <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/mixins-simple/#django.views.generic.base.ContextMixin.get_context_data">get_context_data()</a>. It is used to add information to a template by updating the <a href="https://docs.djangoproject.com/en/4.0/ref/templates/api/#django.template.Context">context</a>, a dictionary object containing all the variable names and values available in our template. For performance reasons Django templates are compiled only once so anything we want available in the template must be loaded from the beginning into the context.</p>
+
+    <p>What do we want to add in this case? Well, just our <code>CommentForm</code>. And since context is a dictionary we must assign a variable name as well. How about <code>form</code>? Here is what the new code looks like in <code>articles/views.py</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/views.py</code>
+<code class="kn">from</code> <code class="nn">.forms</code> <code class="kn">import</code> <code class="n">CommentForm</code>  <code class="c1"># new</code>
+
+<code class="k">class</code> <code class="nc">ArticleDetailView</code><code class="p">(</code><code class="n">LoginRequiredMixin</code><code class="p">,</code> <code class="n">DetailView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_detail.html"</code>
+
+    <code class="k">def</code> <code class="nf">get_context_data</code><code class="p">(</code><code class="bp">self</code><code class="p">,</code> <code class="o">**</code><code class="n">kwargs</code><code class="p">):</code>  <code class="c1"># new</code>
+          <code class="n">context</code> <code class="o">=</code> <code class="nb">super</code><code class="p">()</code><code class="o">.</code><code class="n">get_context_data</code><code class="p">(</code><code class="o">**</code><code class="n">kwargs</code><code class="p">)</code>
+          <code class="n">context</code><code class="p">[</code><code class="s1">'form'</code><code class="p">]</code> <code class="o">=</code> <code class="n">CommentForm</code><code class="p">()</code>
+          <code class="k">return</code> <code class="n">context</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Near the top of the file we added an import line for <code>CommentForm</code> and then updated the module for <code>get_context_data()</code>. First we pulled all existing information into the context by using <code>super()</code>, then we added the variable name <code>form</code> with the value of <code>CommmentForm()</code>, and finally we returned the updated context.</p>
+
+    <h3 id="leanpub-auto-comment-template">Comment Template</h3>
+
+    <p>To display the form in our <code>article_detail.html</code> template file we’ll rely on the <code>form</code> variable and also crispy forms. This pattern is the same as what we’ve done before in our other forms. At the top load <code>crispy_form_tags</code>, create a standard-looking <code>post</code> form which uses a <code>csrf_token</code> for security, and display our form fields via <code>{{ form|crispy }}</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/article_detail.html --&gt;</code>
+{% extends "base.html" %}
+{% load crispy_forms_tags %} <code class="c">&lt;!-- new! --&gt;</code>
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"article-entry"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>{{ object.title }}<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>by {{ object.author }} | {{ object.date }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ object.body }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+
+<code class="p">&lt;</code><code class="nt">hr</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">h4</code><code class="p">&gt;</code>Comments<code class="p">&lt;/</code><code class="nt">h4</code><code class="p">&gt;</code>
+{% for comment in article.comment_set.all %}
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{{ comment.author }} <code class="ni">&amp;middot;</code> {{ comment }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endfor %}
+<code class="p">&lt;</code><code class="nt">hr</code><code class="p">&gt;</code>
+
+<code class="c">&lt;!-- Changes start here! --&gt;</code>
+<code class="p">&lt;</code><code class="nt">h4</code><code class="p">&gt;</code>Add a comment<code class="p">&lt;/</code><code class="nt">h4</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">form</code> <code class="na">action</code><code class="o">=</code><code class="s">""</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+    {{ form|crispy }}
+    <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-success ml-2"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Save<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+<code class="c">&lt;!-- Changes end here! --&gt;</code>
+
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_edit' article.pk %}"</code><code class="p">&gt;</code>Edit<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_delete' article.pk %}"</code><code class="p">&gt;</code>Delete<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Back to <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'article_list' %}"</code><code class="p">&gt;</code>All Articles<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the detail page the form is now displayed with familiar Bootstrap and crispy forms styling.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_form_displayed.png" alt="Form displayed" style="width: 100%"/>
+
+        <figcaption>Form displayed</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Success! However we are only half done. If you attempt to submit the form you’ll receive an error because our view doesn’t yet support any <code>POST</code> methods!</p>
+
+    <h3 id="leanpub-auto-comment-post-view">Comment Post View</h3>
+
+    <p>What we ultimately need is a view that handles both <code>GET</code> and <code>POST</code> requests depending upon whether the form should be merely displayed or capable of being submitted. We could reach for <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/mixins-editing/#django.views.generic.edit.FormMixin">FormMixin</a> to combine both into our <code>ArticleDetailView</code> but as the <a href="https://docs.djangoproject.com/en/4.0/topics/class-based-views/mixins/#avoid-anything-more-complex">Django docs illustrate quite well</a>, there are risks with this approach.</p>
+
+    <p>To avoid subtle interactions between <code>DetailView</code> and <code>FormMixin</code> we will instead separate the <code>GET</code> and <code>POST</code> variations into their own dedicated views. We can then transform <code>ArticleDetailView</code> into a <em>wrapper view</em> that combines them. This is a very common pattern in more advanced Django development because it is often the case that a single URL must behave differently based on the user request (<code>GET</code>, <code>POST</code>, etc) or even the format (returning HTML vs JSON).</p>
+
+    <p>Let’s start by renaming <code>ArticleDetailView</code> into <code>CommentGet</code> since it handles <code>GET</code> requests but not <code>POST</code> requests. We’ll then create a new <code>CommentPost</code> view that is empty for now. And we can combine both into a new <code>ArticleDetailView</code> that subclasses <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/base/#django.views.generic.base.View">View</a>, the master class-based view upon which all the others classes are built.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views</code> <code class="kn">import</code> <code class="n">View</code>  <code class="c1"># new</code>
+
+
+<code class="k">class</code> <code class="nc">CommentGet</code><code class="p">(</code><code class="n">DetailView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_detail.html"</code>
+
+    <code class="k">def</code> <code class="nf">get_context_data</code><code class="p">(</code><code class="bp">self</code><code class="p">,</code> <code class="o">**</code><code class="n">kwargs</code><code class="p">):</code>  
+        <code class="n">context</code> <code class="o">=</code> <code class="nb">super</code><code class="p">()</code><code class="o">.</code><code class="n">get_context_data</code><code class="p">(</code><code class="o">**</code><code class="n">kwargs</code><code class="p">)</code>
+        <code class="n">context</code><code class="p">[</code><code class="s2">"form"</code><code class="p">]</code> <code class="o">=</code> <code class="n">CommentForm</code><code class="p">()</code>
+        <code class="k">return</code> <code class="n">context</code>
+
+
+<code class="k">class</code> <code class="nc">CommentPost</code><code class="p">():</code>  <code class="c1"># new</code>
+    <code class="k">pass</code>
+
+
+<code class="k">class</code> <code class="nc">ArticleDetailView</code><code class="p">(</code><code class="n">LoginRequiredMixin</code><code class="p">,</code> <code class="n">View</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="k">def</code> <code class="nf">get</code><code class="p">(</code><code class="bp">self</code><code class="p">,</code> <code class="n">request</code><code class="p">,</code> <code class="o">*</code><code class="n">args</code><code class="p">,</code> <code class="o">**</code><code class="n">kwargs</code><code class="p">):</code>
+        <code class="n">view</code> <code class="o">=</code> <code class="n">CommentGet</code><code class="o">.</code><code class="n">as_view</code><code class="p">()</code>
+        <code class="k">return</code> <code class="n">view</code><code class="p">(</code><code class="n">request</code><code class="p">,</code> <code class="o">*</code><code class="n">args</code><code class="p">,</code> <code class="o">**</code><code class="n">kwargs</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">post</code><code class="p">(</code><code class="bp">self</code><code class="p">,</code> <code class="n">request</code><code class="p">,</code> <code class="o">*</code><code class="n">args</code><code class="p">,</code> <code class="o">**</code><code class="n">kwargs</code><code class="p">):</code>  
+        <code class="n">view</code> <code class="o">=</code> <code class="n">CommentPost</code><code class="o">.</code><code class="n">as_view</code><code class="p">()</code>
+        <code class="k">return</code> <code class="n">view</code><code class="p">(</code><code class="n">request</code><code class="p">,</code> <code class="o">*</code><code class="n">args</code><code class="p">,</code> <code class="o">**</code><code class="n">kwargs</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Navigate back to the homepage in your web browser and then reload the article page with a comment. Everything should work as before.</p>
+
+    <p>Ok, we’re ready to write <code>CommentPost</code> and complete our task of adding comments to our website. Almost done!</p>
+
+    <p><a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-editing/#django.views.generic.edit.FormView">FormView</a> is a built-in view that displays a form, any validation errors, and redirects to a new URL. We will use it in combination with <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/mixins-single-object/#django.views.generic.detail.SingleObjectMixin">SingleObjectMixin</a> which helps us associate the current article with our form. In other words, if you have a comment at <code>articles/4/</code>, as I do in the screenshots, this will grab the <code>4</code> so that our comment is saved to the article with a <code>pk</code> of 4.</p>
+
+    <p>Here is the complete new code which we’ll run through line-by-line below.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># articles/views.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.mixins</code> <code class="kn">import</code> <code class="n">LoginRequiredMixin</code><code class="p">,</code> <code class="n">UserPassesTestMixin</code>
+<code class="kn">from</code> <code class="nn">django.views</code> <code class="kn">import</code> <code class="n">View</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code><code class="p">,</code> <code class="n">FormView</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.views.generic.detail</code> <code class="kn">import</code> <code class="n">SingleObjectMixin</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.views.generic.edit</code> <code class="kn">import</code> <code class="n">UpdateView</code><code class="p">,</code> <code class="n">DeleteView</code><code class="p">,</code> <code class="n">CreateView</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse_lazy</code><code class="p">,</code> <code class="n">reverse</code>  <code class="c1"># new</code>
+
+<code class="kn">from</code> <code class="nn">.forms</code> <code class="kn">import</code> <code class="n">CommentForm</code>  
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Article</code>
+
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">CommentPost</code><code class="p">(</code><code class="n">SingleObjectMixin</code><code class="p">,</code> <code class="n">FormView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Article</code>
+    <code class="n">form_class</code> <code class="o">=</code> <code class="n">CommentForm</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"article_detail.html"</code>
+
+    <code class="k">def</code> <code class="nf">post</code><code class="p">(</code><code class="bp">self</code><code class="p">,</code> <code class="n">request</code><code class="p">,</code> <code class="o">*</code><code class="n">args</code><code class="p">,</code> <code class="o">**</code><code class="n">kwargs</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">object</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">get_object</code><code class="p">()</code>
+        <code class="k">return</code> <code class="nb">super</code><code class="p">()</code><code class="o">.</code><code class="n">post</code><code class="p">(</code><code class="n">request</code><code class="p">,</code> <code class="o">*</code><code class="n">args</code><code class="p">,</code> <code class="o">**</code><code class="n">kwargs</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">form_valid</code><code class="p">(</code><code class="bp">self</code><code class="p">,</code> <code class="n">form</code><code class="p">):</code>
+        <code class="n">comment</code> <code class="o">=</code> <code class="n">form</code><code class="o">.</code><code class="n">save</code><code class="p">(</code><code class="n">commit</code><code class="o">=</code><code class="kc">False</code><code class="p">)</code>
+        <code class="n">comment</code><code class="o">.</code><code class="n">article</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">object</code>
+        <code class="n">comment</code><code class="o">.</code><code class="n">save</code><code class="p">()</code>
+        <code class="k">return</code> <code class="nb">super</code><code class="p">()</code><code class="o">.</code><code class="n">form_valid</code><code class="p">(</code><code class="n">form</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">get_success_url</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">article</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">get_object</code><code class="p">()</code>
+        <code class="k">return</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"article_detail"</code><code class="p">,</code> <code class="n">kwargs</code><code class="o">=</code><code class="p">{</code><code class="s2">"pk"</code><code class="p">:</code> <code class="n">article</code><code class="o">.</code><code class="n">pk</code><code class="p">})</code>  
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top import <code>FormView</code>, <code>SingleObjectMixin</code>, and <code>reverse</code>. FormView relies on <code>form_class</code> to set the name of the form we’re using, <code>CommentForm</code>. First up is <code>post()</code>: we use <code>get_object()</code> from <code>SingleObjectMixin</code> that lets us grab the article <code>pk</code> from the URL. Next is <code>form_valid()</code>, which is called when form validation has succeeded. Before we save our comment to the database we have to specify the article it belongs. Initially we save the form but set <code>commit</code> to <code>False</code> because in the next line we associate the correct article with the form object. Then in the following line we save the form. Finally we return it as part of <code>form_valid()</code>. The final module is <code>get_success_url()</code> which is called after the form data is saved. We just redirect the user to the current page in this case.</p>
+
+    <p>And we’re done! Go ahead and load your articles page now, make sure to refresh the page, then try to submit a second comment.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_submit_comment.png" alt="Submit comment in form" style="width: 100%"/>
+
+        <figcaption>Submit comment in form</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>It should automatically reload the page with the new comment displayed like this:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_comment_displayed.png" alt="Comment Displayed" style="width: 100%"/>
+
+        <figcaption>Comment Displayed</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-conclusion-15">Conclusion</h3>
+
+    <p>Our <em>Newspaper</em> app is now complete. It has a robust user authentication flow that uses a custom user model and email. Improved styling thanks to Bootstrap, articles, and comments. We even dipped our toes into permissions and authorizations.</p>
+
+    <p>Our remaining task is to deploy it online. Our deployment process has grown in complexity with each successive application, but we’re still taking shortcuts around security and performance. In the next chapter, we’ll see how to properly deploy a Django site by using environment variables, PostgreSQL, and additional settings.</p>
+
+  </div>
+
+</body>
+
+</html>

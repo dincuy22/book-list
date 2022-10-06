@@ -1,0 +1,863 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 7: User Accounts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-7-user-accounts">Chapter 7: User Accounts</h2>
+
+    <p>So far we’ve built a working blog application with forms but we’re missing a major piece of most web applications: user authentication.</p>
+
+    <p>Implementing proper user authentication is famously hard; there are many security gotchas along the way so you really don’t want to implement this yourself. Fortunately, Django comes with a powerful, built-in <a href="https://docs.djangoproject.com/en/4.0/topics/auth/">user authentication system</a> that we can use and customize as needed.</p>
+
+    <p>Whenever you create a new project, by default Django installs the <code>auth</code> app, which provides us with a <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/auth/#django.contrib.auth.models.User">User object</a> containing:</p>
+
+    <ul>
+
+      <li>username</li>
+
+      <li>password</li>
+
+      <li>email</li>
+
+      <li>first_name</li>
+
+      <li>last_name</li>
+
+    </ul>
+
+    <p>We will use this <code>User</code> object to implement log in, log out, and sign up in our blog application.</p>
+
+    <h3 id="leanpub-auto-log-in">Log In</h3>
+
+    <p>Django provides us with a default view for a log in page via <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#django.contrib.auth.views.LoginView">LoginView</a>. All we need to add are a URL pattern for the auth system, a log in template, and a small update to our <code>django_project/settings.py</code> file.</p>
+
+    <p>First, update the <code>django_project/urls.py</code> file. We’ll place our log in and log out pages at the <code>accounts/</code> URL. This is a one-line addition on the next-to-last line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"django.contrib.auth.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"blog.urls"</code><code class="p">)),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>As the <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#django.contrib.auth.views.LoginView">LoginView</a> documentation notes, by default Django will look within a templates directory called <code>registration</code> for a file called <code>login.html</code> for a log in form. So we need to create a new directory called <code>registration</code> and the requisite file within it. From the command line type <code>Control+c</code> to quit our local server. Then create the new directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; mkdir templates/registration
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And then with your text editor create a new template file, <code>templates/registration/login.html</code>, filled with the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/login.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form.as_p }}
+  <code class="p">&lt;</code><code class="nt">button</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re using HTML <code>&lt;form&gt;&lt;/form&gt;</code> tags and specifying the POST method since we’re sending data to the server (we’d use GET if we were requesting data, such as in a search engine form). We add <code>{% csrf_token %}</code> for security concerns, namely to prevent a CSRF Attack. The form’s contents are outputted between paragraph tags thanks to <code>{{ form.as_p }}</code> and then we add a “submit” button.</p>
+
+    <p>The final step is we need to specify <em>where</em> to redirect the user upon a successful log in. We can set this with the <code>LOGIN_REDIRECT_URL</code> setting. At the bottom of the <code>django_project/settings.py</code> file add the following:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">LOGIN_REDIRECT_URL</code> <code class="o">=</code> <code class="s2">"home"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now the user will be redirected to the <code>'home'</code> template which is our homepage. And we’re actually done at this point! If you now start up the Django server again with <code>python manage.py runserver</code> and navigate to our log in page at <code>http://127.0.0.1:8000/accounts/login/</code> you’ll see the following:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_login_firststep.png" alt="Log in page" style="width: 100%"/>
+
+        <figcaption>Log in page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Upon entering the log in info for our superuser account, we are redirected to the homepage. Notice that we didn’t add any <em>view</em> logic or create a database model because the Django auth system provided both for us automatically. Thanks Django!</p>
+
+    <h3 id="leanpub-auto-updated-homepage">Updated Homepage</h3>
+
+    <p>Let’s update our <code>base.html</code> template so we display a message to users whether they are logged in or not. We can use the <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/auth/#django.contrib.auth.models.User.is_authenticated">is_authenticated</a> attribute for this.</p>
+
+    <p>For now, we can simply place this code in a prominent position. Later on we can style it more appropriately. Update the <code>base.html</code> file with new code starting beneath the closing <code>&lt;/header&gt;</code> tag.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+{% load static %}
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>Django blog<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">link</code> <code class="na">href</code><code class="o">=</code><code class="s">"https://fonts.googleapis.com/css?family=Source+Sans+Pro:400"</code>
+      <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">link</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% static 'css/base.css' %}"</code> <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code><code class="na">s</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">body</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">header</code><code class="p">&gt;</code>
+        <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-left"</code><code class="p">&gt;</code>
+          <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'home' %}"</code><code class="p">&gt;</code>Django blog<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+        <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+        <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-right"</code><code class="p">&gt;</code>
+          <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'post_new' %}"</code><code class="p">&gt;</code>+ New Blog Post<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+        <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;/</code><code class="nt">header</code><code class="p">&gt;</code>
+      {% if user.is_authenticated %}
+        <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Hi {{ user.username }}!<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+      {% else %}
+        <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>You are not logged in.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+        <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'login' %}"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+      {% endif %}
+    {% block content %}
+    {% endblock content %}
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">body</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">html</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If the user is logged in we say hello to them by name; if not we provide a link to our newly created log in page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_homepage_login.png" alt="Homepage logged in" style="width: 100%"/>
+
+        <figcaption>Homepage logged in</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>It worked! My superuser name is <code>wsv</code> so that’s what I see on the page.</p>
+
+    <h3 id="leanpub-auto-log-out-link">Log Out Link</h3>
+
+    <p>We added template page logic for logged out users but…how do we log out now? We could go into the Admin panel and do it manually, but there’s a better way. Let’s add a log out link instead that redirects to the homepage. Thanks to the Django auth system, this is dead-simple to achieve.</p>
+
+    <p>In our <code>base.html</code> file add a one-line <code>{% url 'logout' %}</code> link for logging out just below our user greeting.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html--&gt;</code>
+...
+{% if user.is_authenticated %}
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Hi {{ user.username }}!<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'logout' %}"</code><code class="p">&gt;</code>Log out<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% else %}
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>That’s all we need to do as the necessary view is provided to us by the Django <code>auth</code> app. We do need to specify where to redirect a user upon log out though.</p>
+
+    <p>Update <code>django_project/settings.py</code> to provide a redirect link which is called, appropriately, <code>LOGOUT_REDIRECT_URL</code>. We can add it right next to our log in redirect so the bottom of the file should look as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">LOGIN_REDIRECT_URL</code> <code class="o">=</code> <code class="s2">"home"</code>
+<code class="n">LOGOUT_REDIRECT_URL</code> <code class="o">=</code> <code class="s2">"home"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the homepage you’ll see it now has a “log out” link for logged in users.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/07_homepage_logout_link.png" alt="Homepage log out link " style="width: 100%"/>
+
+        <figcaption>Homepage log out link </figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>And clicking it takes you back to the homepage with a <code>login</code> link.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_homepage_logged_out.png" alt="Homepage logged out" style="width: 100%"/>
+
+        <figcaption>Homepage logged out</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Go ahead and try logging in and out several times with your user account.</p>
+
+    <h3 id="leanpub-auto-sign-up">Sign Up</h3>
+
+    <p>We need to write our own view for a sign up page to register new users, but Django provides us with a form class, <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#django.contrib.auth.forms.UserCreationForm">UserCreationForm</a>, to make things easier. By default it comes with three fields: <code>username</code>, <code>password1</code>, and <code>password2</code>.</p>
+
+    <p>There are many ways to organize your code and URL structure for a robust user authentication system. Stop the local server with <code>Control+c</code> and create a dedicated new app, <code>accounts</code>, for our sign up page.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py startapp accounts
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Add the new app to the <code>INSTALLED_APPS</code> setting in our <code>django_project/settings.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"blog.apps.BlogConfig"</code><code class="p">,</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next add a new URL path in <code>django_project/urls.py</code> pointing to this new app directly <strong>below</strong> where we include the built-in <code>auth</code> app.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"django.contrib.auth.urls"</code><code class="p">)),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"accounts.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"blog.urls"</code><code class="p">)),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The order of our <code>urls</code> matters here because Django reads this file top-to-bottom. Therefore when we request the <code>/accounts/signup</code> url, Django will first look in <code>auth</code>, not find it, and <strong>then</strong> proceed to the <code>accounts</code> app.</p>
+
+    <p>In your text editor, create a file called <code>accounts/urls.py</code> and add the following code:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">SignUpView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"signup/"</code><code class="p">,</code> <code class="n">SignUpView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"signup"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re using a not-yet-created view called <code>SignupView</code> which we already know is class-based since it is capitalized and has the <code>as_view()</code> suffix. Its path is just <code>signup/</code> so the overall URL path will be <code>accounts/signup/</code>.</p>
+
+    <p>Now for the view which uses the built-in <code>UserCreationForm</code> and generic <code>CreateView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/views.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.forms</code> <code class="kn">import</code> <code class="n">UserCreationForm</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse_lazy</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">CreateView</code>
+
+
+<code class="k">class</code> <code class="nc">SignUpView</code><code class="p">(</code><code class="n">CreateView</code><code class="p">):</code>
+    <code class="n">form_class</code> <code class="o">=</code> <code class="n">UserCreationForm</code>
+    <code class="n">success_url</code> <code class="o">=</code> <code class="n">reverse_lazy</code><code class="p">(</code><code class="s2">"login"</code><code class="p">)</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"registration/signup.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re subclassing the generic class-based view <code>CreateView</code> in our <code>SignUpView</code> class. We specify the use of the built-in <code>UserCreationForm</code> and the not-yet-created template at <code>signup.html</code>. And we use <code>reverse_lazy</code> to redirect the user to the log in page upon successful registration.</p>
+
+    <p>Why use <code>reverse_lazy</code> here instead of <code>reverse</code>? The reason is that for all generic class-based views the URLs are not loaded when the file is imported, so we have to use the lazy form of <code>reverse</code> to load them later when they’re available.</p>
+
+    <p>Now in your text editor create the file <code>signup.html</code> within the <code>templates/registration/</code> directory. Populate it with the code below.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/signup.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form.as_p }}
+  <code class="p">&lt;</code><code class="nt">button</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This format is very similar to what we’ve done before. We extend our base template at the top, place our logic between <code>&lt;form&gt;&lt;/form&gt;</code> tags, use the <code>csrf_token</code> for security, display the form’s content in paragraph tags with <code>form.as_p</code>, and include a submit button.</p>
+
+    <p>We’re now done! To test it out, start up the local server with the command <code>python manage.py runserver</code> and navigate to <code>http://127.0.0.1:8000/accounts/signup/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_signup.png" alt="Django sign up page" style="width: 100%"/>
+
+        <figcaption>Django sign up page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Notice there is a lot of extra text that Django includes by default. We can customize this using something like the built-in <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/messages/">messages framework</a> but for now try out the form.</p>
+
+    <p>I’ve created a new user called “william” and upon submission was redirected to the log in page. Then after logging in successfully with my new user and password, I was redirected to the homepage with our personalized “Hi username” greeting.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_homepage_new_user.png" alt="Homepage for user william" style="width: 100%"/>
+
+        <figcaption>Homepage for user william</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Our ultimate flow is therefore: <code>Signup -&gt; Login -&gt; Homepage</code>. And of course we can tweak this however we want. The <code>SignupView</code> redirects to <code>login</code> because we set <code>success_url = reverse_lazy('login')</code>. The <code>Login</code> page redirects to the homepage because in our <code>django_project/settings.py</code> file we set <code>LOGIN_REDIRECT_URL = 'home'</code>.</p>
+
+    <p>It can seem overwhelming at first to keep track of all the various parts of a Django project. That’s normal. But I promise with time they’ll start to make more sense.</p>
+
+    <h3 id="leanpub-auto-sign-up-link">Sign Up Link</h3>
+
+    <p>One last improvement we can make is to add a sign up link to the logged out homepage. We can’t expect our users to know the correct URL after all! How do we do this? Well, we need to figure out the URL name and then we can pop it into our template. In <code>accounts/urls.py</code> we provided it the name of <code>signup</code> so that’s all we need to add to our <code>base.html</code> template with the <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#url">url template tag</a> just as we’ve done for our other links.</p>
+
+    <p>Add the link for “Sign Up” just below the existing link for “Log In” as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html--&gt;</code>
+...
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>You are not logged in.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'login' %}"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+<code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'signup' %}"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the logged out homepage the sign up link is now visible. Much better!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_signup_link.png" alt="Sign up link" style="width: 100%"/>
+
+        <figcaption>Sign up link</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-github-2">GitHub</h3>
+
+    <p>It’s been a while since we made a <code>git</code> commit. Let’s do that and then push a copy of our code onto GitHub. First check all the new work that we’ve done with <code>git status</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git status
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then add the new content and enter a commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "forms and user accounts"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p><a href="https://github.com/new">Create a new repo</a> on GitHub which you can call anything you like. I’ll choose the name <code>blog</code>. Therefore, <em>after creating the new repo on the GitHub site</em>, I can type the following two commands. Make sure to replace my username <code>wsvincent</code> with your own from GitHub.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git remote add origin https://github.com/wsvincent/blog.git
+(.venv) &gt; git push -u origin main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>All done!</p>
+
+    <h3 id="leanpub-auto-static-files-1">Static Files</h3>
+
+    <p>Previously, we configured our static files by creating a dedicated <code>static</code> folder, pointing <code>STATICFILES_DIRS</code> to it in our <code>django_project/settings.py</code> file, and adding <code>{% load static %}</code> to our <code>base.html</code> template. But since Django won’t serve static files in production, we need a few extra steps now.</p>
+
+    <p>The first change is to use Django’s <code>collectstatic</code> command which compiles all static files throughout the project into a singe directory suitable for deployment. Second, we must set the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#static-root">STATIC_ROOT</a> configuration, which is the <em>absolute location</em> of these collected files, to a folder called <code>staticfiles</code>. And third, we need to set <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#staticfiles-storage">STATICFILES_STORAGE</a>, which is the <em>file storage engine</em> used by <code>collectstatic</code>.</p>
+
+    <p>Here is what the updated <code>django_project/settings.py</code> file should look like:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">STATIC_URL</code> <code class="o">=</code> <code class="s2">"/static/"</code>
+<code class="n">STATICFILES_DIRS</code> <code class="o">=</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"static"</code><code class="p">]</code>
+<code class="n">STATIC_ROOT</code> <code class="o">=</code> <code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"staticfiles"</code>   <code class="c1"># new</code>
+<code class="n">STATICFILES_STORAGE</code> <code class="o">=</code>
+    <code class="s2">"django.contrib.staticfiles.storage.StaticFilesStorage"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For formatting purposes the last line is split in two but it should be one single line in your text editor. Now run the command <code>python manage.py collectstatic</code>:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py collectstatic
+129 static files copied to '/Users/wsv/Desktop/ch7-blog-app-with-users/staticfiles'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you look at your project folder now you’ll see there’s a new <code>staticfiles</code> folder that contains <code>admin</code> and <code>css</code> folders. The <code>admin</code> is the built-in admin’s static files, while the <code>css</code> is the one we created. Before each new deployment, the <code>collectstatic</code> command <em>must be run</em> to compile them into this <code>staticfiles</code> folder used in production. Since this is an easy step to forget it is often automated in larger projects though doing so is beyond the scope of our current project.</p>
+
+    <p>While there are multiple ways to serve these compiled static files in production, the most common approach–and the one we will use here–is to introduce the <a href="http://whitenoise.evans.io/en/stable/">WhiteNoise</a> package.</p>
+
+    <p>To start, install the latest version using <code>pip</code>:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install whitenoise==5.3.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then in <code>django_project/settings.py</code> there are three updates to make:</p>
+
+    <ul>
+
+      <li>add <code>whitenoise</code> to the <code>INSTALLED_APPS</code> <strong>above</strong> the built-in <code>staticfiles</code> app</li>
+
+      <li>under <code>MIDDLEWARE</code> add a new line for <code>WhiteNoiseMiddleware</code>
+</li>
+
+      <li>change <code>STATICFILES_STORAGE</code> to use <code>WhiteNoise</code>
+</li>
+
+    </ul>
+
+    <p>The updated file should look as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"whitenoise.runserver_nostatic"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"blog.apps.BlogConfig"</code><code class="p">,</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>
+<code class="p">]</code>
+
+<code class="n">MIDDLEWARE</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.middleware.security.SecurityMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions.middleware.SessionMiddleware"</code><code class="p">,</code>
+    <code class="s2">"whitenoise.middleware.WhiteNoiseMiddleware"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="s2">"django.middleware.common.CommonMiddleware"</code><code class="p">,</code>
+    <code class="o">...</code>
+<code class="p">]</code>
+
+<code class="n">STATIC_URL</code> <code class="o">=</code> <code class="s2">"/static/"</code>
+<code class="n">STATICFILES_DIRS</code> <code class="o">=</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"static"</code><code class="p">]</code>
+<code class="n">STATIC_ROOT</code> <code class="o">=</code> <code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"staticfiles"</code>
+<code class="n">STATICFILES_STORAGE</code> <code class="o">=</code>
+    <code class="s2">"whitenoise.storage.CompressedManifestStaticFilesStorage"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The <code>STATICFILES_STORAGE</code> config should also be one line in your text editor. And since the method has changed run <code>collectstatic</code> one more time to use <code>whitenoise</code> instead:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py collectstatic
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>There will be a short warning, <code>This will overwrite existing files! Are you sure you want to do this?</code> Type “yes” and hit <code>Enter</code>. The collected static files are now regenerated in the same <code>staticfiles</code> folder using WhiteNoise.</p>
+
+    <p>Static files are quite confusing to newcomers, so as a brief recap here are the steps we’ve executed so far in our <em>Blog</em> site. First, for local development back in <strong>Chapter 5</strong>, we created a top-level <code>static</code> folder and updated <code>STATICFILES_DIRS</code> to point to it. In this chapter, we added configurations for <code>STATIC_ROOT</code> and <code>STATICFILES_STORAGE</code> before running <code>collectstatic</code> for the first time, which compiled <em>all</em> our static files across the entire project into a single <code>staticfiles</code> folder. Finally, we installed <code>whitenoise</code>, updated <code>INSTALLED_APPS</code>, <code>MIDDLEWARE</code>, and <code>STATICFILES_STORAGE</code>, and re-ran <code>collectstatic</code>.</p>
+
+    <p>Most developers, myself included, have trouble remembering all these steps properly and rely on notes as a friendly reminder!</p>
+
+    <h3 id="leanpub-auto-heroku-config">Heroku Config</h3>
+
+    <p>Now we come for the third time to deploying a website with Heroku. Our deployment checklist is as follows:</p>
+
+    <ul>
+
+      <li>install <code>Gunicorn</code>
+</li>
+
+      <li>create a <code>requirements.txt</code> file</li>
+
+      <li>update <code>ALLOWED_HOSTS</code> in <code>django_project/settings.py</code>
+</li>
+
+      <li>create a <code>Procfile</code>
+</li>
+
+      <li>create a <code>runtime.txt</code> file</li>
+
+    </ul>
+
+    <p>Ready? Let’s begin. Install <code>Gunicorn</code> as the production web server:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install gunicorn==20.1.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Output the contents of the current virtual environment to a <code>requirements.txt</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip freeze &gt; requirements.txt
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Update the existing <code>ALLOWED_HOSTS</code> in <code>django_project/settings.py</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">ALLOWED_HOSTS</code> <code class="o">=</code> <code class="p">[</code><code class="s2">".herokuapp.com"</code><code class="p">,</code> <code class="s2">"localhost"</code><code class="p">,</code> <code class="s2">"127.0.0.1"</code><code class="p">]</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And with your text editor create both a new <code>Procfile</code> and <code>runtime.txt</code> file in the base directory next to the <code>manage.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Procfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>web: gunicorn django_project.wsgi --log-file -
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>runtime.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>python-3.10.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>All set. We can commit our changes and push them up to GitHub.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git status
+(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "Heroku config"
+(.venv) &gt; git push -u origin main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-heroku-deployment-1">Heroku Deployment</h3>
+
+    <p>To deploy on Heroku first confirm that you’re logged in to your existing Heroku account.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku login
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then run the <code>create</code> command which tells Heroku to make a new container for our app to live in. If you just run <code>heroku create</code> then Heroku will assign you a random name, however you can specify a custom name but it must be <em>unique on Heroku</em>. In other words, since I’m picking the name <code>dfb-blog</code> you can’t. You need some other combination of letters and numbers.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku create dfb-blog
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Heroku runs Django’s <code>collectstatic</code> command automatically, which is why in the previous apps, where we had not configured static files, we told Heroku to disable this step with <code>heroku config:set DISABLE_COLLECTSTATIC=1</code>. But since we <em>have</em> configured static files we’ll happily let this happen now as part of the deployment process.</p>
+
+    <p>The final step is to push our code to Heroku and add a web process so the dyno is running.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git push heroku main
+(.venv) &gt; heroku ps:scale web=1
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The URL of your new app will be in the command line output or you can run <code>heroku open</code> to find it.</p>
+
+    <h3 id="leanpub-auto-sqlite-vs-postgresql">SQLite vs PostgreSQL</h3>
+
+    <p>So far in this book we have been using the file-based SQLite database preconfigured by Django both locally and in deployment. It is much easier to configure and use than a server-based database. However, this convenience comes at a cost. Notably Heroku has an <em>ephemeral file system</em> so any changes to the <code>db.sqlite3</code> file <em>in the cloud</em> will be forgotten whenever a new deployment or server restart occurs. On the free tier we are using, server restarts can happen as often as every 24 hours.</p>
+
+    <p>That means that if you make changes to the database locally and push them to production, they will remain. However, if you make updates to the live website such as new blog entries or edits, they will not exist for very long. We need a standalone database engine to persist our data in the cloud which we’ll cover in our next project.</p>
+
+    <h3 id="leanpub-auto-conclusion-7">Conclusion</h3>
+
+    <p>With a minimal amount of code, we have added log in, log out, and sign up to our <em>Blog</em> website. Under-the-hood Django has taken care of the many security gotchas that can crop up if you try to create your own user authentication flow from scratch. We properly configured static files for production and deployed our website to Heroku. Good job!</p>
+
+    <p>In the next chapter, we’ll embark on the final major project of the book, a <em>Newspaper</em> site which uses a custom user model, advanced user registration flow, enhanced styling via Bootstrap, and email configuration. It also includes proper permissions and authorizations, environment variables, uses PostgreSQL as the production database, and more security improvements to our deployment process.</p>
+
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,526 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 11: Password Change and Reset</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-11-password-change-and-reset">Chapter 11: Password Change and Reset</h2>
+
+    <p>In this chapter we will complete the authorization flow of our <em>Newspaper</em> app by adding password change and password reset functionality. Initially we will implement Django’s built-in views and URLs for both password change and password reset before then customizing them with our own Bootstrap-powered templates and email service.</p>
+
+    <h3 id="leanpub-auto-password-change">Password Change</h3>
+
+    <p>Letting users change their passwords is a common feature on many websites. Django provides a default implementation that already works at this stage. To try it out first click on the “Log In” button to make sure you’re logged in. Then navigate to the “Password change” page, which is located at <code>http://127.0.0.1:8000/accounts/password_change/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_password_change.png" alt="Password change" style="width: 100%"/>
+
+        <figcaption>Password change</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Enter in both your old password and a new one. Then click the “Change My Password” button. You will be redirected to the “Password change successful” page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_password_change_done.png" alt="Password change done" style="width: 100%"/>
+
+        <figcaption>Password change done</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-customizing-password-change">Customizing Password Change</h3>
+
+    <p>Let’s customize these two password change pages so that they match the look and feel of our <em>Newspaper</em> site. Because Django already has created the views and URLs for us we only need to change the templates. In your text editor create two new template files in the <code>registration</code> directory:</p>
+
+    <ul>
+
+      <li><code>templates/registration/password_change_form.html</code></li>
+
+      <li><code>templates/registration/password_change_done.html</code></li>
+
+    </ul>
+
+    <p>Update <code>password_change_form.html</code> with the following code. At the top we extend <code>base.html</code>, load crispy forms, and set our page meta title. This is what appears in the tab of a web browser but not on the visible webpage itself. The form uses <code>POST</code> since we’re sending data, a <code>csrf_token</code> for security reasons, and <code>{{ form|crispy }}</code> to use crispy forms styling. As a final tweak, we include a submit button that uses Bootstrap’s <code>btn btn-success</code> styling to make it green.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/password_change_form.html --&gt;</code>
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Password Change{% endblock title %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Password change<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Please enter your old password, for security's sake, and then enter
+your new password twice so we can verify you typed it in correctly.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"POST"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form|crispy }}
+  <code class="p">&lt;</code><code class="nt">input</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-success"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code>
+    <code class="na">value</code><code class="o">=</code><code class="s">"Change my password"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Go ahead and load the page at <code>http://127.0.0.1:8000/accounts/password_change/)</code> to see our changes.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_new_password_change.png" alt="New password change form" style="width: 100%"/>
+
+        <figcaption>New password change form</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Next up is the <code>password_change_done</code> template. It also extends <code>base.html</code> and includes a new meta title however there’s no form on the page, just new text.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/password_change_done.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Password Change Successful{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Password change successful<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Your password was changed.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This updated page is at:</p>
+
+    <p>
+  <code>http://127.0.0.1:8000/accounts/password_change/done/</code>
+</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_new_password_change_done.png" alt="New password change done" style="width: 100%"/>
+
+        <figcaption>New password change done</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>That wasn’t too bad, right? Certainly it was a lot less work than creating everything from scratch, especially all the code around securely updating a user’s password. Next up is the password reset functionality.</p>
+
+    <h3 id="leanpub-auto-password-reset">Password Reset</h3>
+
+    <p>Password reset handles the common case of users forgetting their passwords. The steps are very similar to configuring password change, as we just did. Django already provides a default implementation that we will use and then customize the templates so it matches the look and feel of the rest of our site.</p>
+
+    <p>The only configuration required is telling Django <em>how</em> to send emails. After all, a user can only reset a password if they have access to the email linked to the account. In production, we’ll use the email service SendGrid to actually send the emails but for testing purposes we can rely on Django’s <a href="https://docs.djangoproject.com/en/4.0/topics/email/#console-backend">console backend</a> setting which outputs the email text to our command line console instead.</p>
+
+    <p>At the bottom of the <code>django_project/settings.py</code> file add the following one-line change.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">EMAIL_BACKEND</code> <code class="o">=</code> <code class="s2">"django.core.mail.backends.console.EmailBackend"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And we’re all set! Django will take care of all the rest for us. Let’s try it out. Navigate to <code>http://127.0.0.1:8000/accounts/password_reset/</code> to view the default password reset page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_password_reset.png" alt="Default password reset page" style="width: 100%"/>
+
+        <figcaption>Default password reset page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Make sure the email address you enter matches one of your existing user accounts. Recall that <code>testuser</code> does not have a linked email account so you should use <code>testuser2</code> which, if you followed my example, has an email address of <code>testuser2@email.com</code>. Upon submission you’ll then be redirected to the password reset done page at:</p>
+
+    <p>
+  <code>http://127.0.0.1:8000/accounts/password_reset/done/</code>
+</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_password_reset_done.png" alt="Default password reset done page" style="width: 100%"/>
+
+        <figcaption>Default password reset done page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>This page says to check our email. Since we’ve told Django to send emails to the command line console, the email text will now be there. This is what I see in my console.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Subject: Password reset on 127.0.0.1:8000
+From: webmaster@localhost
+To: testuser2@email.com
+Date: Fri, 10 Dec 2021 14:04:57 -0000
+Message-ID: &lt;163422029788.81248.2976605416677047926@1.0.0.127.in-addr.arpa&gt;
+
+
+You're receiving this email because you requested a password reset for your user
+account at 127.0.0.1:8000.
+
+Please go to the following page and choose a new password:
+
+http://127.0.0.1:8000/accounts/reset/Mw/auihs9-ed00b2be2d\
+2f9cb5fbb71d42764d9ddd/
+
+Your username, in case you've forgotten: testuser2
+
+Thanks for using our site!
+
+The 127.0.0.1:8000 team
+
+-------------------------------------------------------------------------------
+[10/Dec/2021 14:04:57] "POST /accounts/password_reset/ HTTP/1.1" 302 0
+[10/Dec/2021 14:04:57] "GET /accounts/password_reset/done/ HTTP/1.1" 200 1583
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Your email text should be identical except for three lines:</p>
+
+    <ul>
+
+      <li>the “To” on the sixth line contains the email address of the user</li>
+
+      <li>the URL link contains a secure token that Django randomly generates for us and can be used only once</li>
+
+      <li>Django helpfully reminds us of our username</li>
+
+    </ul>
+
+    <p>We will customize all of the email default text shortly but for now focus on finding the link provided and enter it into your web browser and you’ll be redirected to the “Password reset confirmation” page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_password_reset_confirmation.png" alt="Default password reset confirmation" style="width: 100%"/>
+
+        <figcaption>Default password reset confirmation</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now enter in a new password and click on the “Change my password” button. The final step is you’ll be redirected to the “Password reset complete” page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_password_reset_complete.png" alt="Default password reset complete" style="width: 100%"/>
+
+        <figcaption>Default password reset complete</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>To confirm everything worked, click on the “Log in” link and use your new password. It should work.</p>
+
+    <h3 id="leanpub-auto-custom-templates">Custom Templates</h3>
+
+    <p>As with the Password Change pages we can create new templates to customize the look and feel of the entire password reset flow. If you noticed, there are four separate templates used. Create these new files now in your <code>templates/registration/</code> directory.</p>
+
+    <ul>
+
+      <li><code>templates/registration/password_reset_form.html</code></li>
+
+      <li><code>templates/registration/password_reset_done.html</code></li>
+
+      <li><code>templates/registration/password_reset_confirm.html</code></li>
+
+      <li><code>templates/registration/password_reset_complete.html</code></li>
+
+    </ul>
+
+    <p>Start with the password reset form which is <code>password_reset_form.html</code>. At the top we extend <code>base.html</code>, load <code>crispy_forms_tags</code>, and set the meta page title. Because we used “block” titles in our <code>base.html</code> file we can override them here. The form uses <code>POST</code> since we’re sending data, a <code>csrf_token</code> for security reasons, and <code>{{ form|crispy }}</code> for the forms. And we again update the submit button to be green. At this point the process of updating these template pages should start to feel somewhat familiar.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/password_reset_form.html --&gt;</code>
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Forgot Your Password?{% endblock title %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Forgot your password?<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Enter your email address below, and we'll email instructions
+for setting a new one.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"POST"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form|crispy }}
+  <code class="p">&lt;</code><code class="nt">input</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-success"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code>
+    <code class="na">value</code><code class="o">=</code><code class="s">"Send me instructions!"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Start up the server again with <code>python manage.py runserver</code> and navigate to:</p>
+
+    <p>
+  <code>http://127.0.0.1:8000/accounts/password_reset/</code>
+</p>
+
+    <p>Refresh the page you can see our new page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_new_password_reset.png" alt="New password reset" style="width: 100%"/>
+
+        <figcaption>New password reset</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now we can update the other three pages. Each takes the same form of extending <code>base.html</code>, setting a new meta title, and adding new content text. When there is a form involved we switch to loading and using crispy forms.</p>
+
+    <p>Let’s begin with the <code>password_reset_done.html</code> template.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/password_reset_done.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Email Sent{% endblock title %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Check your inbox.<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>We've emailed you instructions for setting your password.
+You should receive the email shortly!<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Confirm the changes by going to <code>http://127.0.0.1:8000/accounts/password_reset/done/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_new_password_reset_done.png" alt="New reset done" style="width: 100%"/>
+
+        <figcaption>New reset done</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Next up is <code>password_reset_confirm.html</code>. Note that it has a form so we’ll use crispy forms here.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/password_reset_confirm.html --&gt;</code>
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Enter new password{% endblock title %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Set a new password!<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"POST"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form|crispy }}
+  <code class="p">&lt;</code><code class="nt">input</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-success"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code> <code class="na">value</code><code class="o">=</code><code class="s">"Change my password"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In the command line grab the URL link from the email outputted to the console and you’ll see the following.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_new_set_password.png" alt="New set password" style="width: 100%"/>
+
+        <figcaption>New set password</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Finally here is the password reset complete code.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/password_reset_complete.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block title %}Password reset complete{% endblock title %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Password reset complete<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Your new password has been set.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>You can log in now on the
+<code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'login' %}"</code><code class="p">&gt;</code>Log In page<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>.<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can view it at <code>http://127.0.0.1:8000/accounts/reset/done/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_new_password_reset_complete.png" alt="New password reset complete" style="width: 100%"/>
+
+        <figcaption>New password reset complete</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-try-it-out">Try It Out</h3>
+
+    <p>Let’s confirm everything is working by resetting the password for the <code>testuser2</code> account. Log out of your current account and head to the Log In page. This is the logical location for a “Forgot your password?” link that sends a user into the password reset section. Let’s add that link now.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/login.html --&gt;</code>
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Log In{% endblock title %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>{% csrf_token %}
+  {{ form|crispy }}
+  <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-success ml-2"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'password_reset' %}"</code><code class="p">&gt;</code>Forgot your password?<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>First we’ll need to add the password reset link to the existing Log In page since we can’t assume the user will know the correct URL! That goes on the bottom of the form. Refresh the webpage for log in to confirm it is there.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_forgot_your_password.png" alt="Forgot Your Password link" style="width: 100%"/>
+
+        <figcaption>Forgot Your Password link</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Click on the link to bring up the Password Reset template and complete the flow by using the email for <code>testuser2@email.com</code>. Remember that the unique link will be outputted to your console. Set a new password and use it to log in to the <code>testuser2</code> account.</p>
+
+    <h3 id="leanpub-auto-conclusion-11">Conclusion</h3>
+
+    <p>In the next chapter we will connect our <em>Newspaper</em> app to the email service SendGrid so our automated emails are actually sent to users as opposed to outputting them in the command line console.</p>
+
+  </div>
+
+</body>
+
+</html>

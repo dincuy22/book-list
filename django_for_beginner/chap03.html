@@ -1,0 +1,1138 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 3: Pages App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-3-pages-app">Chapter 3: Pages App</h2>
+
+    <p>In this chapter we will build, test, and deploy a <em>Pages</em> app containing a homepage and about page. We still aren’t touching the database yet–that comes in the next chapter–but we’ll learn about class-based views and templates which are the building blocks for the more complex web applications built later on in the book.</p>
+
+    <h3 id="leanpub-auto-initial-set-up-1">Initial Set Up</h3>
+
+    <p>As in <strong>Chapter 2: Hello World App</strong>, our initial set up involves the following steps:</p>
+
+    <ul>
+
+      <li>make a new directory for our code called <code>pages</code> and navigate into it</li>
+
+      <li>create a new virtual environment called <code>.venv</code> and activate it</li>
+
+      <li>install Django</li>
+
+      <li>create a new Django project called <code>django_project</code>
+</li>
+
+      <li>create a new app called <code>pages</code>
+</li>
+
+    </ul>
+
+    <p>On the command line make sure you’re not working in an existing virtual environment. If there is text before the command line prompt–either <code>&gt;</code> on Windows or <code>%</code> on macOS–then you are! Make sure to type <code>deactivate</code> to leave it.</p>
+
+    <p>Within a new command line shell start by typing the following:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+&gt; cd onedrive\desktop\code
+&gt; mkdir pages
+&gt; cd pages
+&gt; python -m venv .venv
+&gt; .venv\Scripts\Activate.ps1
+(.venv) &gt; python -m pip install django~=4.0.0
+(.venv) &gt; django-admin startproject django_project .
+(.venv) &gt; python manage.py startapp pages
+
+# macOS
+% cd ~/desktop/code
+% mkdir pages
+% cd pages
+% python3 -m venv .venv
+% source .venv/bin/activate
+(.venv) % python3 -m pip install django~=4.0.0
+(.venv) % django-admin startproject django_project .
+(.venv) % python3 manage.py startapp pages
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Remember that even though we added a new app, Django will not recognize it until it is added to the <code>INSTALLED_APPS</code> setting within <code>django_project/settings.py</code>. Open your text editor and add it to the bottom now:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Migrate the database with <code>migrate</code> and start the local web server with <code>runserver</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py migrate
+(.venv) &gt; python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And then navigate to <code>http://127.0.0.1:8000/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/00_welcome40.png" alt="Django welcome page" style="width: 100%"/>
+
+        <figcaption>Django welcome page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-templates">Templates</h3>
+
+    <p>Every web framework needs a convenient way to generate HTML files and in Django the approach is to use <em>templates</em>: individual HTML files that can be linked together and also include basic logic.</p>
+
+    <p>Recall that in the previous chapter our “Hello, World” site had the phrase hardcoded into a <code>views.py</code> file. That technically works but doesn’t scale well! A better approach is to link a view to a template, thereby separating the information contained in each.</p>
+
+    <p>In this chapter we’ll learn how to use templates to more easily create our desired homepage and about page. And in future chapters, the use of templates will support building websites that can support hundreds, thousands, or even millions of webpages with a minimal amount of code.</p>
+
+    <p>The first consideration is where to place templates within the structure of a Django project. There are two options. By default, Django’s template loader will look within each app for related templates. However the structure is somewhat confusing: each app needs a new <code>templates</code> directory, another directory with the same name as the app, and then the template file.</p>
+
+    <p>Therefore, in our <code>pages</code> app, Django would expect the following layout:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Layout</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>└── pages
+    ├── templates
+        ├── pages
+            ├── home.html
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This means we would need to create a new <code>templates</code> directory, a new directory with the name of the app, <code>pages</code>, and finally our template itself which is <code>home.html</code>.</p>
+
+    <p>Why this seemingly repetitive approach? The short answer is that the Django template loader wants to be really sure it finds the correct template! What happens if there are <code>home.html</code> files within two separate apps? This structure makes sure there are no such conflicts.</p>
+
+    <p>There is, however, another approach which is to instead create a single project-level <code>templates</code> directory and place <em>all</em> templates within there. By making a small tweak to our <code>django_project/settings.py</code> file we can tell Django to <em>also</em> look in this directory for templates. That is the approach we’ll use.</p>
+
+    <p>First, quit the running server with the <code>Control+c</code> command. Then create a directory called <code>templates</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; mkdir templates
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next we need to update <code>django_project/settings.py</code> to tell Django the location of our new <code>templates</code> directory. This is a one-line change to the setting <code>"DIRS"</code> under <code>TEMPLATES</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">TEMPLATES</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="p">{</code>
+        <code class="o">...</code>
+        <code class="s2">"DIRS"</code><code class="p">:</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"templates"</code><code class="p">],</code>  <code class="c1"># new</code>
+        <code class="o">...</code>
+    <code class="p">},</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Within the <code>templates</code> directory create a new file called <code>home.html</code>. You can do this within your text editor: in Visual Studio Code go to the top left of your screen, click on “File” and then “New File.” Make sure to name and save the file in the correct location.</p>
+
+    <p>The <code>home.html</code> file will have a simple headline for now.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Homepage<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Ok, our template is complete! The next step is to configure our URL and view files.</p>
+
+    <h3 id="leanpub-auto-class-based-views">Class-Based Views</h3>
+
+    <p>Early versions of Django only shipped with function-based views, but developers soon found themselves repeating the same patterns over and over again. Write a view that lists all objects in a model. Write a view that displays only one detailed item from a model. And so on.</p>
+
+    <p>Function-based generic views were introduced to abstract these patterns and streamline development of common patterns. However, there was <a href="https://docs.djangoproject.com/en/4.0/topics/class-based-views/intro/">no easy way to extend or customize these views</a>. As a result, Django introduced class-based generic views that make it easy to use and also extend views covering common use cases.</p>
+
+    <p>Classes are a fundamental part of Python but a thorough discussion of them is beyond the scope of this book. If you need an introduction or refresher, I suggest reviewing the <a href="https://docs.python.org/3.10/tutorial/classes.html">official Python docs</a> which have an excellent tutorial on classes and their usage.</p>
+
+    <p>In our view we will use the <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/base/#django.views.generic.base.TemplateView">built-in TemplateView</a> to display our template. Update the <code>pages/views.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">TemplateView</code>
+
+
+<code class="k">class</code> <code class="nc">HomePageView</code><code class="p">(</code><code class="n">TemplateView</code><code class="p">):</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that we’ve capitalized our view, <code>HomePageView</code>, since it’s now a Python class. Classes, unlike functions, <a href="https://www.python.org/dev/peps/pep-0008/#class-names">should always be capitalized</a>. The <code>TemplateView</code> already contains all the logic needed to display our template, we just need to specify the template’s name.</p>
+
+    <h3 id="leanpub-auto-urls">URLs</h3>
+
+    <p>The last step is to update our URLs. Recall from Chapter 2 that we need to make updates in two locations. First, we update the <code>django_project/urls.py</code> file to point at our <code>pages</code> app and then within <code>pages</code> we match views to URL routes.</p>
+
+    <p>Let’s start with the <code>django_project/urls.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The code here should look familiar at this point. We add <code>include</code> on the second line to point the existing URL to the <code>pages</code> app. Next create a file called <code>pages/urls.py</code> file and add the code below. This pattern is almost identical to what we did in Chapter 2 with one major difference: when using Class-Based Views, you always add <code>as_view()</code> at the end of the view name.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">HomePageView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">HomePageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And we’re done! Start up the local web server with the command <code>python manage.py runserver</code> and navigate to <code>http://127.0.0.1:8000/</code> to see our new homepage.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/03_homepage.png" alt="Homepage" style="width: 100%"/>
+
+        <figcaption>Homepage</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-about-page">About Page</h3>
+
+    <p>The process for adding an about page is very similar to what we just did. We’ll create a new template file, a new view, and a new url route. Start by making a new template file called <code>templates/about.html</code> and populate it with a short HTML headline.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/about.html --&gt;</code>
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>About page<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then add a new view for the page.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">TemplateView</code>
+
+
+<code class="k">class</code> <code class="nc">HomePageView</code><code class="p">(</code><code class="n">TemplateView</code><code class="p">):</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+
+
+<code class="k">class</code> <code class="nc">AboutPageView</code><code class="p">(</code><code class="n">TemplateView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"about.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And finally import the view name and connect it to a URL at <code>about/</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">HomePageView</code><code class="p">,</code> <code class="n">AboutPageView</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"about/"</code><code class="p">,</code> <code class="n">AboutPageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"about"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">HomePageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Start up the web server with <code>runserver</code> and navigate to <code>http://127.0.0.1:8000/about</code>. The new About page is visible.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/03_about.png" alt="About page" style="width: 100%"/>
+
+        <figcaption>About page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-extending-templates">Extending Templates</h3>
+
+    <p>The real power of templates is their ability to be extended. If you think about most websites, there is content that is repeated on every page (header, footer, etc). Wouldn’t it be nice if we, as developers, could have <em>one canonical place</em> for our header code that would be inherited by all other templates?</p>
+
+    <p>Well we can! Let’s create a <code>base.html</code> file containing a header with links to our two pages. We could name this file anything but using <code>base.html</code> is a common convention. In your text editor make this new file called <code>templates/base.html</code>.</p>
+
+    <p>Django has a minimal templating language for adding links and basic logic in our templates. You can see the full list of built-in template tags <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#built-in-template-tags-and-filters">here in the official docs</a>. Template tags take the form of <code>{% something %}</code> where the “something” is the template tag itself. You can even create your own custom template tags, though we won’t do that in this book.</p>
+
+    <p>To add URL links in our project we can use the <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#url">built-in url template tag</a> which takes the URL pattern name as an argument. Remember how we added optional URL names to our two routes in <code>pages/urls.py</code>? This is why. The <code>url</code> tag uses these names to automatically create links for us.</p>
+
+    <p>The URL route for our homepage is called <code>home</code>. To configure a link to it we use the following syntax: <code>{% url 'home' %}</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/base.html --&gt;</code>
+<code class="p">&lt;</code><code class="nt">header</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'home' %}"</code><code class="p">&gt;</code>Home<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+  <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'about' %}"</code><code class="p">&gt;</code>About<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">header</code><code class="p">&gt;</code>
+
+{% block content %} {% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the bottom we’ve added a <code>block</code> tag called <code>content</code>. Blocks can be overwritten by child templates via inheritance. While it’s optional to name our closing <code>endblock</code>–you can just write <code>{% endblock %}</code> if you prefer–doing so helps with readability, especially in larger template files.</p>
+
+    <p>Let’s update our <code>home.html</code> and <code>about.html</code> files to extend the <code>base.html</code> template. That means we can reuse the same code from one template in another template. The Django templating language comes with an <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#extends">extends</a> method that we can use for this.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Homepage<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/about.html --&gt;</code>
+{% extends "base.html" %}
+
+{% block content %}
+<code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>About page<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now if you start up the server with <code>python manage.py runserver</code> and open up our webpages again at <code>http://127.0.0.1:8000/</code> the header is included.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/03_home_header.png" alt="Homepage with header" style="width: 100%"/>
+
+        <figcaption>Homepage with header</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>And it is also present on the about page at <code>http://127.0.0.1:8000/about</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/03_about_header.png" alt="About page with header" style="width: 100%"/>
+
+        <figcaption>About page with header</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>There’s <em>a lot</em> more we can do with templates and in practice you’ll typically create a <code>base.html</code> file and then add additional templates on top of it in a robust Django project. We’ll do this later on in the book.</p>
+
+    <h3 id="leanpub-auto-tests">Tests</h3>
+
+    <p>It’s important to add automated tests and run them whenever a codebase changes. Tests require a small amount of upfront time to write but more than pay off later on. In the words of Django co-creator <a href="https://jacobian.org/">Jacob Kaplan-Moss</a>, “Code without tests is broken as designed.”</p>
+
+    <p>Testing can be divided into two main categories: unit and integration. <em>Unit tests</em> check a piece of functionality in isolation, while <em>Integration tests</em> check multiple pieces linked together. Unit tests run faster and are easier to maintain since they focus on only a small piece of code. Integration tests are slower and harder to maintain since a failure doesn’t point you in the specific direction of the cause. Most developers focus on writing many unit tests and a small amount of integration tests.</p>
+
+    <p>The Python standard library contains a built-in testing framework called <a href="https://docs.python.org/3/library/unittest.html">unittest</a> that uses <a href="https://docs.python.org/3/library/unittest.html#unittest.TestCase">TestCase</a> instances and a long list of <a href="https://docs.python.org/3/library/unittest.html#assert-methods">assert methods</a> to check for and report failures.</p>
+
+    <p>Django’s own testing framework provides several extensions on top of Python’s <code>unittest.TestCase</code> base class. These include a <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#the-test-client">test client</a> for making dummy Web browser requests, a number of Django-specific <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#assertions">additional assertions</a>, and four test case classes: <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#simpletestcase">SimpleTestCase</a>, <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#testcase">TestCase</a>, <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#transactiontestcase">TransactionTestCase</a>, and <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.LiveServerTestCase">LiveServerTestCase</a>.</p>
+
+    <p>Generally speaking, <code>SimpleTestCase</code> is used when a database is not necessary while <code>TestCase</code> is used when you do want to test the database. <code>TransactionTestCase</code> is useful if you need to directly test <a href="https://docs.djangoproject.com/en/4.0/topics/db/transactions/">database transactions</a> while <code>LiveServerTestCase</code> launches a live server thread useful for testing with browser-based tools like Selenium.</p>
+
+    <p>One quick note before we proceed: you may notice that the <em>naming</em> of methods in <code>unittest</code> and <code>django.test</code> are written in <code>camelCase</code> rather than the more Pythonic <code>snake_case</code> pattern. The reason is that <code>unittest</code> is based on the <code>jUnit</code> testing framework from Java, which does use camelCase, so when <code>unittest</code> was added to Python it came along with camelCase naming.</p>
+
+    <p>If you look within our <code>pages</code> app, Django already provided a <code>tests.py</code> file we can use. Since no database is involved yet in our project we will import <code>SimpleTestCase</code> at the top of the file. For our first tests we’ll check that the two URLs for our website, the homepage and about page, both return <a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes">HTTP status codes</a> of 200, the standard response for a successful HTTP request.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+
+<code class="k">class</code> <code class="nc">AboutpageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/about/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To run the tests quit the server with <code>Control+c</code> and type <code>python manage.py test</code> on the command line to run the tests.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+System check identified no issues (0 silenced).
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.006s
+
+OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you see an error such as <code>AssertionError: 301 != 200</code> it’s likely you forgot to add the trailing slash to <code>"/about"</code> above. The web browser knows to automatically add a slash if it’s not provided, but that causes a 301 redirect, not a 200 success response!</p>
+
+    <p>What else can we test? How about the URL name for each page? Recall that in <code>pages/urls.py</code> we added the name of <code>"home"</code> for the homepage path and <code>"about"</code> for the about page. We can use the very handy Django utility function <a href="https://docs.djangoproject.com/en/4.0/ref/urlresolvers/#reverse">reverse</a> to check both. Make sure to import <code>reverse</code> at the top of the file and add a new unit test for each below.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>  <code class="c1"># new</code>
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_available_by_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+
+<code class="k">class</code> <code class="nc">AboutpageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/about/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_available_by_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"about"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run the tests again to confirm that they work correctly.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+System check identified no issues (0 silenced).
+..
+----------------------------------------------------------------------
+Ran 4 tests in 0.007s
+
+OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We have tested our URL locations and URL names so far but not our templates. Let’s make sure that the correct templates–<code>home.html</code> and <code>about.html</code>–are used on each page and that they display the expected content of “&lt;h1&gt;Homepage&lt;/h1&gt;” and “&lt;h1&gt;About page&lt;/h1&gt;” respectively.</p>
+
+    <p>We can use <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.SimpleTestCase.assertTemplateUsed">assertTemplateUsed</a> and <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.SimpleTestCase.assertContains">assertContains</a> to achieve this.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>  
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_available_by_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_template_name_correct</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_template_content</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"&lt;h1&gt;Homepage&lt;/h1&gt;"</code><code class="p">)</code>
+
+
+<code class="k">class</code> <code class="nc">AboutpageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/about/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_available_by_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"about"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_template_name_correct</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"about"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"about.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_template_content</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"about"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"&lt;h1&gt;About page&lt;/h1&gt;"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run the tests one last time to check our new work. Everything should pass.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python manage.py test
+System check identified no issues (0 silenced).
+..
+----------------------------------------------------------------------
+Ran 8 tests in 0.009s
+
+OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Experienced programmers may look at our testing code and note that there is a lot of repetition. For example, we are setting the <code>response</code> each time for all eight tests. Generally it is a good idea to abide by the concept of DRY (Don’t Repeat Yourself) coding, but unit tests work best when they are self contained and extremely verbose. As a test suite expands, for performance reasons it might make more sense to combine multiple assertions into a smaller number of test but that is an advanced–and often subjective–topic beyond the scope of this book.</p>
+
+    <p>We’ll do much more with testing in the future, especially once we start working with databases. For now, it’s important to see how easy and important it is to add tests each and every time we add new functionality to our Django project.</p>
+
+    <h3 id="leanpub-auto-git-and-github">Git and GitHub</h3>
+
+    <p>It’s time to track our changes with Git and push them up to GitHub. We’ll start by initializing our directory and checking the status of our changes.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git init
+(.venv) &gt; git status
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Use <code>git status</code> to see all our code changes. Notice that the <code>.venv</code> directory with our virtual environment is included? We don’t want that. In your text editor create a new hidden file, <code>.gitignore</code>, so we can specify what Git will <em>not</em> track.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run <code>git status</code> again to confirm these two files are being ignored, then use <code>git add -A</code> to add the intended files/directories, and finally add an initial commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git status
+(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "initial commit"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Over on GitHub <a href="https://github.com/new">create a new repo</a> called <code>pages</code> and make sure to select the “Private” radio button. Then click on the “Create repository” button.</p>
+
+    <p>On the next page, scroll down to where it says “…or push an existing repository from the command line.” Copy and paste the two commands there into your terminal.</p>
+
+    <p>It should look like the below albeit instead of <code>wsvincent</code> as the username it will be your GitHub username.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git remote add origin https://github.com/wsvincent/pages.git
+(.venv) &gt; git push -u origin main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-local-vs-production">Local vs Production</h3>
+
+    <p>To make our site available on the Internet where everyone can see it, we need to deploy our code to an external server and database. This is called putting our code into <em>production</em>. Local code lives only on our computer; production code lives on an external server available to everyone.</p>
+
+    <p>The <code>startproject</code> command creates a new project configured for local development via the file <code>django_project/settings.py</code>. This ease-of-use means when it does come time to push the project into production, a number of settings have to be changed.</p>
+
+    <p>One of these is the web server. Django comes with its own basic server, suitable for local usage, but it <em>is not</em> suitable for production. There are two options available: <a href="http://gunicorn.org/">Gunicorn</a> and <a href="https://uwsgi-docs.readthedocs.io/en/latest/">uWSGI</a>. Gunicorn is the simpler to configure and more than adequate for our projects so that will be what we use.</p>
+
+    <p>For our hosting provider we will use <a href="https://www.heroku.com/">Heroku</a> because it is free for small projects, widely-used, and has a relatively straightforward deployment process.</p>
+
+    <h3 id="leanpub-auto-heroku">Heroku</h3>
+
+    <p>You can sign up for a free Heroku account on their website. Fill in the registration form and wait for an email with a link to confirm your account. This will take you to the password setup page. Once configured, you will be directed to the dashboard section of the site. Heroku now requires enrolling in multi-factor authentication (MFA), too, which can be done with SalesForce or a tool like Google Authenticator.</p>
+
+    <p>Heroku may also ask about adding a credit card for <a href="https://devcenter.heroku.com/articles/account-verification">account verification</a>. This is optional but provides extra benefits even if you use the free tier such as adding a custom domain and adding extra add-ons for additional functionality.</p>
+
+    <p>Now that you are signed up, it is time to install Heroku’s <em>Command Line Interface (CLI)</em> so we can deploy from the command line. Currently, we are operating within a virtual environment for our <em>Pages</em> project but we want Heroku available globally, that is everywhere on our machine. An easy way to do so is open up a new command line tab–<code>Command+t</code> on a Mac, <code>Control+t</code> on Windows–which is not operating in a virtual environment. Anything installed here will be global.</p>
+
+    <p>On Windows, see the <a href="https://devcenter.heroku.com/articles/heroku-cli#download-and-install">Heroku CLI page</a> to correctly install either the 32-bit or 64-bit version. On a Mac, the package manager <a href="https://brew.sh/">Homebrew</a> is used for installation. If not already on your machine, install Homebrew by copy and pasting the long command on the Homebrew website into your command line and hitting <code>Return</code>. It will look something like this:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>% /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/\
+  install/HEAD/install.sh)"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next install the Heroku CLI by copy and pasting the following into your command line and hitting <code>Return</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>% brew tap heroku/brew &amp;&amp; brew install heroku
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you are on a new M1 chip Apple computer you might receive an error with something like <code>Bad CPU type in executable</code>. Installing <a href="https://support.apple.com/en-us/HT211861">Rosetta 2</a> will solve the issue.</p>
+
+    <p>Once installation is complete you can close the new command line tab and return to the initial tab with the <code>pages</code> virtual environment active.</p>
+
+    <p>Type the command <code>heroku login</code> and use the email and password for Heroku you just set.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku login
+Enter your Heroku credentials:
+Email: will@wsvincent.com
+Password: *********************************
+Logged in as will@wsvincent.com
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You are logged in and ready to go!</p>
+
+    <h3 id="leanpub-auto-deployment-checklist">Deployment Checklist</h3>
+
+    <p>Deployment typically requires a number of discrete steps. It is common to have a “checklist” for these since there quickly become too many to remember. At this stage, we are intentionally keeping things basic however this list will grow in future projects as we add additional security and performance features.</p>
+
+    <p>Here is the current deployment checklist:</p>
+
+    <ul>
+
+      <li>install <code>Gunicorn</code>
+</li>
+
+      <li>create a <code>requirements.txt</code> file</li>
+
+      <li>update <code>ALLOWED_HOSTS</code> in <code>django_project/settings.py</code>
+</li>
+
+      <li>create a <code>Procfile</code>
+</li>
+
+      <li>create a <code>runtime.txt</code> file</li>
+
+    </ul>
+
+    <p>The first item is to install Gunicorn, a production-ready web server for our project. Recall that we have been using Django’s own lightweight server for development purposes but it is not suitable for a live website. Gunicorn can be installed using Pip.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip install gunicorn==20.1.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Step two is to create a <code>requirements.txt</code> file containing all the specific Python dependencies in our project. That is, every Python package currently installed in our virtual environment. This is necessary in case we–or a team member–want to recreate the repository from scratch in the future. It also helps Heroku recognize that this is a Python project, which simplifies the deployment steps.</p>
+
+    <p>To create this file, we will redirect the output of the <code>pip freeze</code> command to a new file called <code>requirements.txt</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; python -m pip freeze &gt; requirements.txt
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you look at the contents of this file it contains <code>Django</code>, <code>gunicorn</code>, <code>asgiref</code> and <code>sqlparse</code>. That’s because when we installed Django we <em>also</em> end up installing a number of other Python modules it depends upon. You do not need to focus too much on the contents of this file, just remember that whenever you install a new Python package in your virtual environment you should update the <code>requirements.txt</code> file to reflect it. There are more complicated tools that automate this process but since we are using <code>venv</code> and keeping things as simple as possible, it must be done manually.</p>
+
+    <p>The third step is to look within <code>django_project/settings.py</code> for the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#allowed-hosts">ALLOWED_HOSTS</a> setting, which represents that host/domain names our Django site can serve. This is a security measure to prevent HTTP Host header attacks. For now, we’ll use the wildcard asterisk, <code>*</code> so that <em>all</em> domains are acceptable. Later in the book we’ll see how to explicitly list the domains that should be allowed which is much more secure.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">ALLOWED_HOSTS</code> <code class="o">=</code> <code class="p">[</code><code class="s2">"*"</code><code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The fourth step is to create a new <code>Procfile</code> in the base directory next to the <code>manage.py</code> file. The <code>Procfile</code> is specific to Heroku and provides instructions on how to run the application in their stack. We’re indicating that for the <code>web</code> function use <code>gunicorn</code> as the server, the WSGI config file located at <code>django_project.wsgi</code>, and finally the flag <code>--log-file -</code> makes any logging messages visible to us.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Procfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>web: gunicorn django_project.wsgi --log-file -
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The final step is to specify which Python version should run on Heroku. If not set explicitly this is <a href="https://devcenter.heroku.com/articles/python-support#specifying-a-python-version">currently set</a> to the <code>python-3.9.10</code> runtime but changes over time. Since we are using Python 3.10 we must create a dedicated <a href="https://devcenter.heroku.com/articles/python-runtimes">runtime.txt</a> file to use it. In your text editor, create this new <code>runtime.txt</code> file at the project-level meaning it is in the same directory as <code>manage.py</code> and the <code>Procfile</code>.</p>
+
+    <p>To check the current version of Python run <code>python --version</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+(.venv) &gt; python --version
+Python 3.10.2
+
+# macOS
+(.venv) % python3 --version
+Python 3.10.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In the base directory, right next to the <code>Procfile</code>, create a new file called <code>runtime.txt</code> and use the following format. Make sure everything is lowercased!</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>runtime.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>python-3.10.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>That’s it! Keep in mind we’ve taken a number of security shortcuts here but the goal is to push our project into production in as few steps as possible. In later chapters we will cover proper security around deployments in depth.</p>
+
+    <p>Use <code>git status</code> to check our changes, add the new files, and then commit them:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git status
+(.venv) &gt; git add -A
+(.venv) &gt; git commit -m "New updates for Heroku deployment"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Finally, push to GitHub so we have an online backup of our code changes.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git push -u origin main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The last step is to actually deploy with Heroku. If you’ve ever configured a server yourself in the past, you’ll be amazed at how much simpler the process is with a platform-as-a-service provider like Heroku.</p>
+
+    <p>Our process will be as follows:</p>
+
+    <ul>
+
+      <li>create a new app on Heroku</li>
+
+      <li>disable the collection of static files (we’ll cover this in a later chapter)</li>
+
+      <li>push the code up to Heroku</li>
+
+      <li>start the Heroku server so the app is live</li>
+
+      <li>visit the app on Heroku’s provided URL</li>
+
+    </ul>
+
+    <p>We can do the first step, creating a new Heroku app, from the command line with <code>heroku create</code>. Heroku will create a random name for our app, in my case <code>fathomless-hamlet-26076</code>. Your name will be different.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku create
+Creating app... done, ⬢ fathomless-hamlet-26076
+https://fathomless-hamlet-26076.herokuapp.com/ |
+https://git.heroku.com/fathomless-hamlet-26076.git
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The <code>heroku create</code> command also creates a dedicated remote named <code>heroku</code> for our app. To see this, type <code>git remote -v</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>&gt; git remote -v
+heroku  https://git.heroku.com/fathomless-hamlet-26076.git (fetch)
+heroku  https://git.heroku.com/fathomless-hamlet-26076.git (push)
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This new remote means that as long as we include <code>heroku</code> in a command we have the ability to both push and fetch code from Heroku now.</p>
+
+    <p>At this point, we only need one set of additional Heroku configurations, which is to tell Heroku to ignore static files like CSS and JavaScript. By default, Django will try to optimize these for us which causes issues. We’ll cover this in later chapters so for now just run the following command:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku config:set DISABLE_COLLECTSTATIC=1
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now we can push our code up to Heroku:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; git push heroku main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If we had just typed <code>git push origin main</code> the code would have been pushed to GitHub, not Heroku. Adding <code>heroku</code> to the command sends the code to Heroku. Git itself can be quite confusing initially to understand!</p>
+
+    <p>The last step is to make our Heroku app live. As websites grow in traffic they need additional Heroku services but for our basic example we can use the lowest level, <code>web=1</code>, which also happens to be free! Type the following command:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku ps:scale web=1
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re done! The last step is to confirm our app is live and online. If you use the command <code>heroku open</code> your web browser will open a new tab with the URL of your app:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) &gt; heroku open
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Mine is at <code>https://fathomless-hamlet-26076.herokuapp.com/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/03_heroku_home.png" alt="Homepage on Heroku" style="width: 100%"/>
+
+        <figcaption>Homepage on Heroku</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>You do not have to log out or exit from your Heroku app. It will continue running at this free tier on its own, though you should type <code>deactivate</code> to leave the local virtual environment and be ready for the next chapter.</p>
+
+    <h3 id="leanpub-auto-conclusion-3">Conclusion</h3>
+
+    <p>Congratulations on building and deploying your second Django project! This time we used templates, class-based views, explored URLs more fully, added basic tests, and used Heroku. If you feel overwhelmed by the deployment process, don’t worry. Deployment <em>is</em> hard even with a tool like Heroku. The good news is the steps required are the same for most projects so you can refer to a deployment checklist to guide you each time you launch a new project.</p>
+
+    <p>The full source code for this chapter is <a href="https://github.com/wsvincent/djangoforbeginners">available on GitHub</a> if you need a reference. In the next chapter we’ll move on to our first database-backed project, a <em>Message Board</em> website, and see where Django really shines.</p>
+
+  </div>
+
+</body>
+
+</html>
