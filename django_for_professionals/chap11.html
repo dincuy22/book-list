@@ -1,0 +1,1006 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 11: Books App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-11-books-app">Chapter 11: Books App</h2>
+
+    <p>In this chapter we will build a <em>Books</em> app for our project that displays all available books and has an individual page for each. We’ll also explore different URL approaches starting with using an <code>id</code>, then switching to a slug, and finally using a UUID.</p>
+
+    <p>To start, we must create this new app which we’ll call <code>books</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py startapp books
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And to ensure Django knows about our new app, open your text editor and add the new app to <code>INSTALLED_APPS</code> in our <code>django_project/settings.py</code> file:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sites"</code><code class="p">,</code>
+    <code class="c1"># Third-party</code>
+    <code class="s2">"crispy_forms"</code><code class="p">,</code>
+    <code class="s2">"crispy_bootstrap5"</code><code class="p">,</code>
+    <code class="s2">"allauth"</code><code class="p">,</code>
+    <code class="s2">"allauth.account"</code><code class="p">,</code>
+    <code class="c1"># Local</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>
+    <code class="s2">"books.apps.BooksConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Ok, initial creation complete!</p>
+
+    <h3 id="leanpub-auto-models">Models</h3>
+
+    <p>Ultimately we’ll need a model, view, url, and template for each page so it’s common to debate where to start. The model is a good place to start as it sets the structure. Let’s think about what fields we might want to include. To keep things simple we’ll start with a <code>title</code>, <code>author</code>, and <code>price</code>.</p>
+
+    <p>Update the <code>books/models.py</code> file to include our new <code>Books</code> model.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+
+
+<code class="k">class</code> <code class="nc">Book</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="n">title</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">price</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">DecimalField</code><code class="p">(</code><code class="n">max_digits</code><code class="o">=</code><code class="mi">6</code><code class="p">,</code> <code class="n">decimal_places</code><code class="o">=</code><code class="mi">2</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">title</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top we’re importing the Django class <code>models</code> and then creating a <code>Book</code> model that subclasses it which means we automatically have access to everything within <a href="https://docs.djangoproject.com/en/4.0/topics/db/models/">django.db.models.Model</a> and can add additional fields and methods as desired.</p>
+
+    <p>For <code>title</code> and <code>author</code> we’re limiting the length to 200 characters and for <code>price</code> using a <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#decimalfield">DecimalField</a> which is a good choice when dealing with currency.</p>
+
+    <p>Below we’ve specified a <code>__str__</code> method to control how the object is outputted in the Admin and Django shell.</p>
+
+    <p>Now that our new database model is created we need to create a new migration record for it.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py makemigrations
+Migrations for 'books':
+  books/migrations/0001_initial.py
+    - Create model Book
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And then apply the migration to our database.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py migrate
+Operations to perform:
+  Apply all migrations: account, accounts, admin, auth, books, contenttypes, sessions, si\
+tes
+Running migrations:
+  Applying books.0001_initial... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Our database is configured. Let’s add some data to the admin.</p>
+
+    <h3 id="leanpub-auto-admin-1">Admin</h3>
+
+    <p>We need a way to access our data for which the Django admin is perfectly suited. Don’t forget to update the <code>books/admin.py</code> file or else the app won’t appear! I forget this step almost every time even after using Django for years.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code>
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Book</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you look into the admin at <code>http://127.0.0.1:8000/admin/</code> the <code>Books</code> app is now there.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/11_admin_homepage.jpg" alt="Admin Homepage" style="width: 100%"/>
+
+        <figcaption>Admin Homepage</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Let’s add a book entry for <em>Django for Professionals</em>. Click on the <code>+ Add</code> button next to <code>Books</code> to create a new entry. The title is “Django for Professionals”, the author is “William S. Vincent”, and the price is $39.00. There’s no need to include the dollar sign <code>$</code> in the amount as we’ll add that in our eventual template.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_admin_dfp.jpg" alt="Admin - Django for Professionals book" style="width: 100%"/>
+
+        <figcaption>Admin - Django for Professionals book</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>After clicking on the “Save” button it redirects to the main Books page which only shows the title.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/11_admin_books.jpg" alt="Admin Books Page" style="width: 100%"/>
+
+        <figcaption>Admin Books Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Let’s update the <code>books/admin.py</code> file to specify which fields we also want displayed.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code>
+
+<code class="k">class</code> <code class="nc">BookAdmin</code><code class="p">(</code><code class="n">admin</code><code class="o">.</code><code class="n">ModelAdmin</code><code class="p">):</code>
+    <code class="n">list_display</code> <code class="o">=</code> <code class="p">(</code><code class="s2">"title"</code><code class="p">,</code> <code class="s2">"author"</code><code class="p">,</code> <code class="s2">"price"</code><code class="p">,)</code>
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Book</code><code class="p">,</code> <code class="n">BookAdmin</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then refresh the page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_admin_books_list.jpg" alt="Admin Books List Page" style="width: 100%"/>
+
+        <figcaption>Admin Books List Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now that our database model is complete we need to create the necessary views, URLs, and templates so we can display the information on our web application. Where to start is always a question and a confusing one at that for developers.</p>
+
+    <p>Personally I often start with the URLs, then the Views, and the Templates.</p>
+
+    <h3 id="leanpub-auto-urls-1">URLs</h3>
+
+    <p>We need to update two <code>urls.py</code> files. The first one is <code>django_project/urls.py</code>. Add the new path for the <code>books</code> app.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="c1"># Django admin</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="c1"># User management</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"allauth.urls"</code><code class="p">)),</code>
+    <code class="c1"># Local apps</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"books/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"books.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now create a <code>books/urls.py</code> file in your text editor for our <code>books</code> app URLs paths. We’ll use the empty string, <code>""</code> so all <code>books</code> app URLs will start at <code>books/</code> based on the URL path just set in <code>django_project/urls.py</code>. The view it references, <code>BookListView</code>, has yet to be created and it will have the URL name of <code>book_list</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">BookListView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BookListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"book_list"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-views">Views</h3>
+
+    <p>Moving along it is time for that <code>BookListView</code> we just referenced in our URLs file. This will rely on the built-in <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-display/#django.views.generic.list.ListView">ListView</a>, a Generic Class-Based View provided for common use cases like this. All we must do is specify the proper model and template to be used.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code>
+
+
+<code class="k">class</code> <code class="nc">BookListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_list.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note the template <code>book_list.html</code> does not exist yet.</p>
+
+    <h3 id="leanpub-auto-templates-2">Templates</h3>
+
+    <p>It is optional to create an app specific folder within our base-level <code>templates</code> directory but it can help especially as number grows in size so we’ll create one called <code>books</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ mkdir templates/books/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your text editor create a new file called <code>templates/books/book_list.html</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/books/book_list.html --&gt;</code>
+{% extends "_base.html" %}
+
+{% block title %}Books{% endblock title %}
+
+{% block content %}
+  {% for book in object_list %}
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">""</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  {% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top we note that this template extends <code>_base.html</code> and then wraps our desired code with <code>content</code> blocks. We use the Django Templating Language to set up a simple <em>for loop</em> for each book. Note that <code>object_list</code> comes from <code>ListView</code> and contains all the objects in our view.</p>
+
+    <p>The final step is to spin up and then down our containers to reload the Django <code>django_project/settings.py</code> file. Otherwise it won’t realize we’ve made a change and so there will be an error page and in the logs a message about “ModuleNotFoundError: No module named ‘books.urls’”.</p>
+
+    <p>Spin down and then up again our containers.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your web browser go to <code>http://127.0.0.1:8000/books/</code> and the new books page is visible.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_books_page.jpg" alt="Books Page" style="width: 100%"/>
+
+        <figcaption>Books Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-objectlist">object_list</h3>
+
+    <p>ListView relies on <code>object_list</code>, as we just saw, but this is far from descriptive. A better approach is to rename it to a <a href="https://docs.djangoproject.com/en/4.0/topics/class-based-views/generic-display/#making-friendly-template-contexts">friendlier</a> name using <code>context_object_name</code>.</p>
+
+    <p>Update <code>books/views.py</code> as follows.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code>
+
+
+<code class="k">class</code> <code class="nc">BookListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book_list"</code>  <code class="c1"># new</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_list.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And then swap out <code>object_list</code> in our template for <code>book_list</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/books/book_list.html --&gt;</code>
+{% extends "_base.html" %}
+
+{% block title %}Books{% endblock title %}
+
+{% block content %}
+  {% for book in book_list %}
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">""</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  {% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the page and it will still work as before! This technique is especially helpful on larger projects where multiple developers are working on a project. It’s hard for a front-end engineer to guess correctly what <code>object_list</code> means!</p>
+
+    <p>To prove the list view works for multiple items add two more books to the site via the admin. I’ve added my two other Django books–<em>Django for APIs</em> and <em>Django for Beginners</em>–which both have “William S. Vincent” as the author and “39.00” as the price.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/11_books_three.jpg" alt="Three Books" style="width: 100%"/>
+
+        <figcaption>Three Books</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-individual-book-page">Individual Book Page</h3>
+
+    <p>Now we can add individual pages for each book by using another Generic Class-Based View called <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/generic-display/#detailview">DetailView</a>.</p>
+
+    <p>Our process is similar to the Books page and starts with the URL importing <code>BookDetailView</code> on the second line and then setting the path to be the primary key of each book which will be represented as an integer <code>&lt;int:pk&gt;</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">BookListView</code><code class="p">,</code> <code class="n">BookDetailView</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BookListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"book_list"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;int:pk&gt;/"</code><code class="p">,</code> <code class="n">BookDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"book_detail"</code><code class="p">),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Django automatically adds an <a href="https://docs.djangoproject.com/en/4.0/topics/db/models/#automatic-primary-key-fields">auto-incrementing primary key</a> to our database models. So while we only declared the fields <code>title</code>, <code>author</code>, and <code>body</code> on our <code>Book</code> model, under-the-hood Django also added another field called <code>id</code>, which is our primary key. We can access it as either <code>id</code> or <code>pk</code>.</p>
+
+    <p>The <code>pk</code> for our first book is 1. For the second one it will 2. And so on. Therefore when we go to the individual entry page for our first book, we can expect that its URL route will be <code>books/1</code>.</p>
+
+    <p>Now on to the <code>books/views.py</code> file where we’ll import <code>DetailView</code> and create a <code>BookDetailView</code> class that also specifies <code>model</code> and <code>template_name</code> fields.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code>  <code class="c1"># new</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code>
+
+
+<code class="k">class</code> <code class="nc">BookListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book_list"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_list.html"</code>
+
+
+<code class="k">class</code> <code class="nc">BookDetailView</code><code class="p">(</code><code class="n">DetailView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_detail.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And finally create the new template file <code>templates/books/book_detail.html</code>. It will display all the current fields. We can also showcase the title in the <code>title</code> tags so that it appears in the web browser tab.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/books/book_detail.html --&gt;</code>
+{% extends "_base.html" %}
+
+{% block title %}{{ object.title }}{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"book-detail"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">""</code><code class="p">&gt;</code>{{ object.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Author: {{ object.author }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Price: {{ object.price }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your web browser navigate to <code>http://127.0.0.1:8000/books/1/</code> and you’ll see a dedicated page for our first book.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_dfp_detail_page.jpg" alt="Book Detail Page" style="width: 100%"/>
+
+        <figcaption>Book Detail Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-contextobjectname">context_object_name</h3>
+
+    <p>Just as <code>ListView</code> defaults to <code>object_list</code> which we updated to be more specific, so too <code>DetailView</code> defaults to <code>object</code> which we can make more descriptive using <code>context_object_name</code>. We’ll set it to <code>book</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">BookDetailView</code><code class="p">(</code><code class="n">DetailView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book"</code>  <code class="c1"># new</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_detail.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Don’t forget to update our template too with this change, swapping out <code>object</code> for <code>book</code> for our three fields.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/books/book_detail.html --&gt;</code>
+{% extends "_base.html" %}
+
+{% block title %}{{ book.title }}{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"book-detail"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">""</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Author: {{ book.author }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Price: {{ book.price }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-adding-urls">Adding URLs</h3>
+
+    <p>We want the links on the book list page to point to individual pages. With the <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#url">url template tag</a> we can point to <code>book_detail</code> – the URL name set in <code>books/urls.py</code> – and then pass in the <code>pk</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/books/book_list.html --&gt;</code>
+{% extends "_base.html" %}
+
+{% block title %}Books{% endblock title %}
+
+{% block content %}
+  {% for book in book_list %}
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'book_detail' book.pk %}"</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  {% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the book list page at <code>http://127.0.0.1:8000/books/</code> and links are now all clickable and direct to the correct individual book page.</p>
+
+    <p>As a final step, let’s add a navbar link for “Books” so we don’t have to type out the full URL each time. The URL name for our book list view, <code>book_list</code>, can be used along with the <code>url</code> template tag to do this. Here is what the updated code looks like in <code>templates/_base.html</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+...
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"collapse navbar-collapse"</code> <code class="na">id</code><code class="o">=</code><code class="s">"navbarCollapse"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">ul</code> <code class="na">class</code><code class="o">=</code><code class="s">"navbar-nav me-auto mb-2 mb-md-0"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'book_list' %}"</code><code class="p">&gt;</code>Books<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'about' %}"</code><code class="p">&gt;</code>About<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+...      
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh any page on the website and the working “Books” navbar link is now there.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/11_book_navbar_link.jpg" alt="Book Navbar Link" style="width: 100%"/>
+
+        <figcaption>Book Navbar Link</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-getabsoluteurl">get_absolute_url</h3>
+
+    <p>One recommended step we haven’t made yet is to add a <a href="https://docs.djangoproject.com/en/4.0/ref/models/instances/#get-absolute-url">get_absolute_url()</a> method which sets a canonical URL for the model. It is also required when using the <a href="https://docs.djangoproject.com/en/4.0/ref/urlresolvers/#django.urls.reverse">reverse()</a> function.</p>
+
+    <p>Here’s how to add it to our <code>books/models.py</code> file. Import <code>reverse</code> at the top. Then add the <code>get_absolute_url</code> method which will be the reverse of our URL name, <code>book_detail</code>, and passes in the <code>id</code> as a string.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>  <code class="c1"># new</code>
+
+
+<code class="k">class</code> <code class="nc">Book</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="n">title</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">price</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">DecimalField</code><code class="p">(</code><code class="n">max_digits</code><code class="o">=</code><code class="mi">6</code><code class="p">,</code> <code class="n">decimal_places</code><code class="o">=</code><code class="mi">2</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">title</code>
+
+    <code class="k">def</code> <code class="nf">get_absolute_url</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="k">return</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"book_detail"</code><code class="p">,</code> <code class="n">args</code><code class="o">=</code><code class="p">[</code><code class="nb">str</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">id</code><code class="p">)])</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then we can update the templates. Currently our <code>a href</code> link is using <code>{% url 'book_detail' book.pk %}</code>. However we can instead use <code>get_absolute_url</code> directly which already has the <code>pk</code> passed in.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/books/book_list.html --&gt;</code>
+{% extends '_base.html' %}
+
+{% block title %}Books{% endblock title %}
+
+{% block content %}
+  {% for book in book_list %}
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{{ book.get_absolute_url }}"</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  {% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>There’s no need to use the <code>url</code> template tag now for the link. Instead there is one canonical reference in the <code>books/models.py</code> file. This is a cleaner approach and should be used whenever you need individual pages for an object.</p>
+
+    <h3 id="leanpub-auto-primary-keys-vs-ids">Primary Keys vs. IDs</h3>
+
+    <p>It can be confusing whether to use a primary key (PK) or an ID in a project, especially since Django’s <code>DetailView</code> treats them interchangeably. However there is a subtle difference.</p>
+
+    <p>The <code>id</code> is a model field automatically set by Django internally to auto-increment. So the first book has an <code>id</code> of 1, the second entry of 2, and so on. This is also, by default, treated as the primary key <code>pk</code> of a model.</p>
+
+    <p>However it’s possible to manually change what the primary key is for a model. It doesn’t have to be <code>id</code>, but could be something like <code>object_id</code> depending on the use case. Additionally Python has a built-in <a href="https://docs.python.org/3/library/functions.html#id">id()</a> object which can sometimes cause confusion and/or bugs.</p>
+
+    <p>By contrast the primary key <code>pk</code> refers to the primary key field of a model so you’re safer using <code>pk</code> when in doubt. And in fact in the next section we will update the <code>id</code> of our model!</p>
+
+    <h3 id="leanpub-auto-slugs-vs-uuids">Slugs vs. UUIDs</h3>
+
+    <p>Using the <code>pk</code> field in the URL of our <code>DetailView</code> is quick and easy, but not ideal for a real-world project. The <code>pk</code> is currently the same as our auto-incrementing <code>id</code>. Among other concerns, it tells a potential hacker <em>exactly</em> how many records you have in your database; it tells them exactly what the <code>id</code> is which can be used in a potential attack; and there can be synchronization issues if you have multiple front-ends.</p>
+
+    <p>There are two alternative approaches. The first is called a “slug,” a newspaper term for a short label for something that is often used in URLs. For example, in our example of “Django for Professionals” its slug could be <code>django-for-professionals</code>. There’s even a <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#slugfield">SlugField</a> model field that can be used and either added when creating the <code>title</code> field by hand or auto-populated upon save. The main challenge with slugs is handling duplicates, though this can be solved by adding random strings or numbers to a given slug field. The synchronization issue remains though.</p>
+
+    <p>A better approach is to use a <a href="https://docs.python.org/3/library/uuid.html?highlight=uuid#module-uuid">UUID (Universally Unique IDentifier)</a> which Django now supports via a dedicated <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#django.db.models.UUIDField">UUIDField</a>.</p>
+
+    <p>Let’s implement a UUID now by adding a new field to our model and then updating the URL path.</p>
+
+    <p>Import <code>uuid</code> at the top and then update the <code>id</code> field to actually be a <code>UUIDField</code> that is now the primary key. We also use <code>uuid4</code> for the encryption. This allows us to use <code>DetailView</code> which requires either a slug or pk field; it won’t work with a <code>UUID</code> field without significant modification.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="kn">import</code> <code class="nn">uuid</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">Book</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="nb">id</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">UUIDField</code><code class="p">(</code>  <code class="c1"># new</code>
+        <code class="n">primary_key</code><code class="o">=</code><code class="kc">True</code><code class="p">,</code>
+        <code class="n">default</code><code class="o">=</code><code class="n">uuid</code><code class="o">.</code><code class="n">uuid4</code><code class="p">,</code>
+        <code class="n">editable</code><code class="o">=</code><code class="kc">False</code><code class="p">)</code>
+    <code class="n">title</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">price</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">DecimalField</code><code class="p">(</code><code class="n">max_digits</code><code class="o">=</code><code class="mi">6</code><code class="p">,</code> <code class="n">decimal_places</code><code class="o">=</code><code class="mi">2</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">title</code>
+
+    <code class="k">def</code> <code class="nf">get_absolute_url</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"book_detail"</code><code class="p">,</code> <code class="n">args</code><code class="o">=</code><code class="p">[</code><code class="nb">str</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">id</code><code class="p">)])</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In the URL path swap out <code>int</code> for <code>uuid</code> in the detail view.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">BookListView</code><code class="p">,</code> <code class="n">BookDetailView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BookListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"book_list"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;uuid:pk&gt;"</code><code class="p">,</code> <code class="n">BookDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"book_detail"</code><code class="p">),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>But now we are faced with a problem: there are existing book entries, three in fact, with their own <code>id</code>s as well as related migration files that use them. Creating a new migration like this <a href="https://docs.djangoproject.com/en/4.0/howto/writing-migrations/#migrations-that-add-unique-fields">causes real problems</a>. The simplest approach, which we will use, is the most destructive: to simply delete old <code>books</code> migrations and start over.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web rm -r books/migrations
+$ docker-compose down
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>One last issue is that we are also persisting our PostgreSQL database via a volume mount that still has records to the older <code>id</code> fields. You can see this with the <code>docker volume ls</code> command.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker volume ls
+DRIVER              VOLUME NAME
+local               books_postgres_data
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The simplest approach is again to simply delete the volume and start over with Docker. As we’re early enough in the project we’ll take this route; a more mature project would require considering a more complex approach.</p>
+
+    <p>The steps involve starting up our <code>web</code> and <code>db</code> containers; adding a new initial migration file for the <code>books</code> app, applying all updates with <code>migrate</code>, and then creating a superuser account again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker volume rm books_postgres_data
+$ docker-compose up -d
+$ docker-compose exec web python manage.py makemigrations books
+$ docker-compose exec web python manage.py migrate
+$ docker-compose exec web python manage.py createsuperuser
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now go into admin and add the three books again. If you then navigate to the main books page and click on an individual book you’ll be taken to a new detail page with a UUID in the URL.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/11_dfp_uuid.jpg" alt="Django for Professionals book UUID" style="width: 100%"/>
+
+        <figcaption>Django for Professionals book UUID</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>By removing the volume we also lost our various <code>testuser</code> accounts but that’s ok. We can recreate them as needed going forward.</p>
+
+    <h3 id="leanpub-auto-tests-4">Tests</h3>
+
+    <p>We need to test our model and views now. We want to ensure that the <code>Books</code> model works as expected, including its <code>str</code> representation. And we want to test both <code>ListView</code> and <code>DetailView</code>. Here’s what sample tests look like in the <code>books/tests.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code>  <code class="n">TestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code>
+
+
+<code class="k">class</code> <code class="nc">BookTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+
+    <code class="nd">@classmethod</code>
+    <code class="k">def</code> <code class="nf">setUpTestData</code><code class="p">(</code><code class="bp">cls</code><code class="p">):</code>
+        <code class="bp">cls</code><code class="o">.</code><code class="n">book</code> <code class="o">=</code> <code class="n">Book</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code>
+            <code class="n">title</code><code class="o">=</code><code class="s2">"Harry Potter"</code><code class="p">,</code>
+            <code class="n">author</code><code class="o">=</code><code class="s2">"JK Rowling"</code><code class="p">,</code>
+            <code class="n">price</code><code class="o">=</code><code class="s2">"25.00"</code><code class="p">,</code>
+        <code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_listing</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">title</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">author</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"JK Rowling"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">price</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"25.00"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_list_view</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"book_list"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"books/book_list.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_detail_view</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">get_absolute_url</code><code class="p">())</code>
+        <code class="n">no_response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/books/12345/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">no_response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">404</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"books/book_detail.html"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We import <code>TestCase</code> and introduce the <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.TestCase.setUpTestData">setUpTestData</a> method to add a sample book to test. Using <code>setUpTestData</code> often dramatically increases the speed of your tests because the initial data is created once rather than each time for each unit test.</p>
+
+    <p>The first unit test, <code>test_book_listing</code>, checks that both its string representation and content are correct. Then we use <code>test_book_list_view</code> to confirm that our homepage returns a 200 HTTP status code, contains our body text, and uses the correct <code>books/book_list.html</code> template. Finally, <code>test_book_detail_view</code> tests that our detail page works as expected and that an incorrect page returns a 404. It’s always good both to test that something <strong>does</strong> exist and that something incorrect <strong>doesn’t</strong> exist in your tests.</p>
+
+    <p>Go ahead and run these tests now. They should all pass.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.208s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-git-9">Git</h3>
+
+    <p>We’ve done a lot of work in this chapter so add it all to version control now with Git by adding new files and adding a commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch11'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The official source code for this chapter is <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch11-books">available on Github</a> for reference.</p>
+
+    <h3 id="leanpub-auto-conclusion-11">Conclusion</h3>
+
+    <p>We’re at the end of quite a long chapter, but the architecture of our Bookstore project is now much clearer. We’ve added a <code>books</code> model, learned how to change the URL structure, and switched to the much more secure UUID pattern.</p>
+
+    <p>In the next chapter we’ll learn about foreign key relationships and add a reviews option to our project.</p>
+
+  </div>
+
+</body>
+
+</html>

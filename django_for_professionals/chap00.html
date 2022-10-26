@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Introduction</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-introduction">Introduction</h2>
+
+    <p>Welcome to <em>Django for Professionals</em>, a guide to building professional websites with the <a href="https://djangoproject.com">Django</a>, a Python-based web framework. There is a massive gulf between building simple “toy apps” that can be created and deployed quickly and what it takes to build a “production-ready” web application suitable for deployment to thousands or even millions of users. This book will show you to how to bridge that gap on both Windows and macOS computers.</p>
+
+    <p>When you first install Django and create a new project the default settings are geared towards local development. And this makes sense: there’s no need to add all the additional features required of a large website until you know you need them. These defaults include the use of SQLite as the default database, a local web server, local static asset hosting, built-in <code>User</code> model, <code>DEBUG</code> mode turned on, and many other settings that are implicitly set.</p>
+
+    <p>For a production project many, if not most, of these settings must be reconfigured. And even then there can be a frustrating lack of agreement among the experts. Rather than overwhelm the reader with the full array of choices available this book shows one approach for building a professional website grounded in current Django community best practices. The topics covered include using Docker for local development and deployment, PostgreSQL, a custom user model, robust user authentication flow with email, comprehensive testing, environment variables, security and performance improvements, and more.</p>
+
+    <p>By the end of this book you will have built a professional website step-by-step and learned about additional areas for further exploration. Whether you are starting a new project that hopes to be as large as Instagram (currently the largest Django website in the world) or making much-needed updates to an existing Django project, you will have the tools and knowledge to do so.</p>
+
+    <h3 id="leanpub-auto-prerequisites">Prerequisites</h3>
+
+    <p>If you’re brand-new to either Django or web development, this is not the book for you. The pace will be far too fast. While you <em>could</em> read along, copy all the code, and have a working website at the end, I instead recommend starting with my book <a href="https://djangoforbeginners.com">Django for Beginners</a>. It starts with the very basics and progressively introduces concepts via building five increasingly complex Django applications. After completing that book you will be ready for success with this book.</p>
+
+    <p>I have also written a book on transforming Django websites into web APIs called <a href="https://djangoforapis.com">Django for APIs</a>. In practice most Django developers work in teams with other developers and focus on back-end APIs, not full-stack web applications that require dedicated JavaScript front-ends. Reading <em>Django for APIs</em> is therefore helpful to your education as a Django developer, but not required before reading this book.</p>
+
+    <p>We will use Docker throughout most of this book but still rely, briefly, on having Python and Django installed locally. Git and the command line are also necessary components of the modern developers toolchain and will both be used extensively in this book as well.</p>
+
+    <h3 id="leanpub-auto-book-structure">Book Structure</h3>
+
+    <p><em>Chapter 1</em> starts with setting up your local computer for development by using the command line, installing Python, configuring Git, and creating virtual environments. <em>Chapter 2</em> is an introduction to Docker and explores how to “Dockerize” a traditional Django project. In <em>Chapter 3</em> PostgreSQL is introduced, a production-ready database that we can run locally within our Docker environment and also deploy to production. Then <em>Chapter 4</em> starts the main project in the book: an online Bookstore featuring a custom user model, search, image uploads, permissions, and a host of other goodies.</p>
+
+    <p><em>Chapter 5</em> focuses on building out a <code>Pages</code> app for a basic homepage along with robust testing which is included with every new feature on the site. In <em>Chapter 6</em> a complete user registration flow is implemented from scratch using the built-in <code>auth</code> app for sign up, log in, and log out. <em>Chapter 7</em> introduces proper static asset configuration for CSS, JavaScript, and images as well as the addition of Bootstrap for styling.</p>
+
+    <p>In <em>Chapter 8</em> the focus shifts to advanced user registration, namely including email-only log in and social authentication via the third-party <code>django-allauth</code> package. <em>Chapter 9</em> introduces environment variables, a key component of Twelve-Factor App development and a best practice widely used in the web development community. Rounding out the set up of our project, <em>Chapter 10</em> focuses on email and adding a dedicated third-party provider.</p>
+
+    <p>The structure of the first half of the book is intentional. When it comes time to build your own Django projects, chances are you will be repeating many of the same steps from Chapters 3-9. After all, every new project needs proper configuration, user authentication, and environment variables. So treat these chapters as your detailed explanation and guide. The second half of the book focuses on specific features related to our Bookstore website.</p>
+
+    <p><em>Chapter 11</em> starts with building out the models, tests, and pages for our Bookstore via a <code>Books</code> app. There is also a discussion of URLs and switching from <code>id</code> to a slug to a UUID (Universally Unique IDentifier) in the URLs. <em>Chapter 12</em> features the addition of reviews to our Bookstore and a discussion of foreign keys.</p>
+
+    <p>In <em>Chapter 13</em> image-uploading is added and in <em>Chapter 14</em> permissions are set across the site to lock it down. For any site but especially e-commerce, search is a vital component and <em>Chapter 15</em> walks through building a form and increasingly complex search filters for the site.</p>
+
+    <p>In <em>Chapter 16</em> the focus switches to performance optimizations including the addition of <code>django-debug-toolbar</code> to inspect queries and templates, database indexes, front-end assets, and multiple built-in caching options. <em>Chapter 17</em> covers security in Django, both the built-in options as well as additional configurations that can–and should–be added for a production environment. The final section, <em>Chapter 18</em>, is on deployment, the standard upgrades needed to migrate away from the Django web server, local static file handling, and configuring <code>ALLOWED_HOSTS</code>.</p>
+
+    <p>The <em>Conclusion</em> touches upon various next steps to take with the project and additional Django best practices.</p>
+
+    <h3 id="leanpub-auto-book-layout">Book Layout</h3>
+
+    <p>There are many code examples in this book, which are formatted as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># This is Python code</code>
+<code class="nb">print</code><code class="p">(</code><code class="s2">"Hello, World!"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For brevity we will use three dots, <code>...</code>, to denote existing code that remains unchanged in a longer code example. For example, in the function below, the previous content is unchanged and the <code>print()</code> statement has been added. In these cases there will also be a comment, <code># new</code>, indicating where the new code has been added.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="k">def</code> <code class="nf">make_my_website</code><code class="p">:</code>
+    <code class="o">...</code>
+    <code class="nb">print</code><code class="p">(</code><code class="s2">"All done!"</code><code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Complete source code for the book can be found in the <a href="https://github.com/wsvincent/djangoforprofessionals">official Github repository</a>. It is a good place to check first if there are any issues with your code.</p>
+
+    <h3 id="leanpub-auto-community">Community</h3>
+
+    <p>“Come for the framework, stay for the community” is a common saying among Django developers. While the Django code base is very impressive, ultimately the health of the project up to this point and going forward depends upon the community that has grown around it. Django development happens publicly on the <a href="https://docs.djangoproject.com/en/dev/internals/mailing-lists/#django-developers-mailing-list">django-developers</a> list and the project is overseen by a non-profit, the <a href="https://www.djangoproject.com/foundation/">Django Software Foundation</a>, which manages contributions, supports annual DjangoCon conferences, and local meetups where developers gather to share knowledge and insights. There is an official <a href="https://forum.djangoproject.com/">Django forum</a> populated by many members of the community which is an ideal place to ask for help.</p>
+
+    <p>No matter what your level of technical expertise becoming involved in Django itself is a great way to learn, to meet other developers, and to enhance your own reputation.</p>
+
+    <h3 id="leanpub-auto-conclusion">Conclusion</h3>
+
+    <p>Django is an excellent choice for any developer who wants to build modern, robust web applications with a minimal amount of code. In the next chapter we’ll make sure your computer is properly set up for web development before diving deeply into Django itself in the rest of the book.</p>
+
+  </div>
+
+</body>
+
+</html>

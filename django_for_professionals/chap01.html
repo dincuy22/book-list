@@ -1,0 +1,290 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 1: Initial Set Up</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-1-initial-set-up">Chapter 1: Initial Set Up</h2>
+
+    <p>This chapter covers how to properly configure your Windows or macOS computer to work on Django projects. It is similar to the set up guides in both <em>Django for Beginners</em> and <em>Django for APIs</em> so if you are already familiar with the command line, have the latest version of Python installed, know how to create virtual environments, and use Git you can consider this chapter optional. Otherwise read through to make sure your computer is ready for professional Django development and success in the rest of this book.  </p>
+
+    <h3 id="leanpub-auto-the-command-line">The Command Line</h3>
+
+    <p>The command line is a text-only interface that is used frequently by developers. It harkens back to the early days of computer interfaces before the mouse and graphical user interfaces became the norm. In practice, multiple terms are used to refer to the command line: Command Line Interface (CLI), console, terminal, shell, or prompt. Technically speaking, the <em>terminal</em> is the program that opens up a new window to access the command line, a <em>console</em> is a text-based application, the <em>shell</em> is the program that runs commands on the underlying operating system, and the <em>prompt</em> is where commands are typed and run. It is easy to be confused by these terms initially but they all essentially mean the same thing: the command line is where we run and execute text-only commands on our computer.</p>
+
+    <p>On Windows, the built-in terminal and shell are both called <em>PowerShell</em>. To access it, locate the taskbar on the bottom of the screen next to the Windows button and type in “powershell” to launch the app. It will open a new window with a dark blue background and a blinking cursor after the <code>&gt;</code> prompt. Here is how it looks on my computer.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>PS C:\Users\wsv&gt;
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On macOS, the built-in terminal is called appropriately enough <em>Terminal</em>. It can be opened via Spotlight: press the <code>Command</code> and <code>space bar</code> keys at the same time and then type in “terminal.” Alternatively, open a new Finder window, navigate to the <em>Applications</em> directory, scroll down to open the <em>Utilities</em> directory, and double-click the application called Terminal. This opens a new screen with a white background by default and a blinking cursor after the <code>%</code> prompt. Don’t worry about what comes <em>to the left</em> of the <code>%</code> prompt. It varies by computer and can be customized later on.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>Wills-Macbook-Pro:~ wsv%
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To avoid confusion around the different prompts for each operating system–<code>&gt;</code> on Windows and <code>%</code> on macOS–in this book we will use the Unix prompt of <code>$</code> for any command line usage. Where there is a difference between Windows and macOS both commands will be listed.</p>
+
+    <p>There are many available shell commands but most developers rely on the same handful over and over again and look up more complicated ones as needed. In most cases, the commands for Windows (PowerShell) and macOS are similar. For example, the command <code>whoami</code> returns the computer name/username on Windows and just the username on macOS. As with all shell commands, type the command itself followed by the <code>return</code> key. Note that the <code>#</code> symbol represents a comment and will not be executed on the command line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ whoami
+wsv2022/wsv
+
+# macOS
+$ whoami
+wsv
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Sometimes, however, the shell commands on Windows and macOS are completely different. A good example is the command for outputting a basic “Hello, World!” message to the console. On Windows the command is <code>Write-Host</code> while on macOS the command is <code>echo</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ Write-Host "Hello, World!"
+Hello, World!
+
+# macOS
+$ echo "Hello, World!"
+Hello, World!
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Most Django developers are not command line experts and rely on the same handful of commands over and over again. In this book I will provide the exact instructions to run each time but if you are curious, a complete list of shell commands for each operating system can be found over at <code>ss64.com</code>.</p>
+
+    <h3 id="leanpub-auto-install-python-3">Install Python 3</h3>
+
+    <p>Make sure that the latest version of Python (3.10 as of this writing) is available on your computer.</p>
+
+    <p>On Windows, Microsoft hosts a community release of Python 3 in the Microsoft Store. In the search bar on the bottom of your screen type in “python” and click on the best match result. This will automatically launch Python 3.10 on the Microsoft Store. Click on the blue “Get” button to download it.</p>
+
+    <p>To confirm Python was installed correctly, open a new Terminal window with PowerShell and then type <code>python --version</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ python --version
+Python 3.10.4
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The result should be at least Python 3.10. Then type <code>python</code> to open the Python interpreter from the command line shell.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ python
+Python 3.10.4 (tags/v3.10.4:9d38120, Mar 23 2022, 19:00:18)
+[MSC v.1929 64 bit (AMD64)] on win32
+Type "help", "copyright", "credits", or "license" for more information.
+&gt;&gt;&gt;
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On Mac, the official installer on the Python website is the best approach. In a new browser window go the <a href="https://www.python.org/downloads/">Python downloads page</a> and click on the button underneath the text “Download the latest version for Mac OS X.” As of this writing, that is Python 3.10. The package will be in your <code>Downloads</code> directory. Double click on it which launches the Python Installer and follow through the prompts.</p>
+
+    <p>To confirm the download was successful, open up a new Terminal window and type <code>python3 --version</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ python3 --version
+Python 3.10.4
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The result should be at least 3.10. Then type <code>python3</code> to open the Python interpreter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ python3
+Python 3.10.4 (v3.10.4:9d38120e33, Mar 23 2022, 17:29:05)
+  [Clang 13.0.0 (clang-1300.0.29.30)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+&gt;&gt;&gt;
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-text-editor">Text Editor</h3>
+
+    <p>The command line is where we execute commands for our programs but a text editor is where actual code is written. The computer doesn’t care what text editor you use–the end result is just code–but a good text editor can provide helpful hints and catch typos for you.</p>
+
+    <p>There are many modern text editors available but a very popular one is <a href="https://code.visualstudio.com/">Visual Studio Code</a>, which is free, easy to install, and enjoys widespread popularity. If you’re not already using a text editor, download and install VSCode from the official website.</p>
+
+    <p>An optional–but highly recommended–additional step is to take advance of the large ecosystem of extensions available on VSCode. On Windows, navigate to <code>File -&gt; Preferences -&gt; Extensions</code> or on macOS <code>Code -&gt; Preferences -&gt; Extensions</code>. This launches a search bar for the extensions marketplace. Enter “python” which will bring up the Microsoft extension as the first result. Install it.</p>
+
+    <p>A second extension to add is <a href="https://pypi.org/project/black/">Black</a>, which is a Python code formatter that has quickly become the default within the Python community. To install Black, open a Terminal window within VSCode by going to <code>Terminal -&gt; New Terminal</code> at the top of the page. In the new terminal window opened at the bottom of the page, type <code>python -m pip install black</code>. Next, open up the VSCode settings by navigating to <code>File -&gt; Preferences -&gt; Settings</code> on Windows or <code>Code -&gt; Preferences -&gt; Settings</code> on macOS. Search for “python formatting provider” and select <code>black</code> from the dropdown options. Then search for “format on save” and enable “Editor: Format on Save”. Black will now automatically format your code whenever a <code>*.py</code> file is saved.</p>
+
+    <p>To confirm this is working, use your text editor to create a new file called <code>hello.py</code> within the <code>ch1-setup</code> directory. located on your Desktop and type in the following using single quotes:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>hello.py</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="nb">print</code><code class="p">(</code><code class="s1">'Hello, World!'</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On save, it should be automatically updated to using double quotes which is <a href="https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#strings">Black’s default preference</a>: <code>print("Hello, World!")</code>. That means everything is working properly.</p>
+
+    <h3 id="leanpub-auto-install-git">Install Git</h3>
+
+    <p>The final step is to install <em>Git</em>, a version control system that is indispensable to modern software development. With Git you can collaborate with other developers, track all your work via commits, and revert to any previous version of your code even if you accidentally delete something important!</p>
+
+    <p>On Windows, navigate to the official website at <code>https://git-scm.com/</code> and click on the “Download” link which should install the proper version for your computer. Save the file and then open your Downloads folder and double click on the file. This will launch the Git for Windows installer. Click the “Next” button through most of the early defaults as they are fine and can always be updated later as needed. There are two exceptions however: under “Choosing the default editor used by Git” select VS Code not Vim. And in the section on “Adjusting the name of the initial branch in new repositories” select the option to use “main” as opposed to “master” as the default branch name. Otherwise the recommended defaults are fine and can always be tweaked later if needed.</p>
+
+    <p>To confirm Git is installed on Windows, close all current shell windows and then open a new one which will load the changes to our PATH variable. Type in <code>git --version</code> which should show it is installed.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ git --version
+git version 2.35.1.windows.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On macOS, installing Git via Xcode is currently the easiest option. To check if Git is already installed on your computer, type <code>git --version</code> in a new terminal window.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># macOS
+$ git --version
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you do not have Git installed, a popup message will ask if you want to install it as part of “command line developer tools.” Select “Install” which will load Xcode and its command line tools package. Or if you do not see the message for some reason, type <code>xcode-select --install</code> instead to install Xcode directly.</p>
+
+    <p>Be aware that Xcode is a very large package so the initial download may take some time. Xcode is primarily designed for building iOS apps but also includes many developer features need on macOS. Once the download is complete close all existing terminal shells, open a new window, and type in <code>git --version</code> to confirm the install worked.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># macOS
+$ git --version
+git version 2.32.0 (Apple Git-132)
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Once Git is installed on your machine we need to do a one-time <em>system</em> configuration by declaring the name and email address associated with all your Git commits. We will also set the default branch name to <code>main</code>. Within the command line shell type the following two lines. Make sure to update them your name and email address.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git config --global user.name "Your Name"
+$ git config --global user.email "yourname@email.com"
+$ git config --global init.defaultBranch main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can always change these configs later if you desire by retyping the same commands with a new name or email address.</p>
+
+    <h3 id="leanpub-auto-conclusion-1">Conclusion</h3>
+
+    <p>Django is an excellent choice for any developer who wants to build modern, robust web applications with a minimal amount of code. While configuring a software development environment is no easy task you should now have Python 3.10 installed, Git installed, and configured a modern text editor.</p>
+
+    <p>In the next chapter we’ll learn about Docker and how to configure any computer for Django development with Docker.</p>
+
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,584 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 16: Performance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-16-performance">Chapter 16: Performance</h2>
+
+    <p>The first priority for any website is that it must work properly and contain proper tests. But if your project is fortunate enough to receive a large amount of traffic the focus quickly shifts to performance and making things as efficient as possible. This is a fun and challenging exercise for many engineers, but it can also be a trap.</p>
+
+    <p>The computer scientist Donald Knuth has <a href="http://www.paulgraham.com/knuth.html">a famous quote</a> worth reading in its entirety:</p>
+
+    <p>“The real problem is that programmers have spent far too much time worrying about efficiency in the wrong places and at the wrong times; premature optimization is the root of all evil (or at least most of it) in programming.”</p>
+
+    <p>While it’s important to set up proper monitoring so you <em>can</em> optimize your project later on, don’t focus too much on it upfront. There’s no way to properly mimic production environments locally. And there is no way to predict exactly how a site’s traffic will look. But it is possible to spend far too much time seeking out tiny performance gains in the early stages instead of talking to users and making larger code improvements!</p>
+
+    <p>In this chapter we’ll focus on the broad strokes of Django-related performance and highlight areas worth further investigation at scale. Generally speaking performance comes down to four major areas: optimizing database queries, caching, indexes, and compressing front-end assets like images, JavaScript, and CSS.</p>
+
+    <h3 id="leanpub-auto-django-debug-toolbar">django-debug-toolbar</h3>
+
+    <p>Before we can optimize our database queries we need to see them. The go-to tool for this in the Django community is the third-party package <a href="https://github.com/jazzband/django-debug-toolbar">django-debug-toolbar</a>. It comes with a configurable set of panels to inspect the complete request/response cycle of any given page.</p>
+
+    <p>Per usual we can install it by adding the latest version to our <code>requirements.txt</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+psycopg2-binary==2.9.3
+sqlparse==0.4.2
+django-crispy-forms==1.14.0
+crispy-bootstrap5==0.6
+django-allauth==0.50.0
+environs[django]==9.5.0
+pillow==9.0.1
+django-debug-toolbar==3.4.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then stop our container, rebuild the image, and run the container again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>There are three separate configurations to set in our <code>django_project/settings.py</code> file:</p>
+
+    <ol class="numeric">
+
+      <li><code>INSTALLED_APPS</code></li>
+
+      <li>Middleware</li>
+
+      <li><code>INTERNAL_IPS</code></li>
+
+    </ol>
+
+    <p>First add Debug Toolbar to the <code>INSTALLED_APPS</code> configuration. Note that the proper name is <code>debug_toolbar</code> not <code>django_debug_toolbar</code> as might be expected.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sites"</code><code class="p">,</code>
+    <code class="c1"># Third-party</code>
+    <code class="s2">"crispy_forms"</code><code class="p">,</code>
+    <code class="s2">"crispy_bootstrap5"</code><code class="p">,</code>
+    <code class="s2">"allauth"</code><code class="p">,</code>
+    <code class="s2">"allauth.account"</code><code class="p">,</code>
+    <code class="s2">"debug_toolbar"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="c1"># Local</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>
+    <code class="s2">"books.apps.BooksConfig"</code><code class="p">,</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Second, add Debug Toolbar to the Middleware where it is primarily implemented.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">MIDDLEWARE</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.middleware.security.SecurityMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions.middleware.SessionMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.middleware.common.CommonMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.middleware.csrf.CsrfViewMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth.middleware.AuthenticationMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages.middleware.MessageMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.middleware.clickjacking.XFrameOptionsMiddleware"</code><code class="p">,</code>
+    <code class="s2">"debug_toolbar.middleware.DebugToolbarMiddleware"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And third, set the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#internal-ips">INTERNAL_IPS</a> as well. If we were not in Docker this could be set to <code>'127.0.0.1'</code>, however, since we’re running our web server within Docker an additional step is required so that it matches the machine address of Docker. Add the following lines at the bottom of <code>config/settings.py</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="o">...</code>
+<code class="c1"># django-debug-toolbar</code>
+<code class="kn">import</code> <code class="nn">socket</code>
+
+<code class="n">hostname</code><code class="p">,</code> <code class="n">_</code><code class="p">,</code> <code class="n">ips</code> <code class="o">=</code> <code class="n">socket</code><code class="o">.</code><code class="n">gethostbyname_ex</code><code class="p">(</code><code class="n">socket</code><code class="o">.</code><code class="n">gethostname</code><code class="p">())</code>
+<code class="n">INTERNAL_IPS</code> <code class="o">=</code> <code class="p">[</code><code class="n">ip</code><code class="p">[:</code><code class="o">-</code><code class="mi">1</code><code class="p">]</code> <code class="o">+</code> <code class="s2">"1"</code> <code class="k">for</code> <code class="n">ip</code> <code class="ow">in</code> <code class="n">ips</code><code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Phew. That looks a bit scary, but basically it ensures that our <code>INTERNAL_IPS</code> matches that of our Docker host.</p>
+
+    <p>There’s one last step and that is to update our URLconf. We only want Debug Toolbar to appear if <code>DEBUG</code> is true so we’ll add logic to display it only in this case at the bottom of the <code>django_project/urls.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="o">...</code>
+<code class="k">if</code> <code class="n">settings</code><code class="o">.</code><code class="n">DEBUG</code><code class="p">:</code> <code class="c1"># new</code>
+    <code class="kn">import</code> <code class="nn">debug_toolbar</code>
+
+    <code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+        <code class="n">path</code><code class="p">(</code><code class="s2">"__debug__/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="n">debug_toolbar</code><code class="o">.</code><code class="n">urls</code><code class="p">)),</code>
+    <code class="p">]</code> <code class="o">+</code> <code class="n">urlpatterns</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now if you refresh the homepage you’ll see the <code>django-debug-toolbar</code> on the righthand side.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_debug_homepage.jpg" alt="Debug Toolbar" style="width: 100%"/>
+
+        <figcaption>Debug Toolbar</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you click the “Hide” link on top it becomes a much smaller sidebar on the righthand side of the page.</p>
+
+    <h3 id="leanpub-auto-analyzing-pages">Analyzing Pages</h3>
+
+    <p>Debug Toolbar has <a href="https://django-debug-toolbar.readthedocs.io/en/latest/index.html">many possible customizations</a> but the default settings visible tell us a lot about our homepage. For instance, we can see the current version of Django being used as well as the Time it took to load the page.</p>
+
+    <p>Probably the most useful item, however, is <code>SQL</code> which shows the queries on a specific page. If you are logged out right now, there are no SQL queries on the homepage. So go ahead and log in with your superuser account and then return the homepage. Debug Toolbar shows that two queries are being run for logged in users.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_debug_sql.jpg" alt="Debug Toolbar" style="width: 100%"/>
+
+        <figcaption>Debug Toolbar</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Over on the Django for Professionals book page there are six queries being run:</p>
+
+    <ul>
+
+      <li>the <a href="https://docs.djangoproject.com/en/4.0/topics/http/sessions/">sessions framework</a> to manage users</li>
+
+      <li>to <code>accounts_customuser</code> to load our user</li>
+
+      <li>to <code>books_book</code> to load the “Django for Professionals” book</li>
+
+      <li>to <code>books_review</code> to load the reviews</li>
+
+      <li>and then 2 more queries to <code>accounts_customuser</code>  </li>
+
+    </ul>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_debug_queries.jpg" alt="Debug Toolbar SQL Queries" style="width: 100%"/>
+
+        <figcaption>Debug Toolbar SQL Queries</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Six queries doesn’t seem too bad. But what if we had a lot of reviews for a book? Go into the admin and to the entry for the “Django for Professionals” book. Add eight more reviews–all by <code>testuser</code>–so there are now ten total and click “Save.”</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_admin_ten_reviews.jpg" alt="Admin Ten Reviews" style="width: 100%"/>
+
+        <figcaption>Admin Ten Reviews</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>How many SQL queries do you think will now be on our detail page for this book? Let’s head over and check!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_books_page_ten_reviews.jpg" alt="Books Page Ten Reviews" style="width: 100%"/>
+
+        <figcaption>Books Page Ten Reviews</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>As perhaps expected there are now eight more queries to coincide with the eight new reviews meaning 14 total queries for this one page.</p>
+
+    <p>If you look at the SQL detail view in Django Debug Toolbar it is actually quite helpful in flagging duplicate queries. Is it really necessary to call <code>accounts_customuser</code> eleven times? There’s like a way to reduce the number of queries since, after all, the books query manages to import three books with just one query.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_similar_queries.jpg" alt="11 Similar Queries" style="width: 100%"/>
+
+        <figcaption>11 Similar Queries</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>What we are experiencing now is a very common issue known generally as the “N+1 Queries problem.” There are several third-party packages that can help identify the issue. Fortunately there are tools to help.</p>
+
+    <h3 id="leanpub-auto-selectrelated-and-prefetchrelated">select_related and prefetch_related</h3>
+
+    <p>Reducing SQL queries is one of the first steps when optimizing a Django project. There are two powerful methods included in the Django ORM to help us that can boost performance by creating a single more complex QuerySet rather than multiple, smaller queries:</p>
+
+    <ul>
+
+      <li>
+<a href="https://docs.djangoproject.com/en/4.0/ref/models/querysets/#select-related">select_related</a> for Foreign Key relationships</li>
+
+      <li>
+<a href="https://docs.djangoproject.com/en/4.0/ref/models/querysets/#prefetch-related">prefetch_related()</a> for <a href="https://docs.djangoproject.com/en/4.0/topics/db/examples/many_to_many/">Many to Many</a> relationships</li>
+
+    </ul>
+
+    <p><code>select_related</code> returns a QuerySet that “follows” foreign-key relationships–either One-to-One or One-to-Many–selecting additional related-object data as needed. Under the hood the Django ORM creates a SQL join and includes the fields of a related object in the <code>SELECT</code> statement, which results in all related objects being included in a single more complex database query.</p>
+
+    <p><code>prefetch_related</code> performs a separate lookup for each relationship and “joins” them together with Python, not SQL. This allows it to prefetch many-to-many and many-to-one objects, which cannot be done using <a href="https://docs.djangoproject.com/en/4.0/ref/models/querysets/#select-related">select_related</a>.</p>
+
+    <p>At first glance it might seem the issue here is a Foreign Key one and calls for <code>select_related</code>. But in fact it is a Many-to-Many issue of authors to reviews since for one article there can be many reviews by many authors.</p>
+
+    <p>Studying your QuerySets deeply is vital for intermediate-to-advanced Django developers. There are many <a href="https://docs.djangoproject.com/en/4.0/ref/models/querysets/">built-in methods available</a> and understanding how QuerySets are built, the fact <a href="https://docs.djangoproject.com/en/4.0/topics/db/queries/#filtered-querysets-are-unique-1">they are unique</a> and <a href="https://docs.djangoproject.com/en/4.0/topics/db/queries/#querysets-are-lazy-1">also lazy</a>, can yield insight into speeding up performance.</p>
+
+    <p>We can access the <a href="https://docs.djangoproject.com/en/4.0/ref/django-admin/#shell">Python shell</a> directly from the command line to play around with our current QuerySets. After starting the shell the first step is to import the <code>Book</code> model from our <code>books</code> app. Then we can select all of it to see our three books.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py shell
+&gt;&gt;&gt; from books.models import Book
+&gt;&gt;&gt; Book.objects.all()
+&lt;QuerySet [&lt;Book: Django for APIs&gt;, &lt;Book: Django for Beginners&gt;, &lt;Book: Django for Profe\
+ssionals&gt;]&gt;
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We want to look at just the “Professionals” book now. If we were relying on the default <code>id</code>s for each Book, we could simply use the <a href="https://docs.djangoproject.com/en/4.0/topics/db/queries/#retrieving-a-single-object-with-get">get()</a> method but since we are using UUIDs we will instead use the <a href="https://docs.djangoproject.com/en/4.0/ref/models/querysets/#std:fieldlookup-contains">contains()</a> method and store the result as a variable called <code>pros</code>. Finally we can look at the all the reviews stored on it.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>&gt;&gt;&gt; pros = Book.objects.get(title__contains="Professionals")
+&gt;&gt;&gt; pros
+&lt;Book: Django for Professionals&gt;
+&gt;&gt;&gt; pros.reviews.all()
+&lt;QuerySet [&lt;Review: 1&gt;, &lt;Review: 2&gt;, &lt;Review: 3&gt;, &lt;Review: 4&gt;, &lt;Review: 5&gt;, &lt;Review: 6&gt;, \
+&lt;Review: 7&gt;, &lt;Review: 8&gt;, &lt;Review: 9&gt;, &lt;Review: 10&gt;]&gt;
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>A very useful third-party package is <a href="https://github.com/django-extensions/django-extensions">django-extensions</a> which comes with a number of Django command extensions. Among them is <code>shell_plus</code>, which automatically loads all app models in the shell. This can save a lot of time over the life of a Django project and makes working with the Django ORM much easier. But for now, we can exit the Django shell by typing <code>Ctrl + d</code>.</p>
+
+    <p>By default a <code>DetailView</code> will <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/mixins-single-object/#django.views.generic.detail.SingleObjectMixin.get_queryset">return a queryset</a> that calls the <code>all()</code> method. In other words, <code>Book.objects.all()</code>. We want to update this to <code>prefetch_related</code> all the reviews for each author in one go. Here is how the update looks in our <code>books/views.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">BookDetailView</code><code class="p">(</code>
+    <code class="n">LoginRequiredMixin</code><code class="p">,</code> <code class="n">PermissionRequiredMixin</code><code class="p">,</code> <code class="n">DetailView</code>
+<code class="p">):</code>  
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_detail.html"</code>
+    <code class="n">login_url</code> <code class="o">=</code> <code class="s2">"account_login"</code>
+    <code class="n">permission_required</code> <code class="o">=</code> <code class="s2">"books.special_status"</code>
+    <code class="n">queryset</code> <code class="o">=</code> <code class="n">Book</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">all</code><code class="p">()</code><code class="o">.</code><code class="n">prefetch_related</code><code class="p">(</code><code class="s1">'reviews__author'</code><code class="p">,)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The double underscore here is a <a href="https://docs.djangoproject.com/en/4.0/ref/models/lookups/#django.db.models.Lookup">lookup</a> which is commonly used to filter QuerySets.</p>
+
+    <p>If we refresh the web page for the “Professionals” book now <code>django-debug-toolbar</code> shows that we’ve reduced our SQL queries from 14 to 5! Which makes sense since instead of 10 different queries for each review and author we now do it once (assuming all the reviews are by the same author).</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/16_five_queries.jpg" alt="Five Queries" style="width: 100%"/>
+
+        <figcaption>Five Queries</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-indexes">Indexes</h3>
+
+    <p><a href="https://en.wikipedia.org/wiki/Database_index">Indexing</a> is a common technique for speeding up database performance. It is a separate data structure that allows faster searches and is typically only applied to the primary key in a model. The downside is that indexes require additional space on a disk so they must be used with care.</p>
+
+    <p>Tempting as it is to simply add indexes to primary keys from the beginning, it is better to start without them and only add them later based on production needs. A general rule of thumb is that if a given field is being used frequently, such as 10-25% of all queries, it is a prime candidate to be indexed.</p>
+
+    <p>Historically an index field could be created by adding <code>db_index=True</code> to any model field. For example, if we wanted to add one to the <code>id</code> field in our <code>Book</code> model it would look as follows (don’t actually implement this though).</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">Book</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="nb">id</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">UUIDField</code><code class="p">(</code>
+        <code class="n">primary_key</code><code class="o">=</code><code class="kc">True</code><code class="p">,</code>
+        <code class="n">db_index</code><code class="o">=</code><code class="kc">True</code><code class="p">,</code>  <code class="c1"># new</code>
+        <code class="n">default</code><code class="o">=</code><code class="n">uuid</code><code class="o">.</code><code class="n">uuid4</code><code class="p">,</code>
+        <code class="n">editable</code><code class="o">=</code><code class="kc">False</code><code class="p">)</code>
+<code class="o">...</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This change would need to be added via a migration file and migrated.</p>
+
+    <p>Starting in <a href="https://docs.djangoproject.com/en/4.0/releases/1.11/#class-based-model-indexes">Django 1.11</a>, class-based model indexes were added so can include in the <a href="https://docs.djangoproject.com/en/4.0/ref/models/options/#indexes">Meta section instead</a>. So you could write the previous index as follows instead:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">Book</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="nb">id</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">UUIDField</code><code class="p">(</code>
+        <code class="n">primary_key</code><code class="o">=</code><code class="kc">True</code><code class="p">,</code>
+        <code class="n">default</code><code class="o">=</code><code class="n">uuid</code><code class="o">.</code><code class="n">uuid4</code><code class="p">,</code>
+        <code class="n">editable</code><code class="o">=</code><code class="kc">False</code><code class="p">)</code>
+    <code class="o">...</code>
+
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">:</code>
+        <code class="n">indexes</code> <code class="o">=</code> <code class="p">[</code>  <code class="c1"># new</code>
+            <code class="n">models</code><code class="o">.</code><code class="n">Index</code><code class="p">(</code><code class="n">fields</code><code class="o">=</code><code class="p">[</code><code class="s2">"id"</code><code class="p">],</code> <code class="n">name</code><code class="o">=</code><code class="s2">"id_index"</code><code class="p">),</code>
+        <code class="p">]</code>
+        <code class="n">permissions</code> <code class="o">=</code> <code class="p">[</code>
+            <code class="p">(</code><code class="s2">"special_status"</code><code class="p">,</code> <code class="s2">"Can read all books"</code><code class="p">),</code>
+        <code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Since we’ve changed the model we must create a migrations file and apply it.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py makemigrations books
+Migrations for 'books':
+  books/migrations/0005_book_id_index.py
+    - Create index id_index on field(s) id of model book
+$ docker-compose exec web python manage.py migrate
+Operations to perform:
+  Apply all migrations: account, accounts, admin, auth, books, contenttypes, sessions, si\
+tes
+Running migrations:
+  Applying books.0005_book_id_index... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-caching">Caching</h3>
+
+    <p>A cache is an in-memory storing of an expensive calculation. Once executed it doesn’t need to be run again!</p>
+
+    <p>Consider that our Bookstore project is a dynamic website. Each time a user requests a page our server has to make various calculations including database queries, template rendering, and so on before servicing it. This takes time and is much slower than simply reading a file from a static site where the content does not change.</p>
+
+    <p>On large sites, though, this type of overhead can be quite slow and caching is one of the first solutions in a web developer’s tool bag. Implementing caching on our current project is definitely overkill, but we will nonetheless review the options and implement a basic version.</p>
+
+    <p>Django has its own <a href="https://docs.djangoproject.com/en/4.0/topics/cache/">cache framework</a> which includes four different caching options in descending order of granularity:</p>
+
+    <p>1) The <a href="https://docs.djangoproject.com/en/4.0/topics/cache/#the-per-site-cache">per-site cache</a> is the simplest to set up and caches your entire site.</p>
+
+    <p>2) The <a href="https://docs.djangoproject.com/en/4.0/topics/cache/#the-per-view-cache">per-view cache</a> lets you cache individual views.</p>
+
+    <p>3) <a href="https://docs.djangoproject.com/en/4.0/topics/cache/#template-fragment-caching">Template fragment caching</a> lets you specify a specific section of a template to cache.</p>
+
+    <p>4) The <a href="https://docs.djangoproject.com/en/4.0/topics/cache/#the-low-level-cache-api">low-level cache API</a> lets you manually set, retrieve, and maintain specific objects in the cache.</p>
+
+    <p>Why not just cache everything all the time? Two big reasons. The first is that cache memory is expensive since it is stored as RAM. Think about the cost of going from 8GB to 16GB of RAM on your laptop vs. 256GB to 512GB of hard drive space! Another is the cache must be “warm,” that is filled with updated content, so depending upon the needs of a site, optimizing the cache so it is accurate, but not wasteful, takes quite a bit of tuning.</p>
+
+    <p>If you wanted to implement per-site caching, which is the simplest approach, you’d add <code>UpdateCacheMiddleware</code> at the very top of the <code>MIDDLEWARE</code> configuration in <code>django_project/settings.py</code> and <code>FetchFromCacheMiddleware</code> at the very bottom. Also set three additional fields <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-CACHE_MIDDLEWARE_ALIAS">CACHE_MIDDLEWARE_ALIAS</a>, <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#cache-middleware-seconds">CACHE_MIDDLEWARE_SECONDS</a>, and <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#cache-middleware-key-prefix">CACHE_MIDDLEWARE_KEY_PREFIX</a>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">MIDDLEWARE</code> <code class="o">=</code> <code class="p">[</code>  
+    <code class="s2">"django.middleware.cache.UpdateCacheMiddleware"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="s2">"django.middleware.security.SecurityMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions.middleware.SessionMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.middleware.common.CommonMiddleware"</code><code class="p">,</code>
+    <code class="s2">"debug_toolbar.middleware.DebugToolbarMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.middleware.csrf.CsrfViewMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth.middleware.AuthenticationMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages.middleware.MessageMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.middleware.clickjacking.XFrameOptionsMiddleware"</code><code class="p">,</code>
+    <code class="s2">"debug_toolbar.middleware.DebugToolbarMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.middleware.cache.FetchFromCacheMiddleware"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+
+<code class="n">CACHE_MIDDLEWARE_ALIAS</code> <code class="o">=</code> <code class="s2">"default"</code>
+<code class="n">CACHE_MIDDLEWARE_SECONDS</code> <code class="o">=</code> <code class="mi">604800</code> 			
+<code class="n">CACHE_MIDDLEWARE_KEY_PREFIX</code> <code class="o">=</code> <code class="s2">""</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The only default you might want to adjust is <code>CACHE_MIDDLEWARE_SECONDS</code> which is the default number of seconds (600) to cache a page. After the period is up, the cache expires and becomes empty. A good default when starting out is 604800 seconds or 1 week (60secs x 60minutes x 168hours) for a site with content that doesn’t change very often. But if you find your cache filling up rapidly or you are running a site where the content changes on a frequent basis, shortening this setting is a good first step.</p>
+
+    <p>Implementing caching is strictly optional at this point though. Once a website is up and running the need for caching–per site, per page, and so on–will quickly become apparent. As a site grows in size, a dedicated and separate caching server often makes sense. The two most popular options for this are <a href="https://docs.djangoproject.com/en/4.0/topics/cache/#redis">Redis</a> and <a href="https://docs.djangoproject.com/en/4.0/topics/cache/#memcached">Memcached</a> which, as of Django 4.0, both come with built-in Django support.</p>
+
+    <h3 id="leanpub-auto-front-end-assets">Front-end Assets</h3>
+
+    <p>Another major source of bottlenecks in a website is loading front-end assets. CSS and JavaScript can become quite large and therefore tools like <a href="https://github.com/django-compressor/django-compressor">django-compressor</a> can help to minimize their size.</p>
+
+    <p>Images are often the first place to look in terms of asset size. The static/media file set up we have in place will scale to a quite large size, but for truly large sites it is worth investigating the use of a <a href="https://en.wikipedia.org/wiki/Content_delivery_network">Content Delivery Network (CDN)</a> for images instead of storing them on the server filesystem.</p>
+
+    <p>You can also serve different size images to users. For example, rather than shrink down a large book cover for a list or search page you could store a smaller thumbnail version instead and serve <em>that</em> where needed. The third-party <a href="https://github.com/SmileyChris/easy-thumbnails">easy-thumbnails</a> package is a good place to start for this.</p>
+
+    <p>A fantastic free e-book on the topic is <a href="https://images.guide/">Essential Image Optimization</a> by Addy Osmani that goes into depth on image optimization and automations.</p>
+
+    <p>As a final check there are automated tests for front-end speed such as Google’s <a href="https://developers.google.com/speed/pagespeed/insights/">PageSpeed Insights</a> that will assign a score based on how quickly a page loads.</p>
+
+    <h3 id="leanpub-auto-next-steps-1">Next Steps</h3>
+
+    <h3 id="leanpub-auto-git-14">Git</h3>
+
+    <p>There’s been a lot of code changes in this chapter so make sure to commit everything with Git.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch16'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you have any errors make sure to look at your logs with <code>docker-compose logs</code> and compare your code with the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch16-performance">official source code on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-16">Conclusion</h3>
+
+    <p>There is an almost endless list of performance optimizations that can be applied to a project. But take care to recall Donald Knuth’s sage advice and not go too crazy on this. Bottlenecks will reveal themselves in production and should largely be addressed then; not in advance. There are also several third-party packages that can be helpful in identifying N+1 issues, most notably <a href="https://github.com/jmcarp/nplusone">nplusone</a>, <a href="https://github.com/dabapps/django-zen-queries">django-zen-queries</a>, and <a href="https://github.com/tolomea/django-auto-prefetch">django-auto-prefetch</a>.</p>
+
+    <p>You should remember that performance problems are a good problem to have! They are fixable and mean that your project is being heavily used which is far better than having a completely optimized but largely ignored website.</p>
+
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,774 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 17: Security</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-17-security">Chapter 17: Security</h2>
+
+    <p>The World Wide Web is a dangerous place. There are many bad actors and even more automated bots that <em>will</em> try to hack into your website and cause ill. Therefore understanding and implementing security features is a must in any website.</p>
+
+    <p>Fortunately, Django has a very strong record when it comes to security thanks to its years of experience handling web security issues as well as a robust and regular security update cycle.</p>
+
+    <p>However, as with any tool, it’s important to implement security features correctly and in this chapter we’ll cover how to do so in our Bookstore project.</p>
+
+    <h3 id="leanpub-auto-social-engineering">Social Engineering</h3>
+
+    <p>The biggest security risk to any website is ultimately not technical: it is people. The term <a href="https://en.wikipedia.org/wiki/Social_engineering_%28security%29">social engineering</a> refers to the technique of finding individuals with access to a system who will willingly or unwillingly share their login credentials with a bad actor.</p>
+
+    <p>These days <a href="https://en.wikipedia.org/wiki/Phishing">phishing</a> is probably the most likely culprit if you are in a technical organization. All it takes is one bad click on an email link for a malicious actor to potentially gain access to the system, or at least all the access the compromised employee has.</p>
+
+    <p>To mitigate this risk, implement a robust permissions scheme and only provide the exact security access an employee needs, not more. Does every engineer need access to the production database? Probably not. Do non-engineers need write access? Again, probably not. These are discussions best had up front and a good default is to only add permissions as needed, not to default to superuser status for everyone!</p>
+
+    <h3 id="leanpub-auto-django-updates">Django updates</h3>
+
+    <p>Keeping your project up-to-date with the latest version of Django is another important way to stay secure. And I don’t just mean being current with the <a href="https://www.djangoproject.com/download/">latest feature release</a> (3.2, 4.0, 4.1, etc) which comes out roughly every 8 months. There are also monthly security patch updates that take the form of 4.0.1, 4.0.2, 4.0.3, etc.</p>
+
+    <p>What about <strong>long-term support (LTS) releases</strong>? Certain feature releases are designated as LTS and receive security and data loss fixes for a guaranteed period of time, usually around 3 years. For example, Django 3.2 LTS came out in April 2021 and will have extended support until April 2024. Django 4.2, the next LTS release, comes out in April 2023 and will have extended support until April 2026.</p>
+
+    <p>Can you stay on only LTS versions and not upgrade in the interim? Yes. Should you? No. It is better and far more secure to stay up-to-date with the latest version of Django if possible.</p>
+
+    <p>Resist the temptation and reality of many real-world projects which is not to devote a portion of developer time to staying current with Django versions.  A website is like a car: it needs regular maintenance to run at its best. You are only compounding the problem if you put off updates.</p>
+
+    <p>How to update? Django features <a href="https://docs.djangoproject.com/en/4.0/howto/upgrade-version/">deprecation warnings</a> that can and should be run for each new release by typing <code>python -Wa manage.py test</code>. It is far better to update from 3.0 to 3.1 to 3.2 and run the deprecation warnings each time rather than skipping multiple versions.</p>
+
+    <h3 id="leanpub-auto-deployment-checklist">Deployment Checklist</h3>
+
+    <p>To assist with with deployment and checking security settings, the Django docs contain a dedicated <a href="https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/">deployment checklist</a> that further describes security settings.</p>
+
+    <p>Even better there is a command we can run to automate Django’s recommendations, <code>python manage.py check --deploy</code>, that will check if a project is deployment ready. It uses the Django <a href="https://docs.djangoproject.com/en/4.0/topics/checks/">system check framework</a> which can be used to customize similar commands in mature projects.</p>
+
+    <p>Since we are working in Docker we must prepend <code>docker-compose exec web</code> to the command though.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py check --deploy
+System check identified some issues:
+
+WARNINGS:
+...
+System check identified 6 issues (0 silenced).
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>How nice! A descriptive and lengthy list of issues which we can go through one-by-one to prepare our Bookstore project for production.</p>
+
+    <h3 id="leanpub-auto-docker-compose-prodyml">docker-compose-prod.yml</h3>
+
+    <p>Ultimately, our local development settings will differ from our production settings. We already started to configure this back in Chapter 9: Environment Variables. Recall that we added environment variables for <code>SECRET_KEY</code>, <code>DEBUG</code>, and <code>DATABASES</code>. But we did not set production values or a way to toggle efficiently between local and production.</p>
+
+    <p>There are a number of ways to tackle this challenge. Our approach will be to create a dedicated <code>docker-compose-prod.yml</code> file that we can use to test the production environment locally. When it comes down to deploy our project into production, we will manually update the environment variables to match.</p>
+
+    <p>To start, in the base directory create a <code>docker-compose-prod.yml</code> file. It will be located right next to the existing <code>docker-compose.yml</code> file. Then <em>immediately</em> add it to our exiting <code>.gitignore</code> file. We definitely do not want our production secrets to be stored in Git and available in the source code.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+__pycache__/
+db.sqlite3
+.DS_Store  # Mac only
+docker-compose-prod.yml
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you’re curious, Github maintains an official <a href="https://github.com/github/gitignore/blob/master/Python.gitignore">Python gitignore file</a> containing additional configurations worthy of further exploration.</p>
+
+    <p>Run <code>git status</code> again and the <code>docker-compose-prod.yml</code> file is not visible, even though it is still in our project. That’s what we want!</p>
+
+    <p>For now, copy the contents of the <code>docker-compose.yml</code> file over into <code>docker-compose-prod.yml</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose-prod.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>version: '3.9'
+
+services:
+  web:
+    build: .
+    command: python /code/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    environment:
+      - "DJANGO_SECRET_KEY=django-insecure-hv1(e0r@v4n4m6gqdz%dn(60o=dsy8&amp;@0_lbs8p-v3u^bs\
+4)xl"
+      - "DJANGO_DEBUG=True"
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+
+volumes:
+  postgres_data:
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To run our new file, spin down the Docker container and restart it via the <code>-f</code> flag to specify an <a href="https://docs.docker.com/compose/reference/overview/">alternate compose file</a>. By default, Docker assumes a <code>docker-compose.yml</code> so adding the <code>-f</code> flag is unnecessary in that case.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose -f docker-compose-prod.yml up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Navigate to the website and everything should run as before, even though we are using a different compose file.</p>
+
+    <h3 id="leanpub-auto-debug">DEBUG</h3>
+
+    <p>Ultimately, our goal in this chapter is to pass Django’s deployment checklist by using the <code>docker-compose-prod.yml</code> file. Let’s start by changing <code>DEBUG</code>, which is set to <code>True</code>, but should be <code>False</code> in production.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose-prod.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>environment:
+  - "DJANGO_SECRET_KEY=django-insecure-hv1(e0r@v4n4m6gqdz%dn(60o=dsy8&amp;@0_lbs8p-v3u^bs4)xl"
+  - "DJANGO_DEBUG=False"  # new
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Spin down the Docker container and start it up again after making the change to reload the changed environment variable.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose -f docker-compose-prod.yml up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The website should run the same as before, but to check that <code>DEBUG</code> is set to <code>False</code>, visit a page that doesn’t exist like <code>http://127.0.0.1:8000/debug</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/17_debug_not_found.jpg" alt="Debug Page Not Found" style="width: 100%"/>
+
+        <figcaption>Debug Page Not Found</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>And there is a generic “Not Found” message, confirming we have <code>DEBUG</code> set to <code>False</code>. Because if it were <code>True</code>, there would be a detailed error report instead.</p>
+
+    <p>Let’s run the Django deployment checklist again now that <code>DEBUG</code> has been changed. Recall that when we ran it earlier in the chapter there were 6 issues.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py check --deploy
+System check identified some issues:
+
+WARNINGS:
+...
+System check identified 5 issues (0 silenced).
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re down to 5 since <code>DEBUG</code> is set to <code>False</code>. Progress!</p>
+
+    <h3 id="leanpub-auto-defaults">Defaults</h3>
+
+    <p>Environment variables serve two purposes in our Django project: they keep items like <code>SECRET_KEY</code> actually secret and they act as a way to toggle between local and production settings. While there is nothing wrong with having two environment variables for a setting like <code>DEBUG</code>, it is arguably cleaner to use a default value when we don’t need to keep something secret.</p>
+
+    <p>For example, let’s rewrite the <code>DEBUG</code> configuration to look as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEBUG</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DJANGO_DEBUG"</code><code class="p">,</code> <code class="n">default</code><code class="o">=</code><code class="kc">False</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This means default to a production value of <code>False</code> if no environment variable is present. If there is one available, <code>DJANGO_DEBUG</code>, then use that instead.</p>
+
+    <p>This approach of defaulting to the most secure, production-only settings is more secure because if for some reason environment variables are not loading in properly, we don’t want to the website to just use insecure local development variables. In other words, controls needed to be loosened to work rather than tightened. This is similar to the approach we took with our user permissions earlier in the book.</p>
+
+    <p>Go ahead now and update <code>docker-compose-prod.yml</code> by removing <code>DJANGO_DEBUG</code> so that only the <code>DJANGO_SECRET_KEY</code> is under the <code>environment</code> section.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose-prod.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>environment:
+      - "DJANGO_SECRET_KEY=django-insecure-hv1(e0r@v4n4m6gqdz%dn(60o=dsy8&amp;@0_lbs8p-v3u^bs\
+4)xl"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you spin down Docker again with <code>docker-compose down</code> and restart the production version the website will still work properly.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose -f docker-compose-prod.yml up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-secretkey-1">SECRET_KEY</h3>
+
+    <p>One of the five current issues that Django’s deployment checklist complains about is the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-SECRET_KEY">SECRET_KEY</a>, which is randomly generated by Django each time the <code>startproject</code> command is run. It is used to provide <a href="https://docs.djangoproject.com/en/4.0/topics/signing/">cryptographic signing</a> throughout your project and it is very, very important to keep secure.</p>
+
+    <p>Our current <code>SECRET_KEY</code> is not secure because it has been added to the Git source control multiple times. Even if we moved its current value to an environment variable now, the value will live on in our Git history forever. So a new <code>SECRET_KEY</code> must be generated and stored properly. It needs to have at least 50 characters, five or more unique characters, and not be prefexed with “django-insecure-“!</p>
+
+    <p>Luckily it is easy enough to generate a new random key. We can use Python’s built-in <a href="https://docs.python.org/3/library/secrets.html">secrets</a> module. The parameter <code>token_urlsafe</code> returns the number of bytes in a URL-safe text string. With Base64 encoding on average each byte has 1.3 characters. So using <code>38</code> results in 51 characters in this case.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python -c "import secrets; print(secrets.token_urlsafe(38))"
+LHanzMtuuenbzKGXGBSHZYHXrydW3_4zBeEE7WRtZGIrO0NNCbs
+</pre>
+
+      </div>
+
+    </figure>
+
+    <aside>
+
+      <p>A quick reminder that since we’re working with Docker, if your SECRET_KEY includes a dollar sign, $, then you need to add an additional dollar sign, $$. This is due to how <code>docker-compose</code> <a href="https://docs.docker.com/compose/compose-file/#variable-substitution">handles variable substitution</a>. Otherwise you will see an error!</p>
+
+    </aside>
+
+    <p>Add the new <code>SECRET_KEY</code> to the <code>docker-compose-prod.yml</code> file so it looks as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose-prod.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># docker-compose-prod.yml
+environment:
+  - "DJANGO_SECRET_KEY=LHanzMtuuenbzKGXGBSHZYHXrydW3_4zBeEE7WRtZGIrO0NNCbs"
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Because <code>docker-compose-prod.yml</code> is in our <code>.gitignore</code> file it will not appear in our source code. Restart the Docker container which now uses a truly secret <code>SECRET_KEY</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose -f docker-compose-prod.yml up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The website should work just as before. Run the deployment checklist again:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py check --deploy
+System check identified some issues:
+
+WARNINGS:
+...
+System check identified 4 issues (0 silenced).
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re down to 4 issues now but first a brief dive into web security so we can understand why these settings are so important.</p>
+
+    <h3 id="leanpub-auto-web-security">Web Security</h3>
+
+    <p>Even though Django handles most common security issues by default, it is still vital to understand frequent attack methods and the steps Django takes to mitigate them. You can find an overview on the <a href="https://docs.djangoproject.com/en/4.0/topics/security/">Django security page</a>, but we’ll go into further depth here.</p>
+
+    <p>Django comes by default with a number of additional <a href="https://docs.djangoproject.com/en/4.0/ref/middleware/#django.middleware.security.SecurityMiddleware">security middlewares</a> that guard against other request/response cycle attacks.</p>
+
+    <p>A full explanation of each is beyond the scope of this book, but it is worth reading about the protections provided by the Django security team over the years. Do not change the defaults without good cause.</p>
+
+    <h3 id="leanpub-auto-sql-injection">SQL injection</h3>
+
+    <p>Let’s start with a <a href="https://en.wikipedia.org/wiki/SQL_injection">SQL injection attack</a> which occurs when a malicious user can execute arbitrary SQL code on a database. Consider a log in form on a site. What happens if a malicious user instead types <code>DELETE from users WHERE user_id=user_id</code>? If this is run against the database without proper protections it could result in the deletion of all user records! Not good. This <a href="https://www.xkcd.com/327/">XKCD comic</a> provides a humorous though potentially accurate example of how this can occur.</p>
+
+    <p>Fortunately the Django ORM automatically sanitizes user inputs by default when constructing querysets to prevent this type of attack. Where you need to be careful is that Django does provide the option to execute <a href="https://docs.djangoproject.com/en/4.0/topics/db/sql/#executing-custom-sql">custom sql</a> or <a href="https://docs.djangoproject.com/en/4.0/topics/db/sql/#executing-raw-queries">raw queries</a>. These should both be used with extreme caution since they could open up a vulnerability to SQL injection.</p>
+
+    <p>The non-profit Open Web Application Security Project (OWASP) has a fantastic and very detailed <a href="https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.md">SQL Injection Cheat Sheet</a> that is recommended for further reading.</p>
+
+    <h3 id="leanpub-auto-xss-cross-site-scripting">XSS (Cross Site Scripting)</h3>
+
+    <p><a href="https://en.wikipedia.org/wiki/Cross-site_scripting">Cross-site scripting (XSS)</a> is another classic attack that occurs when an attacker is able to inject small bits of code onto web pages viewed by other people. This code, typically JavaScript, if stored in the database will then be retrieved and displayed to other users.</p>
+
+    <p>For example, consider the form used for writing book reviews on our current site. What if instead of typing, “This book was great” a user typed something with JavaScript? For example, <code>&lt;script&gt;alert('hello');&lt;/script&gt;</code>. If this script were stored on the database then every future user’s page would have a pop-up saying “hello”. While this particular example is more annoying than dangerous, a site vulnerable to XSS is very dangerous because a malicious user could insert <em>any JavaScript</em> into the page, including JavaScript that steals pretty much anything from an unsuspecting user.</p>
+
+    <p>To prevent an XSS attack Django templates <a href="https://docs.djangoproject.com/en/4.0/ref/templates/language/#automatic-html-escaping">automatically escape</a> specific characters that are potentially dangerous including brackets (<code>&lt;</code> and <code>&gt;</code>), single quotes <code>'</code>, double quotes <code>"</code>, and the ampersand <code>&amp;</code>. There are some edge cases where you might want to turn <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#std:templatetag-autoescape">autoescape off</a> but this should be used with extreme caution.</p>
+
+    <p>OWASP’s <a href="https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.md">XSS Cheat Sheet</a> is recommended for further reading.</p>
+
+    <h3 id="leanpub-auto-cross-site-request-forgery-csrf">Cross-Site Request Forgery (CSRF)</h3>
+
+    <p>A <a href="https://en.wikipedia.org/wiki/Cross-site_request_forgery">Cross-Site Request Forgery (CSRF)</a> is the third major type of attack but generally lesser known than SQL Injection or XSS. Fundamentally it exploits that trust a site has in a user’s web browser.</p>
+
+    <p>When a user logs in to a website, let’s call it a banking website for illustration purposes, the server sends back a session token for that user. This is included in the HTTP Headers of all future requests and authenticates the user. But what happens if a malicious actor somehow obtains access to this session token?</p>
+
+    <p>For example, consider a user who logs into their bank in one browser tab. Then in another tab they open their email and click on an email link from a malicious actor. This link looks legitimate, but in fact it is pointing to the user’s bank which they are <em>still logged into</em>! So instead of leaving a blog comment on this fake site, behind the scenes the user’s credentials are used to transfer money from their account to the hacker’s account.</p>
+
+    <p>In practice there are multiple ways to obtain a user’s credentials via a CSRF attack, not just links, but hidden forms, special image tags, and even AJAX requests.</p>
+
+    <p>Django provides <a href="https://docs.djangoproject.com/en/4.0/ref/csrf/#how-it-works">CSRF protection</a> by including a random secret key both as a cookie via <a href="https://docs.djangoproject.com/en/4.0/ref/middleware/#django.middleware.csrf.CsrfViewMiddleware">CSRF Middleware</a> and in a form via the <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#csrf-token">csrf_token</a> template tag. A 3rd party website will not have access to a user’s cookies and therefore any discrepancy between the two keys causes an error.</p>
+
+    <p>As ever, Django does allow customization: you can disable the CSRF middleware and use the <a href="https://docs.djangoproject.com/en/4.0/ref/csrf/#django.views.decorators.csrf.csrf_protect">csrf_protect()</a> template tag on specific views. However, undertake this step with extreme caution.</p>
+
+    <p>The OWASP <a href="https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.md">CSRF Cheat Sheet</a> provides a comprehensive look at the issue. Almost all major websites have been victims of CSRF attacks at some point in time.</p>
+
+    <p>A good rule of thumb is whenever you have a form on your site, think about whether you need to include the <code>csrf_token</code> tag in it. Most of the time you will!</p>
+
+    <h3 id="leanpub-auto-clickjacking-protection">Clickjacking Protection</h3>
+
+    <p><a href="https://en.wikipedia.org/wiki/Clickjacking">Clickjacking</a> is yet another attack where a malicious site tricks a user into clicking on a hidden frame. An internal frame, known as an iframe, is commonly used to embed one website within another. For example, if you wanted to include a Google Map or YouTube video on your site you would include the <code>iframe</code> tag that puts that site within your own. This is very convenient.</p>
+
+    <p>But it has a security risk which is that a frame can be hidden from a user. Consider if a user is already logged into their Amazon account and then visits a malicious site that purports to be a picture of kittens. The user clicks on said malicious site to see more kittens, but in fact they click an iFrame of an Amazon item that is unknowingly purchased. This is but one example of clickjacking.</p>
+
+    <p>To prevent against this Django comes with a default <a href="https://docs.djangoproject.com/en/4.0/ref/clickjacking/#clickjacking-prevention">clickjacking middleware</a> that sets a <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options">X-Frame-Options HTTP header</a> that indicates whether a resource is allowed to load within a frame or iframe. You can turn this protection off, if desired, or even set it at a per view level. However, do so with a high degree of caution and <a href="https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/Clickjacking_Defense_Cheat_Sheet.md">research</a>.</p>
+
+    <h3 id="leanpub-auto-httpsssl">HTTPS/SSL</h3>
+
+    <p>All modern websites should use <a href="https://en.wikipedia.org/wiki/HTTPS">HTTPS</a>, which provides encrypted communication between a client and server. <a href="https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol">HTTP (Hypertext Transfer Protocol)</a> is the backbone of the modern web, but it does not, by default, have encryption.</p>
+
+    <p>The “s” in HTTPS refers to its encrypted nature first due to SSL (Secure Sockets Layer) and these days its successor <a href="https://en.wikipedia.org/wiki/Transport_Layer_Security">TLS (Transport Layer Security)</a>. With HTTPS enabled, which we will do in our deployment chapter, malicious actors can’t sniff the incoming and outgoing traffic for data like authentication credentials or API keys.</p>
+
+    <p>One of the 4 remaining issues in our Django deployment checklist is that <code>SECURE_SSL_REDIRECT</code> is currently set to <code>False</code>. For security reasons, it’s far better to force this to be <code>True</code> in production. Let’s change that now. At the bottom of the <code>django_project/settings.py</code> file add a configuration for <code>SECURE_SSL_REDIRECT</code>: set it to either the environment variable <code>DJANGO_SECURE_SSL_REDIRECT</code> or the default value of <code>True</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">SECURE_SSL_REDIRECT</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DJANGO_SECURE_SSL_REDIRECT"</code><code class="p">,</code> <code class="n">default</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then we will add the environment variable to <code>docker-compose.yml</code> so that for <em>local</em> development it defaults to <code>False</code> which is the less secure setting.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># docker-compose.yml
+environment:
+  - "DJANGO_SECRET_KEY=django-insecure-hv1(e0r@v4n4m6gqdz%dn(60o=dsy8&amp;@0_lbs8p-v3u^bs4)xl"
+  - "DJANGO_DEBUG=True"
+  - "DJANGO_SECURE_SSL_REDIRECT=False"  # new
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Restart Docker and run the deployment checklist again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose -f docker-compose-prod.yml up -d
+$ docker-compose exec web python manage.py check --deploy
+...
+System check identified 3 issues (0 silenced).
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re down to 3 issues now.</p>
+
+    <h3 id="leanpub-auto-ssl-error">SSL Error</h3>
+
+    <p>If you try to visit the website now there is an issue though.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/17_ssl_error.jpg" alt="SSL Error" style="width: 100%"/>
+
+        <figcaption>SSL Error</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>It seems there is some sort of SSL Protocol Error, which makes sense because we just updated an SSL setting. Where could we find more info though? How about trying the logs:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose logs
+...
+You're accessing the development server over HTTPS, but it only supports HTTP.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Ah, that’s more descriptive. Since we switched the default over to <code>True</code> our website is automatically enforcing SLL. But the problem is that the local Django server only works over HTTP. We can run the deployment checklist to gain confidence in our production settings in <code>docker-compose-prod.yml</code> but in terms of actually using using the production site locally, we won’t be able to enforce SSL.</p>
+
+    <p>That’s ok though. It’s one of many reasons why we have separate local and production configurations. Companies typically actually have <strong>three</strong> different environments set up: one for local, one for production, and a staging server that mimics production but allows for more actual testing before switching things over completely. The staging server is often deployed but with a hidden URL and additional permissions so only team developers can try it out.</p>
+
+    <p>Going forward if you want to try out the local website with production settings be aware you will have to toggle off <code>DJANGO_SECURE_SSL_REDIRECT</code>.</p>
+
+    <p>One more common gotcha is that even if you restart the Docker containers and start the local configuration, your web browser might still complain of an SSL error.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This is because most web browsers once they find out an HTTPS version of a site exists–even if it’s a localhost like <code>http://127.0.0.1:8000/</code>–will cache that and continually revert to it. You can look up different ways to clear the cache but the most effective in this case is to restart your web browser. As ever, when something isn’t working try turning it off and restarting.</p>
+
+    <h3 id="leanpub-auto-http-strict-transport-security-hsts">HTTP Strict Transport Security (HSTS)</h3>
+
+    <p><a href="https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security">HTTP Strict Transport Security (HSTS)</a> is a security policy that lets our server enforce that web browsers should only interact via HTTPS by adding a <a href="https://docs.djangoproject.com/en/4.0/ref/middleware/#http-strict-transport-security">Strict-Transport-Security header</a>.</p>
+
+    <p>There are three implicit HSTS configurations in our <code>settings.py</code> file that need to be updated for production:</p>
+
+    <ul>
+
+      <li>
+<a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-SECURE_HSTS_SECONDS">SECURE_HSTS_SECONDS</a> = <code>0</code>
+</li>
+
+      <li>
+<a href="https://docs.djangoproject.com/en/4.0/ref/settings/#secure-hsts-include-subdomains">SECURE_HSTS_INCLUDE_SUBDOMAINS</a> = <code>False</code>
+</li>
+
+      <li>
+<a href="https://docs.djangoproject.com/en/4.0/ref/settings/#secure-hsts-preload">SECURE_HSTS_PRELOAD</a> = <code>False</code>
+</li>
+
+    </ul>
+
+    <p>The <code>SECURE_HSTS_SECONDS</code> setting is set to <code>0</code> by default but the greater the better for security purposes. We will set it to the recommended 30 days, or 2,592,000 seconds, in our project.</p>
+
+    <p><code>SECURE_HSTS_INCLUDE_SUBDOMAINS</code> forces subdomains to use SSL. We will set it to <code>True</code> in production.</p>
+
+    <p><code>SECURE_HSTS_PRELOAD</code> only has an effect when there is a non-zero value for <code>SECURE_HSTS_SECONDS</code>, but since we just set one, we’ll need to set this to <code>True</code>.</p>
+
+    <p>Add these three lines to the bottom of the <code>django_project/settings.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">SECURE_HSTS_SECONDS</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">int</code><code class="p">(</code><code class="s2">"DJANGO_SECURE_HSTS_SECONDS"</code><code class="p">,</code> <code class="n">default</code><code class="o">=</code><code class="mi">2592000</code><code class="p">)</code>  <code class="c1"># 30 days</code>
+<code class="n">SECURE_HSTS_INCLUDE_SUBDOMAINS</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS"</code><code class="p">,</code>
+    <code class="n">default</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>
+<code class="n">SECURE_HSTS_PRELOAD</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DJANGO_SECURE_HSTS_PRELOAD"</code><code class="p">,</code> <code class="n">default</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then update <code>docker-compose.yml</code> with the local development values.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># docker-compose.yml
+environment:
+  - "DJANGO_SECRET_KEY=django-insecure-hv1(e0r@v4n4m6gqdz%dn(60o=dsy8&amp;@0_lbs8p-v3u^bs4)xl"
+  - "DJANGO_DEBUG=True"
+  - "DJANGO_SECURE_SSL_REDIRECT=False"
+  - "DJANGO_SECURE_HSTS_SECONDS=0"  # new
+  - "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=False"  # new
+  - "DJANGO_SECURE_HSTS_PRELOAD=False"  # new
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Restart Docker and run the deployment checklist again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose -f docker-compose-prod.yml up -d
+$ docker-compose exec web python manage.py check --deploy
+...
+System check identified 2 issues (0 silenced).
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Only 2 issues left!</p>
+
+    <h3 id="leanpub-auto-secure-cookies">Secure Cookies</h3>
+
+    <p>An <a href="https://en.wikipedia.org/wiki/HTTP_cookie">HTTP Cookie</a> is used to store information on a client’s computer such as authentication credentials. This is necessary because the HTTP protocol is stateless by design: there’s no way to tell if a user is authenticated other than including an identifier in the HTTP Header!</p>
+
+    <p>Django uses sessions and cookies for this, as do most websites. But cookies can and should be forced over HTTPS as well via the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-SESSION_COOKIE_SECURE">SESSION_COOKIE_SECURE</a> config. By default Django sets this value to <code>False</code> for local development; in production it needs to be <code>True</code>.</p>
+
+    <p>The second issue is <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#csrf-cookie-secure">CSRF_COOKIE_SECURE</a>, which defaults to <code>False</code> but in production should be <code>True</code> so that only cookies marked as “secure” will be sent with an HTTPS connection.</p>
+
+    <p>Add these two lines again to the bottom of <code>django_project/settings.py</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">SESSION_COOKIE_SECURE</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DJANGO_SESSION_COOKIE_SECURE"</code><code class="p">,</code> <code class="n">default</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>
+<code class="n">CSRF_COOKIE_SECURE</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DJANGO_CSRF_COOKIE_SECURE"</code><code class="p">,</code> <code class="n">default</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then update the <code>docker-compose.yml</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># docker-compose.yml
+environment:
+  - "DJANGO_SECRET_KEY=)*_s#exg*#w+#-xt=vu8b010%%a&amp;p@4edwyj0=(nqq90b9a8*n"
+  - "DJANGO_DEBUG=True"
+  - "DJANGO_SECURE_SSL_REDIRECT=False"
+  - "DJANGO_SECURE_HSTS_SECONDS=0"
+  - "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=False"
+  - "DJANGO_SECURE_HSTS_PRELOAD=False"
+  - "DJANGO_SESSION_COOKIE_SECURE=False"  # new
+  - "DJANGO_CSRF_COOKIE_SECURE=False"  # new
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Restart Docker and run the deployment checklist again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose -f docker-compose-prod.yml up -d
+$ docker-compose exec web python manage.py check --deploy
+System check identified no issues (0 silenced).
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>No more issues. Woohoo!</p>
+
+    <h3 id="leanpub-auto-admin-hardening">Admin Hardening</h3>
+
+    <p>So far it may seem as though the general security advice is to rely on Django defaults, use HTTPS, add <code>csrf_token</code> tags on forms, and set a permissions structure. All true. But one additional step Django does not take on our behalf is hardening the Django admin.</p>
+
+    <p>Consider that every Django website sets the admin, by default, to the <code>/admin</code> URL. This is a prime suspect for any hacker trying to access a Django site. Therefore, an easy step is to simply change the admin URL to literally anything else! Open up and change the URL path. In this example it is <code>anything-but-admin/</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.conf</code> <code class="kn">import</code> <code class="n">settings</code>
+<code class="kn">from</code> <code class="nn">django.conf.urls.static</code> <code class="kn">import</code> <code class="n">static</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="c1"># Django admin</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"anything-but-admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="c1"># User management</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"allauth.urls"</code><code class="p">)),</code>
+    <code class="c1"># Local apps</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"books/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"books.urls"</code><code class="p">)),</code>
+<code class="p">]</code>
+
+<code class="k">if</code> <code class="n">settings</code><code class="o">.</code><code class="n">DEBUG</code><code class="p">:</code>
+    <code class="kn">import</code> <code class="nn">debug_toolbar</code>
+
+    <code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+        <code class="n">path</code><code class="p">(</code><code class="s2">"__debug__/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="n">debug_toolbar</code><code class="o">.</code><code class="n">urls</code><code class="p">)),</code>
+    <code class="p">]</code> <code class="o">+</code> <code class="n">urlpatterns</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>A fun 3rd party package <a href="https://github.com/dmpayton/django-admin-honeypot">django-admin-honeypot</a> will generate a fake admin log in screen and email <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#admins">site admins</a> the IP address of anyone trying to attack your site at <code>/admin</code>. These IP addresses can then be added to a blocked address list for the site.</p>
+
+    <p>It’s also possible via <a href="https://github.com/Bouke/django-two-factor-auth">django-two-factor-auth</a> to add two-factor authentication to your admin for an even further layer of protection.</p>
+
+    <h3 id="leanpub-auto-git-15">Git</h3>
+
+    <p>This chapter has been particularly heavy on code changes so make sure to commit all the updates with Git.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch17'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you have any errors, check your logs with <code>docker-compose logs</code> and compare you code with the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch17-security">official source code on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-17">Conclusion</h3>
+
+    <p>Security is a major concern for any website. By using a <code>docker-compose-prod.yml</code> file we can accurately test, within Docker, our production settings <em>before</em> deploying the site live. And by using default values we can both simplify the environment variables in the file as well as ensure that if something goes awry with environment variables we will default to secure production values. Django comes with many built-in security features and with the addition of the deployment checklist we can now deploy our site now with a high degree of confidence that it is secure.</p>
+
+    <p>Ultimately, security is a constant battle and while the steps in this chapter cover most areas of concern, keeping your website up-to-date with the latest Django version is vital for continued safety.</p>
+
+  </div>
+
+</body>
+
+</html>

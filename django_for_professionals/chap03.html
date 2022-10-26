@@ -1,0 +1,602 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 3: PostgreSQL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-3-postgresql">Chapter 3: PostgreSQL</h2>
+
+    <p>One of the most immediate differences between working on a “toy app” in Django and a production-ready one is the database. Django ships with SQLite as the default choice for local development because it is small, fast, and file-based which makes it easy to use. No additional installation or configuration is required.</p>
+
+    <p>However this convenience comes at a cost. Generally speaking SQLite is not a good database choice for professional websites. So while it is fine to use SQLite locally while prototyping an idea, it is rare to actually use SQLite as the database on a production project.</p>
+
+    <p>Django ships with built-in support for <a href="https://docs.djangoproject.com/en/4.0/ref/databases/#databases">five databases</a>: PostgreSQL, MariaDB, MySQL, Oracle, and SQLite. We’ll be using <a href="https://www.postgresql.org/">PostgreSQL</a> in this book as it is the most popular choice for Django developers, however, the beauty of Django’s ORM (Object-Relational-Mapper) is that even if we wanted to use MySQL, MariaDB, or Oracle the actual Django code we write will be almost identical. The Django ORM handles the translation from Python code to SQL configured for each database automatically for us which is quite amazing if you think about it.</p>
+
+    <p>The challenge of using non-file based databases is that they must be installed and run locally if you want to faithfully mimic a production environment on your own computer. And we do want that! While Django handles the details of switching between databases for us there are inevitably small, hard-to-catch bugs that can crop up if you use SQLite for local development but a different database in production. Therefore a best practice is to use the same database locally and in production.</p>
+
+    <p>In this chapter we’ll start a new Django project with a SQLite database and then switch over to both Docker and PostgreSQL.</p>
+
+    <h3 id="leanpub-auto-django-set-up">Django Set Up</h3>
+
+    <p>On the command line make sure you’ve navigated back to the <code>code</code> folder on our desktop. You can do this two ways. Either type <code>cd ..</code> to move “up” a level so if you are currently in <code>Desktop/code/hello</code> you will move to <code>Desktop/code</code>. Or you can simply type <code>cd onedrive\desktop</code> on Windows or <code>cd ~/desktop/code</code> on macOS which will take you directly to the <code>code</code> directory. Then create a new directory called <code>ch3-postgresql</code> for this chapter’s code.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ cd onedrive\desktop
+$ mkdir ch3-postgresql
+
+# macOS
+$ cd ~/desktop/code
+$ mkdir ch3-postgresql
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We will follow the standard steps for creating a new Django project: make a dedicated virtual environment, activate it, and install Django.  </p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ python -m venv .venv
+$ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+$ .venv\Scripts\Activate.ps1
+(.venv) $ python -m pip install django~=4.0.0
+
+# macOS
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+(.venv) $ python3 -m pip install django~=4.0.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next we can create a new project called <code>django_project</code>, <code>migrate</code> our database to initialize it, and use <code>runserver</code> to start the local server.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ django-admin startproject django_project .
+(.venv) $ python manage.py migrate
+(.venv) $ python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Normally I don’t recommend running <code>migrate</code> on new projects until <em>after</em> a custom user model has been configured. Otherwise Django will bind the database to the built-in <code>User</code> model which is difficult to modify later on in the project. We’ll cover this properly in Chapter 3 but since this chapter is primarily for demonstration purposes, using the default <code>User</code> model here is a one-time exception.</p>
+
+    <p>Confirm everything worked by navigating to <code>http://127.0.0.1:8000/</code> in your web browser. You may need to refresh the page but should see the familiar Django welcome page.</p>
+
+    <p>The last step before switching over to Docker is creating a <code>requirements.txt</code> file using the command we learned in the previous chapter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ pip freeze &gt; requirements.txt
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This will generate a new <code>requirements.txt</code> file containing the pinned contents of our current virtual environment.</p>
+
+    <h3 id="leanpub-auto-docker">Docker</h3>
+
+    <p>To switch over to Docker first <code>deactivate</code> our virtual environment and then in your text editor create new <code>Dockerfile</code> and <code>docker-compose.yml</code> files which will control our Docker image and container respectively.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ deactivate
+$
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The <code>Dockerfile</code> is the same as in Chapter 1.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Dockerfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Pull base image
+FROM python:3.10.4-slim-bullseye
+
+# Set environment variables
+ENV PIP_DISABLE_PIP_VERSION_CHECK 1
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Set work directory
+WORKDIR /code
+
+# Install dependencies
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy project
+COPY . .
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Before building the image make sure to create a <code>.dockerignore</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.dockerignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+.git
+.gitignore
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Notice that if you build the initial image using the <code>docker build .</code> command it is much, much faster than the previous chapter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker build .
+...
+---&gt; Using cache
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>That’s because whenever you build a new <code>Dockerfile</code>, Docker will automatically check if it can use the cached results of previous builds. And since this <code>Dockerfile</code> is the same as the one from Chapter 1 everything is the same except for the final <code>COPY</code> command that syncs local files with those on the container’s filesystem.</p>
+
+    <p>This caching means that the order of a <code>Dockerfile</code> is important for performance reasons. In order to avoid constantly invalidating the cache we start the <code>Dockerfile</code> with commands that are less likely to change while putting commands that are more likely to change, like <code>COPY</code>ing the local filesystem, at the end.</p>
+
+    <p>Time now for the <code>docker-compose.yml</code> file which also matches what we saw previously in Chapter 1.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>version: "3.9"
+
+services:
+  web:
+    build: .
+    command: python /code/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - 8000:8000
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-detached-mode">Detached Mode</h3>
+
+    <p>We’ll start up our container now but this time in detached mode which requires either the <code>-d</code> or <code>-detach</code> flag (they do the same thing).</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Detached mode runs <a href="https://docs.docker.com/compose/reference/up/">containers in the background</a>, which means we can use a single command line tab without needing a separate one open as well. This saves us from switching back and forth between two command line tabs constantly. The downside is that if/when there is an error, the output won’t always be visible. So if your screen does not match this book at some point, try typing <code>docker-compose logs</code> to see the current output and debug any issues.</p>
+
+    <p>You likely will see a “Warning: Image for service web was built because it did not already exist” message at the bottom of the command. Docker automatically created a new image for us within the container. As we’ll see later in the book, adding the <code>--build</code> flag to force an image build is necessary when software packages are updated because, by default, Docker will look for a local cached copy of software and use that which improves performance.</p>
+
+    <p>To confirm things are working properly go back to <code>http://127.0.0.1:8000/</code> in your web browser. Refresh the page to see the Django welcome page again.</p>
+
+    <p>Since we’re working <em>within Docker</em> now as opposed to locally we must preface traditional commands with <code>docker-compose exec [service]</code> where we specify the name of the service. For example, to create a superuser account instead of typing <code>python manage.py createsuperuser</code> the updated command would now look like the line below, using the <code>web</code> service.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py createsuperuser
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p><strong>Note</strong>: If you are on a newer M1-based macOS computer it’s possible this command will yield the following cryptic error: <code>django.db.utils.OperationalError: SCRAM authentication requires libpq version 10 or above</code>. Currently there is a bug upstream in <code>libpg</code> that’s building against the wrong library version on ARM. The fix is to update the first line of your <code>Dockerfile</code> to specify the proper local platform by adding <code>--platform=linux/amd64</code> to the initial <code>FROM</code> command that installs Python.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Dockerfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Pull base image
+FROM --platform=linux/amd64 python:3.10.4-slim-bullseye
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>For the username choose <code>sqliteadmin</code>, <code>sqliteadmin@email.com</code> as the email address, and select the password of your choice. I often use <code>testpass123</code>.</p>
+
+    <p>Then navigate directly into the admin at <code>http://127.0.0.1:8000/admin</code> and log in. You will be redirected to the admin homepage. Note in the upper right corner <code>sqliteadmin</code> is the username.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/03_admin_sqlite_username.jpg" alt="Django sqliteadmin" style="width: 100%"/>
+
+        <figcaption>Django sqliteadmin</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Django has impressive support for multiple languages so if you’d like to see the Admin, forms, and other default messages in language other than English, try adjusting the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#language-code">LANGUAGE_CODE</a> configuration in <code>django_project/settings.py</code> which is automatically set to American English, <code>en-us</code>.</p>
+
+    <p>Moving along, if you click on the <code>Users</code> button it takes us to the Users page where we can confirm only one user has been created.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/03_admin_sqliteadmin_users_page.jpg" alt="Admin Users page" style="width: 100%"/>
+
+        <figcaption>Admin Users page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>It’s important to highlight another aspect of Docker at this point: so far we’ve been updating our database–currently represented by the <code>db.sqlite3</code> file–within Docker. That means the actual <code>db.sqlite3</code> file is changing each time. And thanks to the <code>volumes</code> mount in our <code>docker-compose.yml</code> config each file change has been copied over into a <code>db.sqlite3</code> file on our local computer too. You could quit Docker, start the <code>shell</code>, start the server with <code>python manage.py runserver</code>, and see the exact same admin login at this point because the underlying SQLite database is the same.</p>
+
+    <h3 id="leanpub-auto-postgresql">PostgreSQL</h3>
+
+    <p>PostgreSQL is a database that can be used by almost any programming language. But if you think about it, how does a programming language–and they all vary in some way or another–connect to the database itself?</p>
+
+    <p>The answer is via a database adapter! And that’s what <a href="http://initd.org/psycopg/">Psycopg</a> is, the most popular database adapter for Python. If you’d like to learn more about how Psycopg works here is a link to <a href="http://initd.org/psycopg/docs/index.html">a fuller description</a> on the official site.</p>
+
+    <p>Psycopg 3.0 was recently released but many packages and hosting providers are still focused on Psycopg2 so that’s what we’ll use. Note that there are actually two versions of Pyscopg2 available: <code>pyscopg2</code> and <code>pyscopg2-binary</code>. We will use the binary version in this book because it is simpler to use and works just fine for most websites. Using the non-binary version requires multiple additional steps of configuration and is only relevant to truly massive websites. If way down the line you find slowness with your database, investigating <code>pyscopg2</code> vs <code>psycopg2-binary</code> is a worthy use of time. But starting out it is not.</p>
+
+    <p>To install it first stop running the Docker container with <code>docker-compose down</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>It’s important to pause right now and think about what it means to install a package into Docker as opposed to a local virtual environment. In a traditional project we’d run the command <code>python -m pip install psycopg2-binary==2.9.3</code> from the command line to install Pyscopg2. But we’re working with Docker now.</p>
+
+    <p>There are two options. The first is to install <code>psycopg2-binary</code> locally and then <code>pip freeze</code> our virtual environment to update <code>requirements.txt</code>. If we were going to use the local environment this might make sense. But since we are committed to Docker we can skip that step and instead just update <code>requirements.txt</code> with the <code>psycopg2-binary</code> package. We don’t need to update the actual virtual environment further because it is unlikely we’ll be using it. And if we ever did we can just update it based on <code>requirements.txt</code> anyway.</p>
+
+    <p>In your text editor open the existing <code>requirements.txt</code> file and add <code>psycopg2-binary==2.9.3</code> to the bottom.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+sqlparse==0.4.2
+psycopg2-binary==2.9.3
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the end of our PostgreSQL configuration changes we will build the new image and spin up our containers. But not yet.</p>
+
+    <h3 id="leanpub-auto-docker-composeyml-1">docker-compose.yml</h3>
+
+    <p>In the existing <code>docker-compose.yml</code> file add a new service called <code>db</code>. This means there will be two separate containers running within our Docker host: <code>web</code> for the Django local server and <code>db</code> for our PostgreSQL database.</p>
+
+    <p>The <code>web</code> service depends on the <code>db</code> service to run so we’ll add a line called <code>depends_on</code> to <code>web</code> signifying this.</p>
+
+    <p>Within the <code>db</code> service we specify which version of PostgreSQL to use. As of this writing, Heroku supports version <code>13</code> as the latest release so that is what we will use. Docker containers are ephemeral meaning when the container stops running all information is lost. This would obviously be a problem for our database! The solution is to create a <code>volumes</code> mount called <code>postgres_data</code> and then bind it to a dedicated directory within the container at the location <code>/var/lib/postgresql/data/</code>. The final step is to add a <a href="https://www.postgresql.org/docs/current/auth-trust.html">trust authentication</a> to the <code>environment</code> for the <code>db</code>. For large databases with many database users it is recommended to be more explicit with permissions, but this setting is a good choice when there is just one developer.</p>
+
+    <p>Here is what the updated file looks like:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>version: "3.9"
+
+services:
+  web:
+    build: .
+    command: python /code/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+
+volumes:
+  postgres_data:
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-databases">DATABASES</h3>
+
+    <p>The third and final step is to update the <code>django_project/settings.py</code> file to use PostgreSQL and not SQLite. Within your text editor scroll down to the <code>DATABASES</code> config.</p>
+
+    <p>By default Django specifies <code>sqlite3</code> as the database engine, gives it the name <code>db.sqlite3</code>, and places it at <code>BASE_DIR</code> which means in our project-level directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DATABASES</code> <code class="o">=</code> <code class="p">{</code>
+    <code class="s2">"default"</code><code class="p">:</code> <code class="p">{</code>
+        <code class="s2">"ENGINE"</code><code class="p">:</code> <code class="s2">"django.db.backends.sqlite3"</code><code class="p">,</code>
+        <code class="s2">"NAME"</code><code class="p">:</code> <code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"db.sqlite3"</code><code class="p">,</code>
+    <code class="p">}</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To switch over to PostgreSQL we will update the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-DATABASE-ENGINE">ENGINE</a> configuration. PostgreSQL requires a <code>NAME</code>, <code>USER</code>, <code>PASSWORD</code>, <code>HOST</code>, and <code>PORT</code>. For convenience we’ll set the first three to <code>postgres</code>, the <code>HOST</code> to <code>db</code> which is the name of our service set in <code>docker-compose.yml</code>, and the <code>PORT</code> to <code>5432</code> which is the default PostgreSQL <a href="https://en.wikipedia.org/wiki/Port_%28computer_networking%29">port</a>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DATABASES</code> <code class="o">=</code> <code class="p">{</code>
+    <code class="s2">"default"</code><code class="p">:</code> <code class="p">{</code>
+        <code class="s2">"ENGINE"</code><code class="p">:</code> <code class="s2">"django.db.backends.postgresql"</code><code class="p">,</code>
+        <code class="s2">"NAME"</code><code class="p">:</code> <code class="s2">"postgres"</code><code class="p">,</code>
+        <code class="s2">"USER"</code><code class="p">:</code> <code class="s2">"postgres"</code><code class="p">,</code>
+        <code class="s2">"PASSWORD"</code><code class="p">:</code> <code class="s2">"postgres"</code><code class="p">,</code>
+        <code class="s2">"HOST"</code><code class="p">:</code> <code class="s2">"db"</code><code class="p">,</code>  <code class="c1"># set in docker-compose.yml</code>
+        <code class="s2">"PORT"</code><code class="p">:</code> <code class="mi">5432</code><code class="p">,</code>  <code class="c1"># default postgres port</code>
+    <code class="p">}</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And that’s it! We can build our new image containing <code>psycopg2-binary</code> and spin up the two containers in detached mode with the following single command:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the Django welcome page at <code>http://127.0.0.1:8000/</code> it should work which means Django has successfully connected to PostgreSQL via Docker.</p>
+
+    <h3 id="leanpub-auto-new-database">New Database</h3>
+
+    <p>Since we are using PostgreSQL now, not SQLite, our database is empty. If you look at the current logs again by typing <code>docker-compose logs</code> you’ll see complaints like “You have 18 unapplied migrations(s)”.</p>
+
+    <p>To reinforce this point visit the Admin at <code>http://127.0.0.1:8000/admin/</code> and log in. Will our previous superuser account of <code>sqliteadmin</code> and <code>testpass123</code> work?</p>
+
+    <p>Nope! We see <code>ProgrammingError at /admin</code>. To fix this situation, we can both migrate and create a superuser <em>within</em> Docker that will access the PostgreSQL database.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py migrate
+$ docker-compose exec web python manage.py createsuperuser
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>What should we call our superuser? Let’s use <code>postgresqladmin</code> and for testing purposes set the email to <code>postgresqladmin@email.com</code> and the password to <code>testpass123</code>.</p>
+
+    <p>In your web browser navigate to the admin page at <code>http://127.0.0.1:8000/admin/</code> and enter in the new superuser log in information.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/03_postgres_admin.jpg" alt="Admin with postgresadmin" style="width: 100%"/>
+
+        <figcaption>Admin with postgresadmin</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>In the upper right corner it shows that we are logged in with <code>postgresadmin</code> now not <code>sqliteadmin</code>. Also, you can click on the <code>Users</code> tab on the homepage and visit the Users section to see our one and only user is the new superuser account.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/03_postgres_admin_users.jpg" alt="Admin users" style="width: 100%"/>
+
+        <figcaption>Admin users</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Remember to stop our running container with <code>docker-compose down</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-git-1">Git</h3>
+
+    <p>Let’s save our changes with Git. Initialize a new Git repository and check the current status.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git init
+$ git status
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Before creating the first commit it is always a good idea to add a <code>.gitignore</code> file to the project root directory. Ours will have four lines right now.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+__pycache__/
+db.sqlite3
+.DS_Store  # Mac only
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Use <code>git status</code> again to check that both are no longer being tracked by Git and then add all other changes and include a commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch3'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The official source code for Chapter 3 is <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch3-postgresql">available on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-3">Conclusion</h3>
+
+    <p>The goal of this chapter was to demonstrate how Docker and PostgreSQL work together on a Django project. Switching between a SQLite database and a PostgreSQL is a mental leap for many developers initially.</p>
+
+    <p>The key point is that with Docker we don’t need to be in a local virtual environment anymore. Docker is our virtual environment…and our database and more if desired. The Docker host essentially replaces our local operating system and within it we can run multiple containers, such as for our web app and for our database, which can all be isolated and run separately.</p>
+
+    <p>In the next chapter we will start our online Bookstore project. Let’s begin!</p>
+
+  </div>
+
+</body>
+
+</html>

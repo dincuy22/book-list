@@ -1,0 +1,603 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 5: Pages App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-5-pages-app">Chapter 5: Pages App</h2>
+
+    <p>Let’s build a homepage for our new project. For now this will be a static page meaning it will not interact with the database in any way. Later on it will be a dynamic page displaying books for sale but… one thing at a time.</p>
+
+    <p>It’s common to have multiple static pages in even a mature project such as an About page so let’s create a dedicated <code>pages</code> app for them. On the command line use the <code>startapp</code> command again to make a <code>pages</code> app.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py startapp pages
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then add it to our <code>INSTALLED_APPS</code> setting. We’ll also update <code>TEMPLATES</code> so that Django will look for a project-level <code>templates</code> folder. By default Django looks within each app for a templates folder, but organizing all templates in one space is easier to manage.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="c1"># Local</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+
+<code class="n">TEMPLATES</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="p">{</code>
+        <code class="o">...</code>
+        <code class="s2">"DIRS"</code><code class="p">:</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"templates"</code><code class="p">],</code>  <code class="c1"># new</code>
+        <code class="o">...</code>
+    <code class="p">}</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that updating the <code>DIRS</code> setting means that Django will <em>also</em> look in this new folder; it will still look for any templates folders within an app.</p>
+
+    <h3 id="leanpub-auto-templates">Templates</h3>
+
+    <p>Moving on it is time to create that new <code>templates</code> directory on the command line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ mkdir templates
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then with your text editor create two new files within it: <code>templates/_base.html</code> and <code>templates/home.html</code>. The first base level file will be inherited by all other files; <code>home.html</code> will be our homepage.</p>
+
+    <p>Why call the base template <code>_base.html</code> with the underscore instead of <code>base.html</code>? This is an optional practice but some developers prefer to add an underscore, <code>_</code>, to files solely meant to be inherited by other files.</p>
+
+    <p>In the base file we’ll include the bare minimum needed and add <code>block</code> tags for both <code>title</code> and <code>content</code>. Block tags give higher-level templates the option to override just the content within the tags. For example, the homepage will have a title of “Home” but we want that to appear between html <code>&lt;title&gt;&lt;/title&gt;</code> tags. Using block tags make it easier to update this content, as needed, in inherited templates.</p>
+
+    <p>Why use the name <code>content</code> for the main content of our project? This name could be anything–<code>main</code> or some other generic indicator–but using <code>content</code> is a common naming convention in the Django world. Can you use something else? Absolutely. Is <code>content</code> the most common one you’ll see? Yes.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+<code class="cp">&lt;!DOCTYPE html&gt;</code>
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">meta</code> <code class="na">charset</code><code class="o">=</code><code class="s">"utf-8"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>{% block title %}Bookstore{% endblock title %}<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">body</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"container"</code><code class="p">&gt;</code>
+    {% block content %}
+    {% endblock content %}
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">body</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">html</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now for the homepage which will simply say “This is our home page.” for now.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+{% extends "_base.html" %}
+
+{% block title %}Home{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>This is our home page.<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-urls-and-views">URLs and Views</h3>
+
+    <p>Every webpage in our Django project needs a <code>urls.py</code> and <code>views.py</code> file to go along with the template. For beginners the fact that order doesn’t really matter here–we need all 3 files and really often a 4th, <code>models.py</code>, for the database–is confusing. Generally I prefer to start with the urls and work from there but there is no “right way” to build out this connected web of Django files.</p>
+
+    <p>Let’s start with our project-level <code>urls.py</code> to set the proper path for webpages within the <code>pages</code> app. Since we want to create a homepage we add no additional prefix to the URL route which is designated by the empty string <code>""</code>. We also import <code>include</code> on the second line to concisely add the <code>pages</code> app to our main <code>urls.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next we create a <code>pages/urls.py</code> file with our text editor. This file will import the <code>HomePageView</code> and set the path, again, to the empty string <code>""</code>. Note that we provide an optional, but recommended, <a href="https://docs.djangoproject.com/en/4.0/topics/http/urls/#naming-url-patterns">named URL</a> of <code>"home"</code> at the end. This will come in handy shortly.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">HomePageView</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">HomePageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Finally we need a <code>views.py</code> file. We can leverage Django’s built-in <a href="https://docs.djangoproject.com/en/4.0/ref/class-based-views/base/#django.views.generic.base.TemplateView">TemplateView</a> so that the only tweak needed is to specify our desired template, <code>home.html</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">TemplateView</code>
+
+
+<code class="k">class</code> <code class="nc">HomePageView</code><code class="p">(</code><code class="n">TemplateView</code><code class="p">):</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’re <em>almost</em> done. If you navigate to the homepage now at <code>http://127.0.0.1:8000/</code> you’ll actually see an error. But what’s causing it? Since we’re running the container in background detached mode–that <code>-d</code> flag–we must explicitly check the logs to see console output.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/05_modulenotfound.jpg" alt="Django welcome page" style="width: 100%"/>
+
+        <figcaption>Django welcome page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>In the shell type <code>docker-compose logs</code> which will turn up an error “ModuleNotFoundError: No module named ‘pages.urls’”. What’s happening is that Django does not automatically update the <code>django_project/settings.py</code> file for us based on a change. In a non-Docker world stopping and restarting the server does the trick since the settings variables are loaded upfront. We must do the same here which means typing <code>docker-compose down</code> and then <code>docker-compose up -d</code> to load the new <code>books</code> app in properly.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the homepage now and it will work.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/05_homepage.jpg" alt="" style="width: 100%"/>
+
+        <figcaption></figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-tests-1">Tests</h3>
+
+    <p>Time for tests. For our homepage we can use Django’s <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#simpletestcase">SimpleTestCase</a> which is a special subset of Django’s <code>TestCase</code> that is designed for webpages that do not have a model included.</p>
+
+    <p>Testing can feel overwhelming at first, but it quickly becomes a bit boring. You’ll use the same structure and techniques over and over again. In your text editor, update the existing <code>pages/tests.py</code> file. We’ll start by testing the template.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_url_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top we import <code>SimpleTestCase</code> as well as <a href="https://docs.djangoproject.com/en/4.0/ref/urlresolvers/#reverse">reverse</a> which is useful for testing our URLs. Then we create a class called <code>HomepageTests</code> that extends <code>SimpleTestCase</code> and within it add a method for each unit test.</p>
+
+    <p>Note that we’re adding <code>self</code> as the first argument of each unit test. This is a <a href="https://docs.python.org/3/tutorial/classes.html#random-remarks">Python convention</a> that is worth repeating.</p>
+
+    <p>It is best to be overly descriptive with your unit test names but be aware that each method must start with <code>test</code> to be run by the Django test suite.</p>
+
+    <p>The two tests here both check that the HTTP status code for the homepage equals <code>200</code> which means that it exists. It does not yet tell us anything specific about the contents of the page. For <code>test_url_exists_at_correct_location</code> we’re creating a variable called <code>response</code> that accesses the homepage (<code>/</code>) and then uses Python’s <a href="https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertEqual">assertEqual</a> to check that the status code matches 200. A similar pattern exists for <code>test_homepage_url_name</code> except that we are calling the URL name of <code>home</code> via the <code>reverse</code> method. Recall that we added this to the <code>pages/urls.py</code> file as a best practice. Even if we change the actual route of this page in the future, we can still refer to it by the same <code>home</code> URL name.</p>
+
+    <p>To run our tests execute the command prefaced with <code>docker-compose exec web</code> so that it runs within Docker itself.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+..
+----------------------------------------------------------------------
+Ran 4 tests in 0.126s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Why does it say <code>4</code> tests when we only created 2? Because we’re testing the entire Django project and in the previous chapter under <code>users/tests.py</code> we added two tests for the custom user model. If we wanted to only run tests for the <code>pages</code> app we simply append that name onto the command so <code>docker-compose exec web python manage.py test pages</code>.</p>
+
+    <h3 id="leanpub-auto-testing-templates">Testing Templates</h3>
+
+    <p>So far we’ve tested that the homepage exists, but we should also confirm that it uses the correct template. <code>SimpleTestCase</code> comes with a method <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.SimpleTestCase.assertTemplateUsed">assertTemplateUsed</a> just for this purpose! Let’s use it.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_url_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_template</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home.html"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We’ve created a <code>response</code> variable again and then checked that the template <code>home.html</code> is used. Let’s run the tests again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test pages
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.009s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Did you notice something different in that command? We added the name of our app <code>pages</code> so that <em>only</em> the tests within that app were run. At this early state it’s fine to run all the tests, but in larger projects if you know that you’ve only added tests within a specific app, it can save time to just run the updated/new tests and not the entire suite.</p>
+
+    <h3 id="leanpub-auto-testing-html">Testing HTML</h3>
+
+    <p>Let’s now confirm that our homepage has the correct HTML code and also does not have incorrect text. It’s always good to test both that tests pass and that tests we expect to fail do, actually, fail!</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_url_name</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_template</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_contains_correct_html</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home page"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_does_not_contain_incorrect_html</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertNotContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Hi there! I should not be on the page."</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run the tests again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.....
+----------------------------------------------------------------------
+Ran 7 tests in 0.279s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-setup">setUp()</h3>
+
+    <p>Have you noticed that we seem to be repeating ourself with these unit tests? For each one we are loading a <code>response</code> variable which seems wasteful and prone to errors. It’d be better to stick to something more DRY (Don’t Repeat Yourself) such as doing this once at the top of the tests with a function called <code>setUp</code> that loads the response into a <code>response</code> variable.</p>
+
+    <p>Our current <code>test_homepage_url</code> test is now redundant since <code>setUp</code> first runs <code>reverse</code> on our named template “home” so we can remove that test.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">setUp</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">url</code> <code class="o">=</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">url</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_template</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_contains_correct_html</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home page"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_does_not_contain_incorrect_html</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertNotContains</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Hi there! I should not be on the page."</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now run the tests again. Because <code>setUp</code> is a helper method and does not start with <code>test</code> it will not be considered a unit test in the final tally. So only <code>6</code> total tests will run.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+....
+----------------------------------------------------------------------
+Ran 6 tests in 0.126s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-resolve">Resolve</h3>
+
+    <p>A final views check we can do is that our <code>HomePageView</code> “resolves” a given URL path. Django contains the utility function <a href="https://docs.djangoproject.com/en/4.0/ref/urlresolvers/#resolve">resolve</a> for just this purpose. We will need to import both <code>resolve</code> as well as the <code>HomePageView</code> at the top of the file.</p>
+
+    <p>Our actual test, <code>test_homepage_url_resolves_homepageview</code>, checks that the name of the view used to resolve <code>/</code> matches <code>HomePageView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code><code class="p">,</code> <code class="n">resolve</code>  <code class="c1"># new</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">HomePageView</code>  <code class="c1"># new</code>
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">setUp</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  
+        <code class="n">url</code> <code class="o">=</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"home"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">url</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_url_exists_at_correct_location</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_template</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_contains_correct_html</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"home page"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_does_not_contain_incorrect_html</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertNotContains</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Hi there! I should not be on the page."</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_homepage_url_resolves_homepageview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="n">view</code> <code class="o">=</code> <code class="n">resolve</code><code class="p">(</code><code class="s2">"/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">view</code><code class="o">.</code><code class="n">func</code><code class="o">.</code><code class="vm">__name__</code><code class="p">,</code> <code class="n">HomePageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">()</code><code class="o">.</code><code class="vm">__name__</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Phew. That’s our last test. Let’s confirm that everything passes.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.....
+----------------------------------------------------------------------
+Ran 7 tests in 0.126s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-git-3">Git</h3>
+
+    <p>Time to add our new changes to source control with Git.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch5'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can compare with the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch5-pages">official source code on Github</a> for this chapter.</p>
+
+    <h3 id="leanpub-auto-conclusion-5">Conclusion</h3>
+
+    <p>We have configured our templates and added the first page to our project, a static homepage. We also added tests which should <em>always</em> be included with new code changes. Some developers prefer a method called Test-Driven Development where they write the tests first and then the code. Personally I prefer to write the tests <em>immediately after</em> which is what we’ll do here.</p>
+
+    <p>Both approaches work, the key thing is to be rigorous with your testing. Django projects quickly grow in size where it’s impossible to remember all the working pieces in your head. And if you are working on a team, it is a nightmare to work on an untested codebase. Who knows what will break?</p>
+
+    <p>In the next chapter we’ll add user registration to our project: log in, log out, and sign up.</p>
+
+  </div>
+
+</body>
+
+</html>

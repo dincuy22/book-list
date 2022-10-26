@@ -1,0 +1,351 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 15: Search</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-15-search">Chapter 15: Search</h2>
+
+    <p>Search is a fundamental feature of most websites and certainly anything e-commerce related like our Bookstore. In this chapter we will learn how to implement basic search with forms and filters. Then we will improve it with additional logic and touch upon ways to go even more deeply with search options in Django. We only have three books in our database now but the code here will scale to as many books as we’d like.</p>
+
+    <p>Search functionality consists of two parts: a form to pass along a user search query and then a results page that performs a filter based on that query. Determining “the right” type of filter is where search becomes interesting and hard. But first we need to create both a form and the search results page.</p>
+
+    <p>We could start with either one at this point, but we’ll configure the filtering first and then the form.</p>
+
+    <h3 id="leanpub-auto-search-results-page">Search Results Page</h3>
+
+    <p>We’ll start with the search results page. As with all Django pages that means adding a dedicated URL, view, and template. The implementation order doesn’t particularly matter, but we will add them in that order.</p>
+
+    <p>Within <code>books/urls.py</code>, add a <code>search/</code> path with a URL name of <code>search_results</code> that uses a view called <code>SearchResultsListView</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">BookListView</code><code class="p">,</code> <code class="n">BookDetailView</code><code class="p">,</code> <code class="n">SearchResultsListView</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">BookListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"book_list"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"&lt;uuid:pk&gt;"</code><code class="p">,</code> <code class="n">BookDetailView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"book_detail"</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"search/"</code><code class="p">,</code> <code class="n">SearchResultsListView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code>
+        <code class="n">name</code><code class="o">=</code><code class="s2">"search_results"</code><code class="p">),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next up is the view <code>SearchResultsListView</code> which is, for now, a listing of all available books. That’s a prime candidate for using <code>ListView</code>. Its template will be called <code>search_results.html</code> and live within the <code>templates/books/</code> directory. The only new code is for <code>SearchResultsListView</code> as we have previously imported both <code>ListView</code> and the <code>Book</code> model at the top of the file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">SearchResultsListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book_list"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/search_results.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Last up is creating our template, <code>templates/books/search_results.html</code>, in the text editor. For now it will list all available books by title, author, and price.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/books/search_results.html --&gt;</code>
+{% extends "_base.html" %}
+
+{% block title %}Search{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Search Results<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+  {% for book in book_list %}
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">h3</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{{ book.get_absolute_url }}"</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h3</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Author: {{ book.author }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Price: $ {{ book.price }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  {% endfor %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you are still logged into a user account, log out now. The search results page is now available for all users at <code>http://127.0.0.1:8000/books/search/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/15_search_listview.jpg" alt="Search page" style="width: 100%"/>
+
+        <figcaption>Search page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>And there it is!</p>
+
+    <h3 id="leanpub-auto-basic-filtering">Basic Filtering</h3>
+
+    <p>In Django a <a href="https://docs.djangoproject.com/en/4.0/topics/db/queries/#retrieving-objects">QuerySet</a> is used to filter the results from a database model. Currently our search results page doesn’t feel like one because it is outputting <em>all</em> results from the <code>Book</code> model. Ultimately we want to run the filter based on the user’s search query, but first we’ll work through multiple filtering options.</p>
+
+    <p>It turns out there are multiple ways to customize a queryset including via a <a href="https://docs.djangoproject.com/en/4.0/topics/db/managers/#django.db.models.Manager">manager</a> on the model itself but to keep things simple, we can add a filter with just one line. So let’s do that!</p>
+
+    <p>We can override the default <code>queryset</code> attribute on <code>ListView</code> which by default shows all results. The queryset documentation is quite robust and detailed, but often using <a href="https://docs.djangoproject.com/en/4.0/ref/models/querysets/#contains">contains</a> (which is case sensitive) or <a href="https://docs.djangoproject.com/en/4.0/ref/models/querysets/#icontains">icontains</a> (which is not case sensitive) are good starting points. We will implement the filter based on the <code>title</code> that “contains” the name “beginners”.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="k">class</code> <code class="nc">SearchResultsListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book_list"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/search_results.html"</code>
+    <code class="n">queryset</code> <code class="o">=</code> <code class="n">Book</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">filter</code><code class="p">(</code><code class="n">title__icontains</code><code class="o">=</code><code class="s2">"beginners"</code><code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the search results page and now only a book with the title containing “beginners” is displayed. Success!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_search_beginners.jpg" alt="Search page for &quot;beginners&quot;" style="width: 100%"/>
+
+        <figcaption>Search page for “beginners”</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>For basic filtering most of the time the <a href="https://docs.djangoproject.com/en/4.0/topics/db/queries/#other-queryset-methods">built-in queryset methods</a> of <code>filter()</code>, <code>all()</code>, <code>get()</code>, or <code>exclude()</code> will be enough. However there is also a very robust and detailed <a href="https://docs.djangoproject.com/en/4.0/ref/models/querysets/#queryset-api">QuerySet API</a> available as well that is worthy of further study.</p>
+
+    <h3 id="leanpub-auto-q-objects">Q Objects</h3>
+
+    <p>Using <code>filter()</code> is powerful and it’s even possible to <a href="https://docs.djangoproject.com/en/4.0/topics/db/queries/#chaining-filters">chain filters</a> together such as search for all titles that contain “beginners” and “django”. However often you’ll want more complex lookups that can use “OR” not just “AND”; that’s when it is time to turn to <a href="https://docs.djangoproject.com/en/4.0/topics/db/queries/#complex-lookups-with-q-objects">Q objects</a>.</p>
+
+    <p>Here’s an example where we set the filter to look for a result that matches a title of either “beginners” or “api”. It’s as simple as importing <code>Q</code> at the top of the file and then subtly tweaking our existing query. The <code>|</code> symbol represents the “or” operator. We can filter on any available field: not just <code>title</code> but also <code>author</code> or <code>price</code> as desired.</p>
+
+    <p>As the number of filters grows it can be helpful to separate out the <code>queryset</code> override via <code>get_queryset()</code>. That’s what we’ll do here but note that this choice is optional.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="kn">from</code> <code class="nn">django.db.models</code> <code class="kn">import</code> <code class="n">Q</code>  <code class="c1"># new</code>
+<code class="o">...</code>
+
+<code class="k">class</code> <code class="nc">SearchResultsListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book_list"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_list.html"</code>
+
+    <code class="k">def</code> <code class="nf">get_queryset</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="k">return</code> <code class="n">Book</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">filter</code><code class="p">(</code>
+            <code class="n">Q</code><code class="p">(</code><code class="n">title__icontains</code><code class="o">=</code><code class="s2">"beginners"</code><code class="p">)</code> <code class="o">|</code> <code class="n">Q</code><code class="p">(</code><code class="n">title__icontains</code><code class="o">=</code><code class="s2">"api"</code><code class="p">)</code>
+        <code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the search results page to see the new result.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/15_search_q_objects.jpg" alt="Search with Q objects" style="width: 100%"/>
+
+        <figcaption>Search with Q objects</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now let’s turn our attention to the corresponding search form so that rather than hardcode our filters in we can populate them based on the user’s search query.</p>
+
+    <h3 id="leanpub-auto-forms">Forms</h3>
+
+    <p>Fundamentally a web form is simple: it takes user input and sends it to a URL via either a <code>GET</code> or <code>POST</code> method. However in practice this fundamental behavior of the web can be monstrously complex.</p>
+
+    <p>The first issue is sending the form data: where does the data actually go and how do we handle it once there? Not to mention there are numerous security concerns whenever we allow users to submit data to a website.</p>
+
+    <p>There are only two options for “how” a form is sent: either via <code>GET</code> or <code>POST</code> HTTP methods.</p>
+
+    <p>A <code>POST</code> bundles up form data, encodes it for transmission, sends it to the server, and then receives a response. Any request that changes the state of the database–creates, edits, or deletes data–should use a <code>POST</code>.</p>
+
+    <p>A <code>GET</code> bundles form data into a string that is added to the destination URL. <code>GET</code> should only be used for requests that do not affect the state of the application, such as a search where nothing within the database is changing, basically we’re just doing a filtered list view.</p>
+
+    <p>If you look at the URL after visiting Google.com you’ll see your search query in the actual search results page URL itself.</p>
+
+    <p>For more information, Mozilla has detailed guides on both <a href="https://developer.mozilla.org/en-US/docs/Learn/HTML/Forms/Sending_and_retrieving_form_data">sending form data</a> and <a href="https://developer.mozilla.org/en-US/docs/Learn/HTML/Forms/Form_validation">form data validation</a> that are worth reviewing if you’re not already familiar with form basics.</p>
+
+    <h3 id="leanpub-auto-search-form">Search Form</h3>
+
+    <p>Let’s add a basic search form to the navbar right now so it is available on every page. That means updating the <code>_base.html</code> template and in particular, the bottom of the <code>&lt;ul&gt;&lt;/ul&gt;</code> tags after the if/else/elif logic.</p>
+
+    <p>Here is what the updated code looks like which we’ll explain below.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+...
+      {% endif %}
+     <code class="p">&lt;/</code><code class="nt">ul</code><code class="p">&gt;</code>
+     <code class="p">&lt;</code><code class="nt">form</code> <code class="na">class</code><code class="o">=</code><code class="s">"d-flex"</code> <code class="na">action</code><code class="o">=</code><code class="s">"{% url 'search_results' %}"</code> <code class="na">method</code><code class="o">=</code><code class="s">"get"</code><code class="p">&gt;</code>
+       <code class="p">&lt;</code><code class="nt">input</code> <code class="na">class</code><code class="o">=</code><code class="s">"form-control me-2"</code> <code class="na">type</code><code class="o">=</code><code class="s">"search"</code> <code class="na">name</code><code class="o">=</code><code class="s">"q"</code> <code class="na">placeholder</code><code class="o">=</code><code class="s">"Search"</code> <code class="na">aria-</code><code class="err">\</code>
+<code class="na">label</code><code class="o">=</code><code class="s">"Search"</code> <code class="p">&gt;</code>
+       <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-outline-success"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Search<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+     <code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+   <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+ <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">nav</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We are adding HTML <code>&lt;form&gt;</code> tags and using Bootstrap’s styling to make them look nice. The <code>action</code> specifies where to redirect the user after the form is submitted, which will be the URL named <code>search_results</code> page. As with all URL links this is the URL name for the page. Then we indicate the desired <code>method</code> of <code>get</code> rather than <code>post</code>.</p>
+
+    <p>The second part of the form is the <code>input</code> which contains the user search query. We provide it with a variable <code>name</code>, <code>q</code>, which will be later visible in the URL and also available in the views file. We add Bootstrap styling with the <code>class</code>, specify the <code>type</code> of input is text, add a <code>Placeholder</code> which is default text that prompts the user. The last part, <code>aria-label</code>, is the name provided to screen reader users. Accessibility is a big part of web development and should always be considered from the beginning: include <code>aria-label</code>s with all your forms!</p>
+
+    <p>Finally we’re including a “Search” button to be clicked on to run the search query. A user can also just press Return to achieve the same result.</p>
+
+    <p>Navigate to the homepage–or any page really–and the new search box is present in the upper right.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/15_home_search.jpg" alt="Homepage with search box" style="width: 100%"/>
+
+        <figcaption>Homepage with search box</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Try inputting a search, for example for “hello.” Upon hitting Return or clicking the “Search” button you are redirected to the search results page. Note, in particular, the URL contains the search query <code>/search/?q=hello</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/15_url_q.jpg" alt="URL with query string" style="width: 100%"/>
+
+        <figcaption>URL with query string</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>However the results haven’t changed! And that’s because our <code>SearchResultsListView</code> still has the hardcoded values from before. The last step is to take the user’s search query, represented by <code>q</code> in the URL, and pass it in to the actual search filters.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="k">class</code> <code class="nc">SearchResultsListView</code><code class="p">(</code><code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book_list"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/search_results.html"</code>
+
+    <code class="k">def</code> <code class="nf">get_queryset</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code> <code class="c1"># new</code>
+        <code class="n">query</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">request</code><code class="o">.</code><code class="n">GET</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"q"</code><code class="p">)</code>
+        <code class="k">return</code> <code class="n">Book</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">filter</code><code class="p">(</code>
+            <code class="n">Q</code><code class="p">(</code><code class="n">title__icontains</code><code class="o">=</code><code class="n">query</code><code class="p">)</code> <code class="o">|</code> <code class="n">Q</code><code class="p">(</code><code class="n">author__icontains</code><code class="o">=</code><code class="n">query</code><code class="p">)</code>
+        <code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>What changed? We added a <code>query</code> variable that takes the value of <code>q</code> from the form submission. Then updated our filter to use <code>query</code> on either a <code>title</code> or an <code>author</code> field. That’s it! Refresh the search results page–it still has the same URL with our query–and the result is expected: no results on either title or author for “hello”.</p>
+
+    <p>Go back to the homepage and try a new search such as for “api” or “beginners” to see the complete search functionality in action.</p>
+
+    <h3 id="leanpub-auto-git-13">Git</h3>
+
+    <p>Make sure to save our current work in this chapter by committing the new code to Git.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch15'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The official source code for this chapter is <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch15-search">available on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-15">Conclusion</h3>
+
+    <p>Our basic search is now complete, but we’ve only scratched the surface of potential search optimizations. For example, maybe we want a button added to the search form that could be clicked in addition to hitting the Return key? Or better yet include form validation. Beyond filtering with ANDs and ORs there are other factors if we want a Google-quality search, things like relevancy and much more.</p>
+
+    <p>There are several third-party packages with enhanced features such as <a href="https://github.com/etianen/django-watson">django-watson</a> or <a href="https://github.com/django-haystack/django-haystack">django-haystack</a> however, given that we’re using PostgreSQL as the database, we can take advantage of its <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/postgres/search/">full text search</a> and other features which are built into Django itself.</p>
+
+    <p>A final option is either use an enterprise-level solution like <a href="https://www.elastic.co/">ElasticSearch</a> that must be running on a separate server (not the hardest thing with Docker), or rely on a hosted solution like <a href="https://swiftype.com/">Swiftype</a> or <a href="https://www.algolia.com/">Algolia</a>.</p>
+
+    <p>In the next chapter we’ll explore the many performance optimizations available in Django as we prepare our Bookstore project for eventual deployment.</p>
+
+  </div>
+
+</body>
+
+</html>

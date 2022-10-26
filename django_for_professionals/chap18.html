@@ -1,0 +1,600 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 18: Deployment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-18-deployment">Chapter 18: Deployment</h2>
+
+    <p>So far we have been working entirely in a local development environment on our computer. But now it is time to deploy our project so that it is accessible to the public. In truth, the topic of deployment is worth an entire book on its own. Compared to other web frameworks Django is very hands-off and agnostic on the topic. There are no one-click deploys for most hosting platforms and while this requires more developer work it also allows, in typical Django fashion, for a high degree of customization.</p>
+
+    <p>In the previous chapter we configured a completely separate <code>docker-compose-prod.yml</code> file and updated <code>django_project/settings.py</code> to be production-ready. In this chapter we’ll review how to choose a hosting provider, add a production-ready web server, and properly configure static/media files before deploying our Bookstore site!</p>
+
+    <h3 id="leanpub-auto-paas-vs-iaas">PaaS vs IaaS</h3>
+
+    <p>The first question is whether to use a Platform-as-a-Service (PaaS) or Infrastructure-as-a-Service (IaaS). A PaaS is an opinionated hosting option that handles much of the initial configuration and scaling needed for a website. Popular examples include <a href="https://www.heroku.com/">Heroku</a>, <a href="https://www.pythonanywhere.com/details/django_hosting">PythonAnywhere</a>, and <a href="http://dokku.viewdocs.io/dokku/">Dokku</a> among many others. While a PaaS costs more money upfront than an IaaS it saves an incredible amount of developer time, handles security updates automatically, and can be quickly scaled.</p>
+
+    <p>An IaaS by contrast provides total flexibility and is typically cheaper, but it requires a high degree of knowledge and effort to properly set up. Prominent IaaS options include <a href="https://www.digitalocean.com/">DigitalOcean</a>, <a href="https://www.linode.com/">Linode</a>, <a href="https://aws.amazon.com/ec2/">Amazon EC2</a>, and <a href="https://cloud.google.com/compute/">Google Compute Engine</a> among many others.</p>
+
+    <p>So which one to use? Django developers tend to fall in one of two camps: either they already have a deployment pipeline configured with their IaaS of choice or they use a PaaS. Since the former is far more complex and varies widely in its configuration, we will use a PaaS in this book, specifically Heroku.</p>
+
+    <p>The choice of Heroku is somewhat arbitrary, but it is a mature technology that comes with a truly free tier sufficient for deploying our Bookstore project.</p>
+
+    <h3 id="leanpub-auto-whitenoise">WhiteNoise</h3>
+
+    <p>We have already seen that for local development Django relies on the <code>staticfiles app</code> to serve static files from across an entire project. This is convenient, but quite inefficient and likely insecure, too.</p>
+
+    <p>For production, the <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/staticfiles/#collectstatic">collectstatic</a> command must be run to compile all static files into a single directory specified by <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-STATIC_ROOT">STATIC_ROOT</a>. The consolidated files can then be served either on the same server, a separate server, or a dedicated cloud service/CDN by updating <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-STATICFILES_STORAGE">STATICFILES_STORAGE</a>.</p>
+
+    <p>In our project, we will rely on serving files from our server with the aid of the <a href="https://github.com/evansd/whitenoise">WhiteNoise</a> project which works extremely well on Heroku and is both faster and more configurable than Django defaults. To install <code>whitenoise</code> we will add it to our <code>requirements.txt</code> file, stop the container, rebuild the image, and start the server again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+psycopg2-binary==2.9.3
+sqlparse==0.4.2
+django-crispy-forms==1.14.0
+crispy-bootstrap5==0.6
+django-allauth==0.50.0
+environs[django]==9.5.0
+pillow==9.0.1
+django-debug-toolbar==3.4.0
+whitenoise==6.1.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then stop our Docker container.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We won’t rebuild the image and restart the container just yet because we also have to make changes to our <code>django_project/settings.py</code> file first. Since we’re using Docker it’s possible to switch to WhiteNoise locally as well as in production. While it’s possible to do this by passing in a <code>--nostatic</code> flag to the <code>runserver</code> command, this becomes tiring in practice. A better approach is to add <code>whitenoise.runserver_nostatic</code> before <code>django.contrib.staticfiles</code> in the <code>INSTALLED_APPS</code> config which will do the same thing. We’ll also add it to our <code>MIDDLEWARE</code> right below <code>SecurityMiddleware</code> and update <code>STATICFILES_STORAGE</code> to use WhiteNoise now.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"whitenoise.runserver_nostatic"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sites"</code><code class="p">,</code>
+    <code class="o">...</code>
+<code class="p">]</code>
+
+<code class="n">MIDDLEWARE</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.middleware.cache.UpdateCacheMiddleware"</code><code class="p">,</code>
+    <code class="s2">"django.middleware.security.SecurityMiddleware"</code><code class="p">,</code>
+    <code class="s2">"whitenoise.middleware.WhiteNoiseMiddleware"</code><code class="p">,</code>  <code class="c1"># new</code>
+  <code class="o">...</code>
+<code class="p">]</code>
+
+<code class="n">STATICFILES_STORAGE</code> <code class="o">=</code>
+    <code class="s2">"whitenoise.storage.CompressedManifestStaticFilesStorage"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that <code>STATICFILES_STORAGE</code> should be one line. It is formatted on two lines here to fit the book format.</p>
+
+    <p>With all our changes made we can now start up our project again in local development mode.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>WhiteNoise has additional options to serve compressed content and far-future cache headers on content that won’t change. But for now, go ahead and run the <code>collectstatic</code> command. There will be a warning about overwriting existing files. That’s fine. Type “yes” and then hit the “Return” key to continue.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py collectstatic
+...
+140 static files copied to '/code/staticfiles', 2 unmodified, 404 post-processed.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-media-files-1">Media Files</h3>
+
+    <p>Media files such as the book covers in our site are unfortunately a little more complicated than static files for reasons covered in Chapter 13. As a result, while they will appear as desired in local development, they will not remain long in a production setting. The recommended approach is to use the very popular <a href="https://django-storages.readthedocs.io/en/latest/">django-storages</a> package alongside a dedicated CDN like S3. However this requires additional configuration that is beyond the scope of this book.</p>
+
+    <h3 id="leanpub-auto-gunicorn">Gunicorn</h3>
+
+    <p>When we ran the <code>startproject</code> command way back in Chapter 3, a <code>django_project/wsgi.py</code> file was created with a default <a href="https://wsgi.readthedocs.io/en/latest/">WSGI (Web Server Gateway Interface)</a> configuration. This is a specification for how a web app (like our Bookstore project) communicates with a web server.</p>
+
+    <p>For production it is common to swap this out for either <a href="https://gunicorn.org/">Gunicorn</a> or <a href="https://uwsgi-docs.readthedocs.io/en/latest/">uWSGI</a>. Both offer a performance boost, but Gunicorn is more focused and simpler to implement so it will be our choice.</p>
+
+    <p>First add it to the bottom of the <code>requirements.txt</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+psycopg2-binary==2.9.3
+sqlparse==0.4.2
+django-crispy-forms==1.14.0
+crispy-bootstrap5==0.6
+django-allauth==0.50.0
+environs[django]==9.5.0
+pillow==9.0.1
+django-debug-toolbar==3.4.0
+whitenoise==6.1.0
+gunicorn==20.1.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Because we are using Docker our local environment can mimic production quite easily so we’ll update both <code>docker-compose.yml</code> and <code>docker-compose-prod.yml</code> to use Gunicorn instead of the local server.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># command: python /code/manage.py runserver 0.0.0.0:8000
+command: gunicorn django_project.wsgi -b 0.0.0.0:8000  # new
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose-prod.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># command: python /code/manage.py runserver 0.0.0.0:8000
+command: gunicorn django_project.wsgi -b 0.0.0.0:8000  # new
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then spin down our container, rebuild a new image, and restart the container.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-heroku">Heroku</h3>
+
+    <p>Head over to the <a href="https://www.heroku.com/">Heroku</a> website and sign up for a free account. After you confirm your email Heroku will redirect you to the dashboard section of the site.</p>
+
+    <p>Next make sure to install Heroku’s <em>Command Line Interface (CLI)</em> so we can deploy from the command line. There are detailed <a href="https://devcenter.heroku.com/articles/getting-started-with-python#set-up">instructions here</a>.</p>
+
+    <p>The final step is to log in with your Heroku credentials via the command line by typing <code>heroku login</code>. Use the email and password for Heroku you just set.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ heroku login
+Opening browser to https://cli-auth.heroku.com/auth/cli/browser/...
+Logging in... done
+Logged in as will@wsvincent.com
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>All set! If you have any issues you can type <code>heroku help</code> on the command line or visit the Heroku site for additional information.</p>
+
+    <h3 id="leanpub-auto-deploying-with-docker">Deploying with Docker</h3>
+
+    <p>Since we are using Docker containers locally we might as well do the same in production. Traditional non-Docker Heroku relies on a custom <code>Procfile</code> for configuring a site for deployment. For containers Heroku relies on a similar approach but it is called a <a href="https://devcenter.heroku.com/articles/build-docker-images-heroku-yml">heroku.yml</a> file.</p>
+
+    <p>In your text editor create a <code>heroku.yml</code> file now in the base directory. There are four <a href="https://devcenter.heroku.com/articles/build-docker-images-heroku-yml#heroku-yml-overview">top-level sections</a> available for configuration: <code>setup</code>, <code>build</code>, <code>release</code>, and <code>run</code>.</p>
+
+    <p>The main function of <code>setup</code> is to specify which add-ons are needed. These are hosted solutions Heroku provides, typically for a fee. The big one is our database which will rely on the free <a href="https://elements.heroku.com/addons/heroku-postgresql">heroku-postgresql</a> tier. Heroku takes care of provisioning it, security updates, and we can easily upgrade the database size and uptime as needed.</p>
+
+    <p>The <code>build</code> section is where we specify how the <code>Dockerfile</code> should be built. This relies on our current <code>Dockerfile</code> in the root directory. The <code>release</code> phase is used to run tasks before each new release is deployed. For example, we can make sure <code>collectstatic</code> is run on every deploy automatically. Finally there is the <code>run</code> phase where we specify which processes actually run the application. Notably, the use of <code>Gunicorn</code> as the web server.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>heroku.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="n">setup</code><code class="o">:</code>
+  <code class="n">addons</code><code class="o">:</code>
+  <code class="o">-</code> <code class="n">plan</code><code class="o">:</code> <code class="n">heroku</code><code class="o">-</code><code class="n">postgresql</code>
+<code class="n">build</code><code class="o">:</code>
+  <code class="n">docker</code><code class="o">:</code>
+    <code class="n">web</code><code class="o">:</code> <code class="n">Dockerfile</code>
+<code class="n">release</code><code class="o">:</code>
+  <code class="n">image</code><code class="o">:</code> <code class="n">web</code>
+  <code class="n">command</code><code class="o">:</code>
+    <code class="o">-</code> <code class="n">python</code> <code class="n">manage</code><code class="o">.</code><code class="na">py</code> <code class="n">collectstatic</code> <code class="o">--</code><code class="n">noinput</code>
+<code class="n">run</code><code class="o">:</code>
+  <code class="n">web</code><code class="o">:</code> <code class="n">gunicorn</code> <code class="n">django_project</code><code class="o">.</code><code class="na">wsgi</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Make sure to add the new deployment updates to Git and commit them. In the next section we’ll push all our local code to Heroku itself.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch18'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-heroku-deployment">Heroku Deployment</h3>
+
+    <p>Now create a new app on Heroku for our Bookstore project. If you type <code>heroku create</code> it will assign a random name. Since names are global in Heroku, it’s unlikely that common ones like “blog” or “webapp” will be available. The name can always be changed later within the Heroku website dashboard to an available global namespace.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ heroku create
+Creating app... done, â¬¢ mysterious-hollows-62532
+https://mysterious-hollows-62532.herokuapp.com/ |
+https://git.heroku.com/mysterious-hollows-62532.git
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In this case Heroku assigned my app the name <code>mysterious-hollows-62532</code>. If you refresh the Heroku dashboard on the website you will now see the newly created app. Click on the new app to open the “Overview” page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/18_heroku_overview.jpg" alt="Heroku Overview Page" style="width: 100%"/>
+
+        <figcaption>Heroku Overview Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>The next step is to add our production environment variables from <code>docker-compose-prod.yml</code>. Click on the “Settings” option at the top of the page and then click on “Reveal Config Vars.” Because we are using default values so liberally in <code>django_project/settings.py</code>, there is only one value to set in production: <code>DJANGO_SECRET_KEY</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/18_heroku_config_vars.jpg" alt="Heroku Config Vars" style="width: 100%"/>
+
+        <figcaption>Heroku Config Vars</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now set the <a href="https://devcenter.heroku.com/articles/stack">stack</a> to use our Docker containers, not Heroku’s default buildpack. Include your app name here at the end of the command after <code>heroku stack:set container -a</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ heroku stack:set container -a mysterious-hollows-62532
+Setting stack to container... done
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To confirm this change executed correctly, refresh the Heroku dashboard web page and note that at the top of the Settings page, under “App Information”, the “Stack” is now set to “container.” That’s what we want.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/18_stack_container.jpg" alt="Heroku Stack" style="width: 100%"/>
+
+        <figcaption>Heroku Stack</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Before pushing our code to Heroku we must specify the hosted PostgreSQL database we want. In our case, the free <code>hobby-dev</code> tier works well; it can always be updated in the future.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ heroku addons:create heroku-postgresql:hobby-dev -a mysterious-hollows-62532
+Creating heroku-postgresql:hobby-dev on â¬¢ mysterious-hollows-62532... free
+Database has been created and is available
+ ! This database is empty. If upgrading, you can transfer
+ ! data from another database with pg:copy
+Created postgresql-vertical-87783 as DATABASE_URL
+Use heroku addons:docs heroku-postgresql to view documentation
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Did you notice how the <code>DATABASE_URL</code> variable was automatically created there! That’s why we did not have to set it as a production environment variable. Pretty cool.</p>
+
+    <h3 id="leanpub-auto-allowedhosts">ALLOWED_HOSTS</h3>
+
+    <p>Now that we know the dedicated URL of our production website we can add it to our <code>django_project/settings.py</code> file. Update the existing entry for <code>ALLOWED_HOSTS</code> as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">ALLOWED_HOSTS</code> <code class="o">=</code> <code class="p">[</code><code class="s2">"mysterious-hollows-62532.herokuapp.com"</code><code class="p">,</code> <code class="s2">"localhost"</code><code class="p">,</code> <code class="s2">"127.0.0.1"</code><code class="p">]</code>  <code class="c1"># n\</code>
+<code class="n">ew</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then create a new Git commit to reflect the change.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git commit -m 'updated ALLOWED_HOSTS setting'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-doing-it-live">Doing It Live!</h3>
+
+    <p>Ok, we’re ready! Create a <a href="https://devcenter.heroku.com/articles/git#creating-a-heroku-remote">Heroku remote</a>, which means a version of our code that will live on a Heroku-hosted server. Make sure to include <code>-a</code> and the name of your app. Then “push” the code to Heroku which will result in building our Docker image and running the containers.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ heroku git:remote -a mysterious-hollows-62532
+set git remote heroku to https://git.heroku.com/mysterious-hollows-62532.git
+$ git push heroku main
+...
+remote: Waiting for release.... done.
+To https://git.heroku.com/mysterious-hollows-62532.git
+ * [new branch]      main -&gt; main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The initial push might take a while to complete. You can see active progress by clicking on the “Activity” tab on the Heroku dashboard.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/18_heroku_activity.jpg" alt="Heroku Activity" style="width: 100%"/>
+
+        <figcaption>Heroku Activity</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Our Bookstore project should now be available online. Remember that while the code mirrors our own local code, the production site has its own database that has no information in it. To run commands on it add <code>heroku run</code> to standard commands. For example, we should <code>migrate</code> our initial database and then create a superuser account.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ heroku run python manage.py migrate
+$ heroku run python manage.py createsuperuser
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>There are two ways to open the newly-deployed application. From the command line you can type <code>heroku open -a</code> and the name of your app. Or you can click on the “Open app” button in the upper right corner of the Heroku dashboard.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ heroku open -a mysterious-hollows-62532
+</pre>
+
+      </div>
+
+    </figure>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/18_redirects.jpg" alt="Heroku Redirects" style="width: 100%"/>
+
+        <figcaption>Heroku Redirects</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>But…ack! What’s this? A redirect error. Welcome to the joys of deployment where issues like this will crop up all the time.</p>
+
+    <h3 id="leanpub-auto-secureproxysslheader">SECURE_PROXY_SSL_HEADER</h3>
+
+    <p>Some sleuthing uncovers that the issue is related to our <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#secure-ssl-redirect">SECURE_SSL_REDIRECT</a> setting. Heroku uses proxies and so we must find the proper header and update <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-SECURE_PROXY_SSL_HEADER">SECURE_PROXY_SSL_HEADER</a> accordingly.</p>
+
+    <p>By default it is set to <code>None</code>, but since we <em>do</em> trust Heroku we can update it to <code>('HTTP_X_FORWARDED_PROTO', 'https')</code>. This setting won’t harm us for local development so we’ll add it directly into the <code>django_project/settings.py</code> file as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">SECURE_PROXY_SSL_HEADER</code> <code class="o">=</code> <code class="p">(</code><code class="s2">"HTTP_X_FORWARDED_PROTO"</code><code class="p">,</code> <code class="s2">"https"</code><code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Commit these change to Git and push the updated code to Heroku.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git commit -m 'secure_proxy_ssl_header and allowed_hosts update'
+$ git push heroku main
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>After the build has completed refresh the webpage for your site. There it is!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/18_live_site.jpg" alt="Heroku Live Site" style="width: 100%"/>
+
+        <figcaption>Heroku Live Site</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-production-database">Production Database</h3>
+
+    <p>New web developers often wonder why our new live site doesn’t mimic what we have locally. Where are the books? And reviews?</p>
+
+    <p>This is because our local database and production database are completely different things. The live site doesn’t know anything about the local Docker container containing our PostgreSQL database and the information we’ve added. To mimic what we have locally you need to log into the admin section of your live production site. Then add any users, books, reviews, and so on that you want.</p>
+
+    <p>Remember that <code>django-storages</code> needs to be configured if you want book covers, which are media files, to remain for an extended period of time.</p>
+
+    <h3 id="leanpub-auto-heroku-logs">Heroku Logs</h3>
+
+    <p>It is inevitable that you will have errors in your deployment at some point. When you do, run <code>heroku logs</code> to see error and info logs and debug what’s going on.</p>
+
+    <p>Hopefully this deployment process was smooth. But in practice, even with an established Platform-as-a-Service like Heroku, it is highly likely that issues will occur. If you see an error page, type <code>heroku logs --tail</code>, which displays info and error logs, to diagnose the issue.</p>
+
+    <p>Heroku comes with a large list of <a href="https://elements.heroku.com/addons/">add-on services</a> that, for a fee, can be quickly added to any site. If you’re using a custom domain for your site, ensuring SSL is vital for any website. You will need to <a href="https://devcenter.heroku.com/articles/understanding-ssl-on-heroku">be on a paid tier on Heroku</a> to enable this functionality.</p>
+
+    <h3 id="leanpub-auto-conclusion-18">Conclusion</h3>
+
+    <p>There was a lot of code in this chapter so if you have any errors, please check the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch18-deployment">official source code on Github</a>.</p>
+
+    <p>Even with all the advantages of a modern Platform-as-a-Service like Heroku, deployment remains a complicated and often frustrating task for many developers. Personally, I want my web apps to “just work”. But many engineers come to enjoy the challenges of working on performance, security, and scaling. After all, it is far easier to measure improvements in this realm: did page load times decrease? Did site uptime improve? Is security up-to-date? Working on these problems can often feel far more rewarding than debating which new feature to add to the site itself.</p>
+
+  </div>
+
+</body>
+
+</html>

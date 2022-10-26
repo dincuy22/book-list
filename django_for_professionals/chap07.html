@@ -1,0 +1,945 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 7: Static Assets</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-7-static-assets">Chapter 7: Static Assets</h2>
+
+    <p>Static assets like CSS, JavaScript, and images are a core component of any modern web application. Django provides us with a large degree of flexibility around their configuration and storage which can be confusing to newcomers but in practice the pattern is almost identical for all projects. In this chapter we’ll configure our initial static assets and add <a href="https://getbootstrap.com/">Bootstrap</a> for improved styling.</p>
+
+    <h3 id="leanpub-auto-local-development">Local Development</h3>
+
+    <p>For local development the Django web server automatically serves static files and minimal configuration is required. Static files can be placed in an app-level directory called <code>static</code> so we could, for example, create a new directory within the <code>pages</code> app called <code>pages/static/</code>.</p>
+
+    <p>However most projects reuse static assets across multiple apps. Our bookstore app certainly will! So a more common approach is to create a base-level directory <code>static</code> folder and place all static files within there. This is easier to reason about as a developer.  </p>
+
+    <p>From the command line create a new <code>static</code> folder along with new subdirectories for CSS, JavaScript, and images.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ mkdir static
+$ mkdir static/css
+$ mkdir static/js
+$ mkdir static/images
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Your Django project should have the following structure at this point:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Project Structure</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>├── Dockerfile
+├── accounts
+│   ...
+├── db.sqlite3
+├── django_project
+│   ...
+├── docker-compose.yml
+├── manage.py
+├── pages
+│   ...
+├── requirements.txt
+├── static
+│   ├── css
+│   ├── images
+│   └── js
+└── templates
+    ...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>It’s important to be aware that Git, by default, will not track directories that are empty. Thus when we eventually push our code to both GitHub and Heroku these empty directories will not appear which can cause problems in deployment when <code>collectstatic</code> is run. To avoid this we will add an empty file to each directory now.</p>
+
+    <p>In your text editor create the following three files:</p>
+
+    <ul>
+
+      <li><code>static/css/base.css</code></li>
+
+      <li><code>static/js/base.js</code></li>
+
+      <li><code>static/images/.keep</code></li>
+
+    </ul>
+
+    <h3 id="leanpub-auto-staticfilesdirs">STATICFILES_DIRS</h3>
+
+    <p>At the bottom of the <code>django_project/settings.py</code> file is a section on “Static files” which has already set <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-STATIC_URL">STATIC_URL</a> to <code>"static/"</code>. This is the URL used when referring to static files. It means that for local usage all static files are located at <code>http://127.0.0.1:8000/static/</code>.</p>
+
+    <p>The built-in <code>staticfiles</code> app that ships with Django–you can see it in the <code>INSTALLED_APPS</code> section of <code>django_project/settings.py</code>–ships with a quick and dirty helper view that will serve files locally for development. It will automatically look for a <code>static</code> directory within each application.</p>
+
+    <p>Many static files are not app-specific though and are intended to be used project-wide. That’s why creating a base directory <code>static</code> folder, as we did above, is a common practice. We just need to provide a list of additional directories for Django to look in, which is the job of <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-STATICFILES_DIRS">STATICFILES_DIRS</a>. Since this is a list we must place brackets, <code>[]</code>, around it in standard Python syntax.</p>
+
+    <p>Here is what the updated <code>django_project/settings.py</code> file should look like.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">STATIC_URL</code> <code class="o">=</code> <code class="s2">"/static/"</code>
+<code class="n">STATICFILES_DIRS</code> <code class="o">=</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"static"</code><code class="p">]</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-css">CSS</h3>
+
+    <p>We’ll update <code>base.css</code> now and keep things simple by having our <code>h1</code> headline be red. The point is to show how CSS can be added to our project, not to delve too deeply into CSS itself.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">/* static/css/base.css */</code>
+<code class="nt">h1</code> <code class="p">{</code>
+  <code class="k">color</code><code class="p">:</code> <code class="kc">red</code><code class="p">;</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the homepage now you’ll see that nothing has changed. That’s because static assets must be explicitly loaded into templates! To do this we must add <code>{% load static %}</code> at the top of <code>_base.html</code> and then use the <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#std:templatetag-static">static</a> template tag to reference our <code>base.css</code> file. Even though this file is located at <code>static/css/base.css</code> we can refer to it as <code>css/base.css</code> because the <code>static</code> tag automatically looks within the <code>/static/</code> directory specified in <code>STATIC_URL</code>.</p>
+
+    <p>Here is what the updated <code>templates/_base.html</code> file should look like.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+{% load static %}
+<code class="cp">&lt;!DOCTYPE html&gt;</code>
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">meta</code> <code class="na">charset</code><code class="o">=</code><code class="s">"utf-8"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>{% block title %}Bookstore{% endblock %}<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+  <code class="c">&lt;!-- CSS --&gt;</code>
+  <code class="p">&lt;</code><code class="nt">link</code> <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% static 'css/base.css' %}"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the homepage to see our work.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_homepage_red.jpg" alt="Homepage with red text" style="width: 100%"/>
+
+        <figcaption>Homepage with red text</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>There’s our CSS in action! If instead you see an error screen saying <code>Invalid block tag on line 7: 'static'. Did you forget to register or load this tag?</code> then you forgot to include the line <code>{% load static %}</code> at the top of the file. I do this all the time myself.</p>
+
+    <h3 id="leanpub-auto-images">Images</h3>
+
+    <p>How about an image? You can download the book cover for <em>Django for Professionals</em> at <a href="https://github.com/wsvincent/djangoforprofessionals/blob/main/dfp.jpg">this link</a>. Save it into the directory <code>books/static/images</code> as <code>dfp.jpg</code>.</p>
+
+    <p>To display it on the homepage, update <code>templates/home.html</code> by adding the <code>{% load static %}</code> tag at the top. Then under the <code>&lt;h1&gt;</code> tags add an <code>&lt;img&gt;</code> class that also uses <code>static</code> to display the new cover.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+{% extends "_base.html" %}
+{% load static %}
+
+{% block title %}Home{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>This is our home page.<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">img</code> <code class="na">class</code><code class="o">=</code><code class="s">"bookcover"</code> <code class="na">src</code><code class="o">=</code><code class="s">"{% static 'images/dfp.jpg' %}"</code><code class="p">&gt;</code>
+  {% if user.is_authenticated %}
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Hi {{ user.email }}!<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'logout' %}"</code><code class="p">&gt;</code>Log Out<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  {% else %}
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>You are not logged in<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'login' %}"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> |
+       <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'signup' %}"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  {% endif %}
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refreshing the homepage you’ll see the raw file is quite large! Let’s control that with some additional CSS.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">/* static/css/base.css */</code>
+<code class="nt">h1</code> <code class="p">{</code>
+  <code class="k">color</code><code class="p">:</code> <code class="kc">red</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="p">.</code><code class="nc">bookcover</code> <code class="p">{</code>
+  <code class="k">height</code><code class="p">:</code> <code class="mi">300</code><code class="kt">px</code><code class="p">;</code>
+  <code class="k">width</code><code class="p">:</code> <code class="kc">auto</code><code class="p">;</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now refresh the homepage and the book cover image fits nicely.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_homepage_cover.jpg" alt="Homepage with Book Cover" style="width: 100%"/>
+
+        <figcaption>Homepage with Book Cover</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you don’t see the change you might need to perform a “hard refresh” to bypass your web browser’s local cache. Modern web browsers automatically keep local copies of pages, images, and other content already visited to speed up performance. On occasion this automatic caching results in a browser showing out-of-date content. The solution is force a re-download of a web page’s content, also known as a  “hard refresh” or “cache refresh”. On Windows this can be down by holding <code>Ctrl+F5</code>; on macOS hold <code>Cmd+Shift+R</code>.</p>
+
+    <h3 id="leanpub-auto-javascript">JavaScript</h3>
+
+    <p>We already have a <code>base.js</code> file we can use to add JavaScript to our project. Often I put a tracking code of some kind here, such as for Google Analytics, but for demonstration purposes we’ll add a <code>console.log</code> statement so we can confirm the JavaScript loaded correctly.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1">// static/js/base.js</code>
+<code class="nx">console</code><code class="p">.</code><code class="nx">log</code><code class="p">(</code><code class="s2">"JavaScript here!"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now add it to our <code>_base.html</code> template. JavaScript should be added at the bottom of the file so it is loaded last, after the HTML, CSS, and other assets that appear first on the screen when rendered in the web browser. This gives the appearance of the complete webpage loading faster.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+{% load static %}
+<code class="cp">&lt;!DOCTYPE html&gt;</code>
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">meta</code> <code class="na">charset</code><code class="o">=</code><code class="s">"utf-8"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>{% block title %}Bookstore{% endblock title %}<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+  <code class="c">&lt;!-- CSS --&gt;</code>
+  <code class="p">&lt;</code><code class="nt">link</code> <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% static 'css/base.css' %}"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">body</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"container"</code><code class="p">&gt;</code>
+    {% block content %}
+    {% endblock content %}
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="c">&lt;!-- JavaScript --&gt;</code>
+  <code class="p">&lt;</code><code class="nt">script</code> <code class="na">src</code><code class="o">=</code><code class="s">"{% static 'js/base.js' %}"</code><code class="p">&gt;&lt;/</code><code class="nt">script</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">body</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">html</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your web browser, make the JavaScript console available. This involves opening up Developer Tools and making sure you’re on the “Console” section. On Chrome which is being used for the images in this book, go to <code>View</code> in the top menu, then <code>Developer -&gt; Developer Tools</code> which will open a sidebar. Make sure <code>Console</code> is selected from the options.</p>
+
+    <p>If you refresh the page, you should see the following:</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_console.jpg" alt="Homepage JavaScript console view" style="width: 100%"/>
+
+        <figcaption>Homepage JavaScript console view</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-production">Production</h3>
+
+    <p>Local development is designed to keep things nice and easy for static files. Whether they are located in an individual app or in a base-level directory, the Django server will display everything for us. But this approach is not very efficient since each resource must be individually requested and served from each location. In a production environment it is far more efficient to combine all static files into one location and serve that in a single, larger HTTP request.</p>
+
+    <p>Django comes with a built-in management command, <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/staticfiles/#django-admin-collectstatic">collectstatic</a>, that does this for us. But we need to configure two more settings in our <code>django_project/settings.py</code> file before <code>collectstatic</code> will work properly.</p>
+
+    <p>The first setting is <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#static-root">STATIC_ROOT</a> which sets the absolute location of these collected files. This can be named anything you like but is typically called “staticfiles”. When <code>collecstatic</code> is run locally it will combine all available static files as defined by <code>STATICFILES_DIRS</code> and place them within a directory as defined by <code>STATIC_ROOT</code>. We are setting <code>STATIC_ROOT</code> to be in the base directory with the name <code>staticfiles</code>. Here is what the code looks like:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">STATIC_URL</code> <code class="o">=</code> <code class="s2">"/static/"</code>
+<code class="n">STATICFILES_DIRS</code> <code class="o">=</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"static"</code><code class="p">]</code>  
+<code class="n">STATIC_ROOT</code> <code class="o">=</code> <code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"staticfiles"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The second setting is <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#staticfiles-storage">STATICFILES_STORAGE</a>, which is the file storage engine used when collecting static files with the <code>collectstatic</code> command. By default, it is implicitly set to <code>django.contrib.staticfiles.storage.StaticFilesStorage</code>. Let’s make that explicit for now in our <code>django_project/settings.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">STATIC_URL</code> <code class="o">=</code> <code class="s2">"/static/"</code>
+<code class="n">STATICFILES_DIRS</code> <code class="o">=</code> <code class="p">[</code><code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"static"</code><code class="p">]</code>  
+<code class="n">STATIC_ROOT</code> <code class="o">=</code> <code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"staticfiles"</code>  
+<code class="n">STATICFILES_STORAGE</code> <code class="o">=</code> <code class="s2">"django.contrib.staticfiles.storage.StaticFilesStorage"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>There is actually one more default static files setting available, <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#staticfiles-finders">STATICFILES_FINDERS</a>, but it is typically not customized so we will leave it out of the <code>django_project/settings.py</code> file at this time.</p>
+
+    <p>Now we can run the command <code>python manage.py collectstatic</code> which will combine all static files into a new <code>staticfiles</code> directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ docker-compose exec web python manage.py collectstatic
+131 static files copied to '/code/staticfiles'.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you look within your text editor, there is now a <code>staticfiles</code> directory with four subdirectories: <code>admin</code>, <code>css</code>, <code>images</code>, and <code>js</code>. The first one is the static assets of the Django <code>admin</code> app and the other three we specified. That’s why there are <code>122</code>  files copied over.</p>
+
+    <h3 id="leanpub-auto-bootstrap">Bootstrap</h3>
+
+    <p>Writing custom CSS for your website is a worthy goal and something I advise all software developers, even back-end ones, to try at some point. But practically speaking there is a reason front-end frameworks like <a href="https://getbootstrap.com/">Bootstrap</a> exist: they save you a ton of time when starting a new project. Unless you have a dedicated designer to collaborate with, stick with a framework for the early iterations of your website.</p>
+
+    <p>Bootstrap can be installed locally or used via a CDN. The latter is a far simpler approach so we will adopt it in this book. Instructions <a href="https://getbootstrap.com/docs/5.1/getting-started/download/#cdn-via-jsdelivr">can be found here</a> to deliver a cached version of Bootstrap’s compiled CSS and JS to our project.</p>
+
+    <p>Note that the full links for Bootstrap are not included. You should copy and paste them in from the Bootstrap website to be accurate. They are referenced here as <code>Bootstrap CSS</code> and <code>Bootstrap JavaScript</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+{% load static %}
+<code class="cp">&lt;!DOCTYPE html&gt;</code>
+<code class="p">&lt;</code><code class="nt">html</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">head</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">meta</code> <code class="na">charset</code><code class="o">=</code><code class="s">"utf-8"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">title</code><code class="p">&gt;</code>{% block title %}Bookstore{% endblock %}<code class="p">&lt;/</code><code class="nt">title</code><code class="p">&gt;</code>
+  <code class="c">&lt;!-- Bootstrap CSS --&gt;</code>
+  <code class="p">&lt;</code><code class="nt">link</code> <code class="na">href</code><code class="o">=</code><code class="s">"https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css..."</code><code class="err">\</code>
+<code class="p">&gt;</code>  
+  <code class="c">&lt;!-- CSS --&gt;</code>
+  <code class="p">&lt;</code><code class="nt">link</code> <code class="na">rel</code><code class="o">=</code><code class="s">"stylesheet"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% static 'css/base.css' %}"</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">head</code><code class="p">&gt;</code>
+<code class="p">&lt;</code><code class="nt">body</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"container"</code><code class="p">&gt;</code>
+    {% block content %}
+    {% endblock content %}
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="c">&lt;!-- Bootstrap JavaScript --&gt;</code>
+  <code class="p">&lt;</code><code class="nt">script</code> <code class="na">src</code><code class="o">=</code><code class="s">"https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.\</code>
+<code class="s">js..."</code><code class="p">&gt;&lt;/</code><code class="nt">script</code><code class="p">&gt;</code>
+  <code class="c">&lt;!-- JavaScript --&gt;</code>
+  <code class="p">&lt;</code><code class="nt">script</code> <code class="na">src</code><code class="o">=</code><code class="s">"{% static 'js/base.js' %}"</code><code class="p">&gt;&lt;/</code><code class="nt">script</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">body</code><code class="p">&gt;</code>
+<code class="p">&lt;/</code><code class="nt">html</code><code class="p">&gt;</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that order matters here for both the CSS and JavaScript. The file will be loaded top-to-bottom so our <code>base.css</code> file comes <em>after</em> the Bootstrap CSS. This means our custom <code>h1</code> style will override the Bootstrap default. At the bottom of the file we also place our <code>base.js</code> file after the Bootstrap JavaScript file.</p>
+
+    <p>Now it’s time to actually use Bootstrap. We’ll start by adding a fixed navbar to the <code>_base.html</code> file at the top of the <code>&lt;body&gt;</code> section.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+...
+<code class="p">&lt;</code><code class="nt">body</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">nav</code> <code class="na">class</code><code class="o">=</code><code class="s">"navbar navbar-expand-md navbar-dark fixed-top bg-dark"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"container-fluid"</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"navbar-brand"</code> <code class="na">href</code><code class="o">=</code><code class="s">"#"</code><code class="p">&gt;</code>Bookstore<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"navbar-toggler"</code> <code class="na">type</code><code class="o">=</code><code class="s">"button"</code> <code class="na">data-bs-toggle</code><code class="o">=</code><code class="s">"collapse"</code> <code class="na">data-bs-targ</code><code class="err">\</code>
+<code class="na">et</code><code class="o">=</code><code class="s">"#navbarCollapse"</code> <code class="na">aria-controls</code><code class="o">=</code><code class="s">"navbarCollapse"</code> <code class="na">aria-expanded</code><code class="o">=</code><code class="s">"false"</code> <code class="na">aria-label</code><code class="o">=</code><code class="s">"Tog\</code>
+<code class="s">gle navigation"</code><code class="p">&gt;</code>
+        <code class="p">&lt;</code><code class="nt">span</code> <code class="na">class</code><code class="o">=</code><code class="s">"navbar-toggler-icon"</code><code class="p">&gt;&lt;/</code><code class="nt">span</code><code class="p">&gt;</code>
+      <code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"collapse navbar-collapse"</code> <code class="na">id</code><code class="o">=</code><code class="s">"navbarCollapse"</code><code class="p">&gt;</code>
+        <code class="p">&lt;</code><code class="nt">ul</code> <code class="na">class</code><code class="o">=</code><code class="s">"navbar-nav me-auto mb-2 mb-md-0"</code><code class="p">&gt;</code>
+          {% if user.is_authenticated %}
+          <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+            <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'logout' %}"</code><code class="p">&gt;</code>Log Out<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+          <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+          {% else %}
+          <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+            <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'login' %}"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+          <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+          <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+            <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'signup' %}"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+          <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+          {% endif %}
+        <code class="p">&lt;/</code><code class="nt">ul</code><code class="p">&gt;</code>
+      <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">nav</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class </code><code class="o">=</code><code class="s">"container"</code><code class="p">&gt;</code>
+    {% block content %}
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The other step is to update <code>base.css</code> so that our <code>body</code> section fits the new navbar.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">/* static/css/base.css */</code>
+<code class="nt">body</code> <code class="p">{</code>
+  <code class="k">min-height</code><code class="p">:</code> <code class="mi">75</code><code class="kt">rem</code><code class="p">;</code>
+  <code class="k">padding-top</code><code class="p">:</code> <code class="mf">4.5</code><code class="kt">rem</code><code class="p">;</code>
+<code class="p">}</code>
+
+<code class="nt">h1</code> <code class="p">{</code>
+    <code class="k">color</code><code class="p">:</code> <code class="kc">red</code><code class="p">;</code>
+  <code class="p">}</code>
+
+<code class="nt">img</code><code class="p">.</code><code class="nc">bookcover</code> <code class="p">{</code>
+  <code class="k">height</code><code class="p">:</code> <code class="mi">300</code><code class="kt">px</code><code class="p">;</code>
+  <code class="k">width</code><code class="p">:</code> <code class="kc">auto</code><code class="p">;</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The code in our <code>home.html</code> template can be cleaned up now too. We don’t need to display Log In or Sign Up links. Nor do we need to display a message about the user not being logged in. The reduced <code>home.html</code> template should look as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/home.html --&gt;</code>
+{% extends "_base.html" %}
+{% load static %}
+
+{% block title %}Home{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>This is our home page.<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">img</code> <code class="na">class</code><code class="o">=</code><code class="s">"bookcover"</code> <code class="na">src</code><code class="o">=</code><code class="s">"{% static 'images/dfp.jpg' %}"</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the homepage now to see our new navbar and updated homepage. The web page body just displays the title and book cover.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/07_homepage_bootstrap.jpg" alt="Homepage with Bootstrap" style="width: 100%"/>
+
+        <figcaption>Homepage with Bootstrap</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you click the “Log Out” link in the navbar it automatically updates it to instead include “Log In” and “Sign Up”.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_homepage_bootstrap_loggedout.jpg" alt="Homepage with Bootstrap Logged Out" style="width: 100%"/>
+
+        <figcaption>Homepage with Bootstrap Logged Out</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-about-page">About Page</h3>
+
+    <p>Let’s add an About page to our project now and to the navbar. It is quite straightforward to do now that we have our site’s scaffolding configured. Since this will be a static page we don’t need a database model involved. However we will need a template, view, and url.</p>
+
+    <p>Let’s start by creating a new template file called <code>templates/about.html</code>. The page will literally just say “About Page” for now while inheriting from <code>_base.html</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/about.html --&gt;</code>
+{% extends "_base.html" %}
+
+{% block title %}About{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>About Page<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The view can rely on Django’s built-in <code>TemplateView</code> just like our homepage.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/views.py</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">TemplateView</code>
+
+
+<code class="k">class</code> <code class="nc">HomePageView</code><code class="p">(</code><code class="n">TemplateView</code><code class="p">):</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"home.html"</code>
+
+
+<code class="k">class</code> <code class="nc">AboutPageView</code><code class="p">(</code><code class="n">TemplateView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"about.html"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And the URL path will be familiar as well. In the <code>pages/urls.py</code> file we will first import the necessary view, <code>AboutPageView</code>, create a new URL path to <code>about/</code>, and provide a URL name of <code>about</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">HomePageView</code><code class="p">,</code> <code class="n">AboutPageView</code>  <code class="c1"># new</code>
+
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"about/"</code><code class="p">,</code> <code class="n">AboutPageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"about"</code><code class="p">),</code>  <code class="c1"># new</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">HomePageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">(),</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you now visit the URL <code>http://127.0.0.1:8000/about/</code> you can see the About page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_about.jpg" alt="About Page" style="width: 100%"/>
+
+        <figcaption>About Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>As a final step, update the link in the navbar to the page. Because we provided a <code>name</code> in the URL path of <code>about</code> that’s what we’ll use alongside the <code>url</code> template tag. On line 18 of <code>_base.html</code> change the line with the About page link to the following:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+...
+<code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"collapse navbar-collapse"</code> <code class="na">id</code><code class="o">=</code><code class="s">"navbarCollapse"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">ul</code> <code class="na">class</code><code class="o">=</code><code class="s">"navbar-nav me-auto mb-2 mb-md-0"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'about' %}"</code><code class="p">&gt;</code>About<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+    {% if user.is_authenticated %}
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the about page now it will display the “About” link in the navbar.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_about_navbar_link.jpg" alt="About Navbar Link" style="width: 100%"/>
+
+        <figcaption>About Navbar Link</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>There has been a lot of code so far in this chapter especially in the <code>_base.html</code> file. If you are concerned about a small typo it is more than fine to look at <a href="https://github.com/wsvincent/djangoforprofessionals">the official source code here</a> and just copy and paste the <code>templates/_base.html</code> file if needed.</p>
+
+    <h3 id="leanpub-auto-about-page-tests">About Page Tests</h3>
+
+    <p>Time for tests. We’ve added a new About page so we should add basic tests for it in <code>pages/tests.py</code>. These tests will be very similar to those we added previously for our homepage.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">SimpleTestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code><code class="p">,</code> <code class="n">resolve</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">HomePageView</code><code class="p">,</code> <code class="n">AboutPageView</code> <code class="c1"># new</code>
+
+
+<code class="k">class</code> <code class="nc">HomepageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>
+    <code class="o">...</code>
+
+
+<code class="k">class</code> <code class="nc">AboutPageTests</code><code class="p">(</code><code class="n">SimpleTestCase</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="k">def</code> <code class="nf">setUp</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  
+        <code class="n">url</code> <code class="o">=</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"about"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">url</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_aboutpage_status_code</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_aboutpage_template</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"about.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_aboutpage_contains_correct_html</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"About Page"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_aboutpage_does_not_contain_incorrect_html</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertNotContains</code><code class="p">(</code>
+            <code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Hi there! I should not be on the page."</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_aboutpage_url_resolves_aboutpageview</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">view</code> <code class="o">=</code> <code class="n">resolve</code><code class="p">(</code><code class="s2">"/about/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code>
+            <code class="n">view</code><code class="o">.</code><code class="n">func</code><code class="o">.</code><code class="vm">__name__</code><code class="p">,</code>
+            <code class="n">AboutPageView</code><code class="o">.</code><code class="n">as_view</code><code class="p">()</code><code class="o">.</code><code class="vm">__name__</code>
+        <code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run the tests.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Found 15 test(s).
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 0.161s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>They all passed! Good. Now we can feel confident that any future changes we make to our project won’t mess up the About page.</p>
+
+    <h3 id="leanpub-auto-django-crispy-forms">Django Crispy Forms</h3>
+
+    <p>One last update with Bootstrap is to our forms. The popular 3rd party package <a href="https://github.com/django-crispy-forms/django-crispy-forms">django-crispy-forms</a> provides a host of welcome upgrades and has a Bootstrap5 dedicated template pack <a href="https://github.com/django-crispy-forms/crispy-bootstrap5">crispy-bootstrap5</a> that we can use too. Add both to our <code>requirements.txt</code> file as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+psycopg2-binary==2.9.3
+sqlparse==0.4.2
+django-crispy-forms==1.14.0
+crispy-bootstrap5==0.6
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then stop our Docker container and rebuild it so that <code>django-crispy-forms</code> and <code>crispy-bootstrap5</code> are available.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Our <code>Dockerfile</code> has a command to check <code>requirements.txt</code> to see if anything has changed and, if so, to install it in our Docker image which is then run by our container as spelled out in <code>docker-compose.yml</code>. This is a safe way to install new packages when working with Docker.</p>
+
+    <p>Once installed we must add <code>django-crispy-forms</code> and <code>crispy_bootstrap5</code> to the <code>INSTALLED_APPS</code> setting. Note that the app name needs to be <code>crispy_forms</code> here! A nice additional feature is to specify <code>bootstrap4</code> under <code>CRISPY_TEMPLATE_PACK</code> which will provide pre-styled forms for us.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="c1"># Third-party</code>
+    <code class="s2">"crispy_forms"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="s2">"crispy_bootstrap5"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="c1"># Local</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>
+<code class="p">]</code>
+
+<code class="c1"># django-crispy-forms</code>
+<code class="n">CRISPY_ALLOWED_TEMPLATE_PACKS</code> <code class="o">=</code> <code class="s2">"bootstrap5"</code>  <code class="c1"># new</code>
+<code class="n">CRISPY_TEMPLATE_PACK</code> <code class="o">=</code> <code class="s2">"bootstrap5"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To use Crispy Forms we load <code>crispy_forms_tags</code> at the top of a template and add <code>{{ form|crispy }}</code> to replace <code>{{ form.as_p}}</code> for displaying form fields. We will take this time to also add Bootstrap styling to the Submit button.</p>
+
+    <p>Start with the <code>templates/registration/signup.html</code> file and make the updates below.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/signup.html --&gt;</code>
+{% extends "_base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Sign Up{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>
+    {% csrf_token %}
+    {{ form|crispy }}
+    <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-success"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then navigate to the sign up page at <code>http://127.0.0.1:8000/accounts/signup/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/07_crispy_signup.jpg" alt="Sign Up Page with Crispy Forms" style="width: 100%"/>
+
+        <figcaption>Sign Up Page with Crispy Forms</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Next update <code>templates/registration/login.html</code> as well with <code>crispy_forms_tags</code> at the top and <code>{{ form|crispy }}</code> in the form.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/registration/login.html --&gt;</code>
+{% extends "_base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Log In{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code><code class="p">&gt;</code>
+    {% csrf_token %}
+    {{ form|crispy }}
+    <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-success"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And navigate to the log in page at <code>http://127.0.0.1:8000/accounts/login/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/07_crispy_login.jpg" alt="Log In Page with Crispy Forms" style="width: 100%"/>
+
+        <figcaption>Log In Page with Crispy Forms</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-git-5">Git</h3>
+
+    <p>Wrapping up we should always do a Git commit for our work. Check the <code>status</code> of changes in this chapter, add them all, and then provide a commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch7'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>As alway you can compare your code with the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch7-static-assets">official code on Github</a> if there are any issues.</p>
+
+    <h3 id="leanpub-auto-conclusion-7">Conclusion</h3>
+
+    <p>Static assets are a core part of every website and in Django we have to take a number of additional steps so they are compiled and hosted efficiently in production. We also saw how easy it is to add additional static pages, such as our About page, to our existing site. And we added Bootstrap and <code>django-crispy-forms</code> to improve the styling of our site and our forms. Later on in the book we’ll learn how to use a dedicated content delivery network (CDN) for hosting and displaying our project’s static files.</p>
+
+  </div>
+
+</body>
+
+</html>

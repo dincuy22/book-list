@@ -1,0 +1,417 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 14: Permissions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-14-permissions">Chapter 14: Permissions</h2>
+
+    <p>Currently there are no permissions set on our Bookstore project. Any user, even one not logged in, can visit any page and perform any available action. While this is fine for prototyping, implementing a robust permissions structure is a must before deploying a website to production.</p>
+
+    <p>Django comes with <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#permissions-and-authorization">built-in authorization options</a> for locking down pages to either logged in users, specific groups, or users with the proper individual permission.</p>
+
+    <h3 id="leanpub-auto-logged-in-users-only">Logged-In Users Only</h3>
+
+    <p>Confusingly there are multiple ways to add even the most basic permission: restricting access only to logged-in users. It can be done in a <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#the-raw-way">raw way</a> using the <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#the-login-required-decorator">login_required()</a> decorator, or since we are using class-based views so far via the <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#the-loginrequired-mixin">LoginRequired mixin</a>.</p>
+
+    <p>Let’s start by limiting access to the Books pages only to logged-in users. There is a link for it in the navbar so this is not the case of a user accidentally finding a URL (which also can happen); in this case the URL is quite public.</p>
+
+    <p>First import <code>LoginRequiredMixin</code> at the top which we will then add to our <code>BookListView</code> class. It is important that <code>LoginRequiredMixin</code> come <em>before</em> <code>ListView</code> in order to work properly. Mixins are powerful but can be a little tricky in practice. As the official docs note, <a href="https://docs.djangoproject.com/en/4.0/topics/class-based-views/mixins/#using-django-s-class-based-view-mixins">“not all mixins can be used together, and not all generic class based views can be used with all other mixins.</a>.</p>
+
+    <p>The second update is adding a <code>login_url</code> for the user to be redirected to. This is the URL name for log in which, since we’re using <code>django-allauth</code> is <code>account_login</code>. If we were using the traditional Django authentication system then this link would be called simply <code>login</code>.</p>
+
+    <p>The structure for <code>BookDetailView</code> is the same: add <code>LoginRequiredMixin</code> <em>before</em> <code>DetailView</code> and a <code>login_url</code> route as well.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.mixins</code> <code class="kn">import</code> <code class="n">LoginRequiredMixin</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code>
+
+
+<code class="k">class</code> <code class="nc">BookListView</code><code class="p">(</code><code class="n">LoginRequiredMixin</code><code class="p">,</code> <code class="n">ListView</code><code class="p">):</code> <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book_list"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_list.html"</code>
+    <code class="n">login_url</code> <code class="o">=</code> <code class="s2">"account_login"</code>  <code class="c1"># new</code>
+
+
+<code class="k">class</code> <code class="nc">BookDetailView</code><code class="p">(</code><code class="n">LoginRequiredMixin</code><code class="p">,</code> <code class="n">DetailView</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_detail.html"</code>
+    <code class="n">login_url</code> <code class="o">=</code> <code class="s2">"account_login"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And that’s it! If you now log out of your account and click on the “Books” link it will automatically redirect you to the Log In page. However if you are logged in, the Books page loads normally. Even if you somehow knew the UUID of a specific book page you’ll <em>still</em> be redirected to the Log In page!</p>
+
+    <h3 id="leanpub-auto-permissions">Permissions</h3>
+
+    <p>Django comes with a basic <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#permissions-and-authorization">permissions system</a> that is controlled through the Django admin. To demonstrate it we need to create a new user account. Navigate back to the Admin homepage and then click on “+ Add” next to <code>Users</code>.</p>
+
+    <p>We’ll call this new user <code>special</code> and set a password of <code>testpass123</code>. Click on the “Save” button. The second page allows us to set an “Email address” to <code>special@email.com</code>. Scrolling down further on the page to the bottom there are options to set <code>Groups</code> as well as <code>User permissions</code>. This is a long list of defaults Django provides. For now we won’t use them since we’ll create a custom permission in the next section so just click on the “Save” button in the lower right corner so that our email address is updated for the user account.</p>
+
+    <h3 id="leanpub-auto-custom-permissions">Custom Permissions</h3>
+
+    <p>Setting <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#custom-permissions">custom permissions</a> is a much more common occurrence in a Django project. We can set them via the <code>Meta</code> class on our database models.</p>
+
+    <p>For example, let’s add a special status so that an author can read all books. In other words they have access to the <code>DetailView</code>. We could be much more specific with the permissions, restricting them per book, but this is a good first step.</p>
+
+    <p>In the <code>books/models.py</code> file we’ll add a <code>Meta</code> class and set both the permission name and a description which will be visible in the admin.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="o">...</code>
+<code class="k">class</code> <code class="nc">Book</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="nb">id</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">UUIDField</code><code class="p">(</code>
+        <code class="n">primary_key</code><code class="o">=</code><code class="kc">True</code><code class="p">,</code>
+        <code class="n">default</code><code class="o">=</code><code class="n">uuid</code><code class="o">.</code><code class="n">uuid4</code><code class="p">,</code>
+        <code class="n">editable</code><code class="o">=</code><code class="kc">False</code><code class="p">)</code>
+    <code class="n">title</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">price</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">DecimalField</code><code class="p">(</code><code class="n">max_digits</code><code class="o">=</code><code class="mi">6</code><code class="p">,</code> <code class="n">decimal_places</code><code class="o">=</code><code class="mi">2</code><code class="p">)</code>
+    <code class="n">cover</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ImageField</code><code class="p">(</code><code class="n">upload_to</code><code class="o">=</code><code class="s2">"covers/"</code><code class="p">,</code> <code class="n">blank</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>
+
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">:</code> <code class="c1"># new</code>
+        <code class="n">permissions</code> <code class="o">=</code> <code class="p">[</code>
+            <code class="p">(</code><code class="s2">"special_status"</code><code class="p">,</code> <code class="s2">"Can read all books"</code><code class="p">),</code>
+        <code class="p">]</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">title</code>
+
+    <code class="k">def</code> <code class="nf">get_absolute_url</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"book_detail"</code><code class="p">,</code> <code class="n">args</code><code class="o">=</code><code class="p">[</code><code class="nb">str</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">id</code><code class="p">)])</code>
+<code class="o">...</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <aside>
+
+      <p>The order of the inner classes and methods here is deliberate. It follows the <a href="https://docs.djangoproject.com/en/4.0/internals/contributing/writing-code/coding-style/#model-style">Model style</a> section from the Django documentation.</p>
+
+    </aside>
+
+    <p>Since we have updated our database model we must create a new migrations file and then migrate the database to apply it.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py makemigrations books
+Migrations for 'books':
+  books/migrations/0004_alter_book_options.py
+    - Change Meta options on book
+$ docker-compose exec web python manage.py migrate
+Operations to perform:
+  Apply all migrations: account, accounts, admin, auth, books, contenttypes, sessions, si\
+tes
+Running migrations:
+  Applying books.0004_alter_book_options... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-user-permissions">User Permissions</h3>
+
+    <p>Now we need to apply this custom permission to our new <code>special</code> user. Thanks to the admin this is not a difficult task. Navigate to the <code>Users</code> section where the three existing users are listed: <code>special@email.com</code>, <code>testuser@email.com</code>, and your superuser account (mine has an email address of <code>will@wsvincent.com</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/14_special_user.jpg" alt="Special User" style="width: 100%"/>
+
+        <figcaption>Special User</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Click on the <code>special@email.com</code> user and then scroll down to <code>User permissions</code> near the bottom of the page. Within it search for <code>books | book | Can read all books</code> and select it.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/14_can_read_all_books.jpg" alt="Can read all books" style="width: 100%"/>
+
+        <figcaption>Can read all books</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Click on the <code>-&gt;</code> arrow to add it to “Chosen user permissions.” Don’t forget to click the “Save” button at the bottom of the page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/14_add_permission.jpg" alt="Add Permission" style="width: 100%"/>
+
+        <figcaption>Add Permission</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-permissionrequiredmixin">PermissionRequiredMixin</h3>
+
+    <p>The last step is to apply the custom permission using the <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#the-permissionrequiredmixin-mixin">PermissionRequiredMixin</a>. One of the many great features of class-based views is we can implement advanced functionality with very little code on our part and this particular mixin is a good example of that.</p>
+
+    <p>We will add <code>PermissionRequiredMixin</code> to our list of imports on the top line. Then add it to <code>DetailView</code> <em>after</em> <code>LoginRequiredMixin</code> but before <code>DetailView</code>. The order should make sense: if a user isn’t already logged in it makes no sense to do the additional check of whether they have permission. Finally add a <code>permission_required</code> field which specifies the desired permission. In our case its name is <code>special_status</code> and it exists on the <code>books</code> model.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/views.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.mixins</code> <code class="kn">import</code> <code class="p">(</code>
+    <code class="n">LoginRequiredMixin</code><code class="p">,</code>
+    <code class="n">PermissionRequiredMixin</code>  <code class="c1"># new</code>
+<code class="p">)</code>
+<code class="kn">from</code> <code class="nn">django.views.generic</code> <code class="kn">import</code> <code class="n">ListView</code><code class="p">,</code> <code class="n">DetailView</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code>
+
+
+<code class="k">class</code> <code class="nc">BookListView</code><code class="p">(</code><code class="n">LoginRequiredMixin</code><code class="p">,</code> <code class="n">ListView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book_list"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_list.html"</code>
+    <code class="n">login_url</code> <code class="o">=</code> <code class="s2">"account_login"</code>
+
+
+<code class="k">class</code> <code class="nc">BookDetailView</code><code class="p">(</code>
+        <code class="n">LoginRequiredMixin</code><code class="p">,</code>
+        <code class="n">PermissionRequiredMixin</code><code class="p">,</code>  <code class="c1"># new</code>
+        <code class="n">DetailView</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Book</code>
+    <code class="n">context_object_name</code> <code class="o">=</code> <code class="s2">"book"</code>
+    <code class="n">template_name</code> <code class="o">=</code> <code class="s2">"books/book_detail.html"</code>
+    <code class="n">login_url</code> <code class="o">=</code> <code class="s2">"account_login"</code>
+    <code class="n">permission_required</code> <code class="o">=</code> <code class="s2">"books.special_status"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>It is possible to add <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#the-permissionrequiredmixin-mixin">multiple permissions</a> via the <code>permission_required</code> field, though we are not doing so here.</p>
+
+    <p>To try out our work, log out of the admin. This is necessary because the superuser account is used for the admin and by default has access to everything. Not a great user account to test with!</p>
+
+    <p>Log in to the Bookstore site using the <code>testuser@email.com</code> account and then navigate to the Books page listing the three available titles. If you then click on any one of the books, you’ll see a “403 Forbidden” error because permission was denied.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/14_403_page.jpg" alt="403 Error Page" style="width: 100%"/>
+
+        <figcaption>403 Error Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now go back to the homepage at <code>http://127.0.0.1:8000/</code> and log out. Then log in using the <code>special@email.com</code> account. Navigate again to the Books page and each individual book page is accessible.</p>
+
+    <h3 id="leanpub-auto-groups--userpassestestmixin">Groups &amp; UserPassesTestMixin</h3>
+
+    <p>The third permissions mixin available is <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#django.contrib.auth.mixins.UserPassesTestMixin">UserPassesTestMixin</a> which restricts a view’s access only to users who pass a specific test.</p>
+
+    <p>And in large projects <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#groups">Groups</a>, which are Django’s way of applying permissions to a category of users, become prominent. If you look on the Admin homepage there is a dedicated <code>Groups</code> section where they can be added and have permissions set. This is far more efficient than adding permissions on a per-user basis.</p>
+
+    <p>An example of groups is if you have a premium section on your website, a user upgrading could switch them into the premium group and then have access to however many specific extra permissions that involves.</p>
+
+    <h3 id="leanpub-auto-tests-6">Tests</h3>
+
+    <p>It’s a good idea to run tests whenever a code change has been made. After all, the whole point of testing is to check that we did not inadvertently cause another part of the application to fail.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+...
+Ran 17 tests in 0.249s
+
+FAILED (failures=2)
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>It turns out we do have some failing tests! Specifically, <code>test_book_list_view</code> and <code>test_book_detail_view</code> both complain of a <code>302</code> status code, meaning a redirection, rather than a <code>200</code> for success. This is because we’ve just added the requirement that log in is required to view the list of books and for a detail page the user must have a <code>special_status</code> permission.</p>
+
+    <p>The first step is to import <code>Permission</code> near the top of the file from the built-in auth models. Then within our <code>BookTests</code> in <code>books/tests.py</code> add the <code>special_status</code> permission to the <code>setUpTestData</code> method so it is available for all our tests.</p>
+
+    <p>Then we will transform the existing <code>test_book_list_view</code> test into two different tests: one for logged in users (<code>test_book_list_view_for_logged_in_user</code>) and one for logged out users (<code>test_book_list_view_for_logged_out_user</code>). Finally we will update and rename the existing <code>test_book_detail_view</code> to <code>test_book_detail_view_with_permissions</code> and have it check if a user has the correct permission.</p>
+
+    <p>Here is what the fully updated code looks like:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.models</code> <code class="kn">import</code> <code class="n">Permission</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">Client</code><code class="p">,</code> <code class="n">TestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code><code class="p">,</code> <code class="n">Review</code>
+
+<code class="k">class</code> <code class="nc">BookTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+
+    <code class="nd">@classmethod</code>
+    <code class="k">def</code> <code class="nf">setUpTestData</code><code class="p">(</code><code class="bp">cls</code><code class="p">):</code>
+        <code class="bp">cls</code><code class="o">.</code><code class="n">user</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create_user</code><code class="p">(</code>
+            <code class="n">username</code><code class="o">=</code><code class="s2">"reviewuser"</code><code class="p">,</code>
+            <code class="n">email</code><code class="o">=</code><code class="s2">"reviewuser@email.com"</code><code class="p">,</code>
+            <code class="n">password</code><code class="o">=</code><code class="s2">"testpass123"</code>
+        <code class="p">)</code>
+
+        <code class="bp">cls</code><code class="o">.</code><code class="n">special_permission</code> <code class="o">=</code> <code class="n">Permission</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">get</code><code class="p">(</code>
+           <code class="n">codename</code><code class="o">=</code><code class="s2">"special_status"</code>
+       <code class="p">)</code>  <code class="c1"># new</code>
+
+        <code class="bp">cls</code><code class="o">.</code><code class="n">book</code> <code class="o">=</code> <code class="n">Book</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code>
+            <code class="n">title</code><code class="o">=</code><code class="s2">"Harry Potter"</code><code class="p">,</code>
+            <code class="n">author</code><code class="o">=</code><code class="s2">"JK Rowling"</code><code class="p">,</code>
+            <code class="n">price</code><code class="o">=</code><code class="s2">"25.00"</code><code class="p">,</code>
+        <code class="p">)</code>
+
+        <code class="bp">cls</code><code class="o">.</code><code class="n">review</code> <code class="o">=</code> <code class="n">Review</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code>
+            <code class="n">book</code> <code class="o">=</code> <code class="bp">cls</code><code class="o">.</code><code class="n">book</code><code class="p">,</code>
+            <code class="n">author</code> <code class="o">=</code> <code class="bp">cls</code><code class="o">.</code><code class="n">user</code><code class="p">,</code>
+            <code class="n">review</code> <code class="o">=</code> <code class="s2">"An excellent review"</code><code class="p">,</code>
+        <code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_listing</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">title</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">author</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"JK Rowling"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">price</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"25.00"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_list_view_for_logged_in_user</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code> <code class="c1"># new</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">login</code><code class="p">(</code><code class="n">email</code><code class="o">=</code><code class="s2">"reviewuser@email.com"</code><code class="p">,</code> <code class="n">password</code><code class="o">=</code><code class="s2">"testpass123"</code><code class="p">)</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"book_list"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"books/book_list.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_list_view_for_logged_out_user</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>  <code class="c1"># new</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">logout</code><code class="p">()</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"book_list"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">302</code><code class="p">)</code>  <code class="c1"># new</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertRedirects</code><code class="p">(</code>
+            <code class="n">response</code><code class="p">,</code> <code class="s2">"</code><code class="si">%s</code><code class="s2">?next=/books/"</code> <code class="o">%</code> <code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"account_login"</code><code class="p">)))</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code>
+            <code class="s2">"</code><code class="si">%s</code><code class="s2">?next=/books/"</code> <code class="o">%</code> <code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"account_login"</code><code class="p">)))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Log In"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_detail_view_with_permissions</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code> <code class="c1"># new</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">login</code><code class="p">(</code><code class="n">email</code><code class="o">=</code><code class="s2">"reviewuser@email.com"</code><code class="p">,</code> <code class="n">password</code><code class="o">=</code><code class="s2">"testpass123"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">user</code><code class="o">.</code><code class="n">user_permissions</code><code class="o">.</code><code class="n">add</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">special_permission</code><code class="p">)</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">get_absolute_url</code><code class="p">())</code>
+        <code class="n">no_response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/books/12345/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">no_response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">404</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"An excellent review"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"books/book_detail.html"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you run the test suite again all tests should pass.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+...
+Ran 18 tests in 0.384s
+
+OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-git-12">Git</h3>
+
+    <p>Make sure to create a new Git commit for the changes in this chapter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch14'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>As always you can compare your code again the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch14-permissions">official source code on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-14">Conclusion</h3>
+
+    <p>Permissions and groups are a highly subjective topic that can vary widely from project to project. The basic approach, however, remains the same and mimic what we’ve covered here: start by restricting access and only gradually loosed it to users as needed. In our case we restricted access to only logged in users and from there added additional permissions around what groups of logged in users could view.</p>
+
+    <p>In the next chapter we’ll add search functionality to our Bookstore site.</p>
+
+  </div>
+
+</body>
+
+</html>

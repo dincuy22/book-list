@@ -1,0 +1,415 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 10: Email</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-10-email">Chapter 10: Email</h2>
+
+    <p>In this chapter we will fully configure email and add password change and password reset functionality. Currently emails are not actually sent to users. They are simply outputted to our command line console. We’ll change that by signing up for a third-party email service, obtaining API keys, and updating our <code>django_project/settings.py</code> file. Django takes care of the rest.</p>
+
+    <p>So far all of our work–custom user model, <code>pages</code> app, static assets, authentication with <code>allauth</code>, and environment variables–could apply to almost <em>any</em> new project. After this chapter we will start building out the <code>Bookstore</code> site itself as opposed to foundational steps.</p>
+
+    <h3 id="leanpub-auto-custom-confirmation-emails">Custom Confirmation Emails</h3>
+
+    <p>Let’s sign up for a new user account to review the current user registration flow. Then we’ll customize it. Make sure you are logged out and then navigate to the Sign Up page. I’ve chosen to use <code>testuser3@email.com</code> and <code>testpass123</code> as the password.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/10_signup_testuser3.jpg" alt="testuser3 Sign Up" style="width: 100%"/>
+
+        <figcaption>testuser3 Sign Up</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Upon submission we are redirected to the homepage with a custom greeting <em>and</em> an email is sent to us within the command line console. You can see this by checking the logs with <code>docker-compose logs</code>. Here is a snippet of the much longer output.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose logs
+...
+Hello from example.com!
+
+| You're receiving this e-mail because user testuser3 ...
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To customize this email we first need to find the existing templates. Navigate over to the <a href="https://github.com/pennersr/django-allauth">django-allauth source code on Github</a> and perform a search with a portion of the generated text. For example, “You’re receiving this e-mail.” This leads to the discovery of a <code>email_confirmation_message.txt</code> file located within <code>django-allauth/allauth/templates/account/email</code>. If you look at this directory’s content there is also a subject line file, <code>email_confirmation_message.txt</code> that we can and will change.</p>
+
+    <p>To customize these files we’ll override them by recreating the same structure of <code>django-allauth</code> in our project. That means creating an <code>email</code> directory within the <code>templates/account</code> directory.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ mkdir templates/account/email
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And then in the text editor create the two new files:</p>
+
+    <ul>
+
+      <li><code>templates/account/email/email_confirmation_subject.txt</code></li>
+
+      <li><code>templates/account/email/email_confirmation_message.txt</code></li>
+
+    </ul>
+
+    <p>Let’s start with the subject line since it’s the shorter of the two. Here is the default text from <code>django-allauth</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>email_confirmation_subject.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>{% load i18n %}
+{% autoescape off %}
+{% blocktrans %}Please Confirm Your E-mail Address{% endblocktrans %}
+{% endautoescape %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The first line, <code>{% load i18n %}</code>, is to support Django’s <a href="https://docs.djangoproject.com/en/4.0/topics/i18n/">internationalization</a> functionality which supports multiple languages. Then comes the Django template tag for <a href="https://docs.djangoproject.com/en/4.0/ref/templates/builtins/#autoescape">autoescape</a>. By default it is “on” and protects against security issues like cross site scripting. But since we can trust the content of the text here, it is turned off.</p>
+
+    <p>Finally, we come to our text itself which is wrapped in <a href="https://docs.djangoproject.com/en/4.0/topics/i18n/translation/#std:templatetag-blocktrans">blocktrans</a> template tags to support translations. Let’s change the text from “E-mail Address” to “Sign Up” to demonstrate that we can.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>email_confirmation_subject.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>{% load i18n %}
+{% autoescape off %}
+{% blocktrans %}Confirm Your Sign Up{% endblocktrans %}
+{% endautoescape %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now turn to the email confirmation message itself. Here is <a href="https://github.com/pennersr/django-allauth/blob/353386216b79f16709e97bb487c0bbbba2bc0c71/allauth/templates/account/email/email_confirmation_message.txt">the current default</a>:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>email_confirmation_message.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>{% extends "account/email/base_message.txt" %}
+{% load account %}
+{% load i18n %}
+
+{% block content %}{% autoescape off %}{% user_display user as user_display %}\
+{% blocktrans with site_name=current_site.name site_domain=current_site.domain %}\
+You're receiving this e-mail because user {{ user_display }} has given your\
+e-mail address to register an account on {{ site_domain }}.
+
+To confirm this is correct, go to {{ activate_url }}\
+{% endblocktrans %}{% endautoescape %}{% endblock %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <aside>
+
+      <p>Note that backslashes <code>\</code> are included for formatting but are not necessary in the raw code. In other words, you can remove them from the code below–and other code examples–as needed.</p>
+
+    </aside>
+
+    <p>You probably noticed that the default email sent referred to our site as <code>example.com</code> which is displayed here as <code>{{ site_name }}</code>. Where does that come from? The answer is the <code>sites</code> section of the Django admin, which is used by <code>django-allauth</code>. So head to the admin at <code>http://127.0.0.1:8000/admin/</code> and click on the <code>Sites</code> link on the homepage.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/10_admin_sites.jpg" alt="Admin Sites" style="width: 100%"/>
+
+        <figcaption>Admin Sites</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>There is a “Domain Name” and a “Display Name” here. Click on <code>example.com</code> under “Domain Name” so we can edit it. The <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/sites/#django.contrib.sites.models.Site.domain">Domain Name</a> is the full domain name for a site, for example it might be <code>djangobookstore.com</code>, while the <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/sites/#django.contrib.sites.models.Site.name">Display Name</a> is a human-readable name for the site such as <code>Django Bookstore</code>.</p>
+
+    <p>Make these updates and click the “Save” button in the lower right corner when done.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/10_sites_djangobookstore.jpg" alt="Admin Sites - DjangoBookstore.com" style="width: 100%"/>
+
+        <figcaption>Admin Sites - DjangoBookstore.com</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Ok, back to our email. Let’s customize it a bit. On the first line we can see that this email actually extends another template–<code>base_message.txt</code>–that contains the initial greeting of “Hello from…”. To update that we’d just need to add a <code>base_message.txt</code> file to the <code>email</code> folder. Since this is just for demonstration purposes, trying changing “You’re” to “You are” to prove that we can customize the text.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>email_confirmation_message.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>{% extends "account/email/base_message.txt" %}
+{% load account %}
+{% load i18n %}
+
+{% block content %}{% autoescape off %}{% user_display user as user_display %}\
+{% blocktrans with site_name=current_site.name site_domain=current_site.domain %}\
+You are receiving this e-mail because user {{ user_display }} has given your \
+e-mail address to register an account on {{ site_domain }}.
+
+To confirm this is correct, go to {{ activate_url }}\
+{% endblocktrans %}{% endautoescape %}{% endblock %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>One final item to change. Did you notice the email was from <code>webmaster@localhost</code>? That’s a default setting we can also update via <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#default-from-email">DEFAULT_FROM_EMAIL</a>. Let’s do that now by adding the following line at the bottom of the <code>django_project/settings.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEFAULT_FROM_EMAIL</code> <code class="o">=</code> <code class="s2">"admin@djangobookstore.com"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Make sure you are logged out of the site and go to the Sign Up page again to create a new user. I’ve used <code>testuser4@email.com</code> for convenience.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/10_testuser4.jpg" alt="Sign Up testuser4" style="width: 100%"/>
+
+        <figcaption>Sign Up testuser4</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Sign up and after being redirected to the homepage check the command line to see the message by typing <code>docker-compose logs</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>...
+web_1  | Content-Transfer-Encoding: 7bit
+web_1  | Subject: [Django Bookstore] Confirm Your Sign Up
+web_1  | From: admin@djangobookstore.com
+web_1  | To: testuser4@email.com
+web_1  | Date: Tue, 17 May 2022 18:34:50 -0000
+web_1  | Message-ID: &lt;156312929025.27.2332096239397833769@87d045aff8f7&gt;
+web_1  |
+web_1  | Hello from Django Bookstore!
+web_1  |
+web_1  | You are receiving this e-mail because user testuser4 has given your\
+e-mail address to register an account on djangobookstore.com.
+web_1  |
+web_1  | To confirm this is correct, go to http://127.0.0.1:8000/accounts/\
+confirm-email/Mg:1nr527:FhQTQdZha_1mIsF9B5--71pfMDNlnR2vy4-sTrFmAyQ/
+web_1  |
+web_1  | Thank you from Django Bookstore!
+web_1  | djangobookstore.com
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And there it is with the new <code>From</code> setting, the new domain <code>djangobookstore.com</code>, and the new message in the email.</p>
+
+    <h3 id="leanpub-auto-email-confirmation-page">Email Confirmation Page</h3>
+
+    <p>Click on the unique URL link in the email which redirects to the email confirm page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/10_confirm_email.jpg" alt="Confirm Email Page" style="width: 100%"/>
+
+        <figcaption>Confirm Email Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Not very attractive. Let’s update it to match the look of the rest of our site. Searching again in the <a href="https://github.com/pennersr/django-allauth">django-allauth source code on Github</a> reveals the name and location of this file is <code>templates/account/email_confirm.html</code>. So let’s create our own template file with the same name and then update it to extend <code>_base.html</code> and use Bootstrap for the button.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/account/email_confirm.html --&gt;</code>
+{% extends "_base.html" %}
+{% load i18n %}
+{% load account %}
+
+{% block head_title %}{% trans "Confirm E-mail Address" %}{% endblock %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>{% trans "Confirm E-mail Address" %}<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+  {% if confirmation %}
+    {% user_display confirmation.email_address.user as user_display %}
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{% blocktrans with confirmation.email_address.email as email %}Please confirm
+that <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"mailto:{{ email }}"</code><code class="p">&gt;</code>{{ email }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code> is an e-mail address for user
+{{ user_display }}.{% endblocktrans %}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code> <code class="na">action</code><code class="o">=</code><code class="s">"{% url 'account_confirm_email' confirmation.key %}"</code><code class="p">&gt;</code>
+{% csrf_token %}
+      <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-primary"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>{% trans 'Confirm' %}<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+  {% else %}
+    {% url 'account_email' as email_url %}
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>{% blocktrans %}This e-mail confirmation link expired or is invalid. Please
+    <code class="p">&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">"{{ email_url }}"</code><code class="p">&gt;</code>issue a new e-mail confirmation request<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>.\
+    {% endblocktrans %}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  {% endif %}
+{% endblock %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the page to see our update.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/10_confirm_email_updated.jpg" alt="Confirm Email Page Updated" style="width: 100%"/>
+
+        <figcaption>Confirm Email Page Updated</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-password-reset-and-password-change">Password Reset and Password Change</h3>
+
+    <p>Django and <code>django-allauth</code> also come with support for additional user account features such as the ability to reset a forgotten password and change your existing password if already logged in.</p>
+
+    <p>The locations of the default password reset and password change pages are as follows:</p>
+
+    <ul>
+
+      <li><code>http://127.0.0.1:8000/accounts/password/reset/</code></li>
+
+      <li><code>http://127.0.0.1:8000/accounts/password/change/</code></li>
+
+    </ul>
+
+    <p>If you go through the flow of each you can find the corresponding templates and email messages in the <code>django-allauth</code> source code.</p>
+
+    <h3 id="leanpub-auto-email-service">Email Service</h3>
+
+    <p>The emails we have configured so far are generally referred to as “Transactional Emails” as they occur based on a user action of some kind. This is in contrast to “Marketing Emails” such as, say, a monthly newsletter.</p>
+
+    <p>There are many transactional email providers available including SendGrid, MailGun, Amazon’s Simple Email Service. Django is agnostic about which provider is used; the steps are similar for all and many have a free tier available.</p>
+
+    <p>After signing up for an account with your email service of choice you’ll often have a choice between using <a href="https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">SMTP</a> or a Web API. SMTP is easier to configure, but a web API is more configurable and robust. Start with SMTP and work your way from there: email configurations can be quite complex in their own right.</p>
+
+    <p>After obtaining a username and password with an email provider, a few settings tweaks will allow Django to use them to send emails.</p>
+
+    <p>The first step would be to update the <code>EMAIL_BACKEND</code> config, which should be near the bottom of the <code>django_project/settings.py</code> file since we previously updated it in the <code>django-allauth config</code> section.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">EMAIL_BACKEND</code> <code class="o">=</code> <code class="s2">"django.core.mail.backends.smtp.EmailBackend"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This means email will no longer output to the command line console but instead attempt to connect with an SMTP server. Then configure <code>EMAIL_HOST</code>, <code>EMAIL_HOST_USER</code>, <code>EMAIL_HOST_PASSWORD</code>, <code>EMAIL_PORT</code>, and <code>EMAIL_USE_TLS</code> based on the instructions from your email provider as environment variables.</p>
+
+    <p>In the official source code the <code>EMAIL_BACKEND</code> will remain <code>console</code>, but the previous steps are how to add an email service. If you find yourself frustrated properly configuring email, well, you’re not alone! Django does at least make it far, far easier than implementing without the benefits of a batteries-included framework.</p>
+
+    <h3 id="leanpub-auto-git-8">Git</h3>
+
+    <p>To commit this chapter’s code updates make sure to check the status of changes, add them all, and include a commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch10'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you have any issues compare your code against the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch10-email">official source code on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-10">Conclusion</h3>
+
+    <p>Configuring email properly is largely a one-time pain. But it is a necessary part of any production website. This concludes the foundational chapters for our Bookstore project. In the next chapter we’ll finally start building out the Bookstore itself.</p>
+
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,813 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 2: Docker Hello, World!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-2-docker-hello-world">Chapter 2: Docker Hello, World!</h2>
+
+    <p>Properly configuring a local development environment remains a steep challenge despite all the other advances in modern programming. There are simply too many variables: different computers, operating systems, versions of Django, virtual environment options, and so on. When you add in the challenge of working in a team environment where everyone needs to have the same set up the problem only magnifies itself.</p>
+
+    <p>In recent years a solution has emerged: <a href="https://www.docker.com/">Docker</a>. It has quickly become the default choice for many developers working on production-level projects.</p>
+
+    <p>With Docker it’s finally possible to faithfully and dependably reproduce a production environment locally, everything from the proper Python version to installing Django and running additional services like a production-level database. This means it no longer matter if you are on a Mac, Windows, or Linux computer. Everything is running within Docker itself.</p>
+
+    <p>Docker also makes collaboration in teams exponentially easier. Gone are the days of sharing long, out-of-date <code>README</code> files for adding a new developer to a group project. Instead with Docker you simply share two files–a <code>Dockerfile</code> and <code>docker-compose.yml</code> file–and the developer can have confidence that their local development environment is exactly the same as the rest of the team.</p>
+
+    <p>Docker is not a perfect technology. It is still relatively new, complex under-the-hood, and under active development. But the promise that it aspires to–a consistent and shareable developer environment, that can be run either locally on any computer or deployed to any server–makes it a solid choice. It is also widely used among companies at this point so writing a book for “Professionals” and not covering Docker feels shortsighted.</p>
+
+    <p>In this chapter we’ll learn a little bit more about Docker itself and “Dockerize” our first Django project.</p>
+
+    <h3 id="leanpub-auto-what-is-docker">What is Docker?</h3>
+
+    <p>Docker is a way to isolate an entire operating system via Linux containers which are a type of <a href="https://en.wikipedia.org/wiki/Virtualization">virtualization</a>. Virtualization has its roots at the beginning of computer science when large, expensive mainframe computers were the norm. How could multiple programmers use the same single machine? The answer was virtualization and specifically <a href="https://en.wikipedia.org/wiki/Virtual_machine">virtual machines</a> which are complete copies of a computer system from the operating system on up.</p>
+
+    <p>If you rent space on a cloud provider like <em>Amazon Web Services (AWS)</em> they are typically not providing you with a dedicated piece of hardware. Instead you are sharing one physical server with other clients. But because each client has their virtual machine running on the server, it appears to the client as if they have their own server.</p>
+
+    <p>This technology is what makes it possible to quickly add or remove servers from a cloud provider. It’s largely software behind the scenes, not actual hardware being changed.</p>
+
+    <p>What’s the downside to a virtual machine? Size and speed. A typical guest operating system can easily take up 700MB of size. So if one physical server supports three virtual machines, that’s at least 2.1GB of disk space taken up along with separate needs for CPU and memory resources.</p>
+
+    <p>Enter Docker. The key idea is that most computers rely on the same Linux operating system, so what if we virtualized from the Linux layer up instead? Wouldn’t that provide a lightweight, faster way to duplicate much of the same functionality? The answer is yes. And in recent years Linux containers have become widely popular. For most applications–especially web applications–a virtual machine provides far more resources than are needed and a container is more than sufficient. This, fundamentally, is what Docker is: a way to implement Linux containers!</p>
+
+    <p>An analogy we can use here is that of homes and apartments. Virtual Machines are like homes: stand-alone buildings with their own infrastructure including plumbing and heating, as well as a kitchen, bathrooms, bedrooms, and so on. Docker containers are like apartments: they share common infrastructure like plumbing and heating, but come in various sizes that match the exact needs of an owner.</p>
+
+    <h3 id="leanpub-auto-virtual-environments-vs-containers">Virtual Environments vs Containers</h3>
+
+    <p>Virtual environments are a way to isolate Python packages. Thanks to virtual environments, one computer can run multiple projects locally. For example, Project A might use Python 3.10 and Django 4.0 among other dependencies; whereas Project B uses Python 3.5 and Django 1.11. By creating a new virtual environment for each project and installing Python packages into it, rather than globally on the computer itself, all the necessary Python packages can be maintained, managed, and updated as needed.</p>
+
+    <p>There are several ways to implement virtual environments but arguably the simplest is with the <a href="https://docs.python.org/3/library/venv.html">venv</a> module already installed as part of the Python 3 standard library. We will use <code>venv</code> shortly to install Django locally on the computer.</p>
+
+    <p>The important distinction between virtual environments and Docker containers is that virtual environments <em>can only isolate Python packages</em>. They cannot isolate non-Python software like a PostgreSQL or MySQL database. And virtual environments still rely on a global, system-level installation of Python (in other words, on your computer). The virtual environment points to an existing Python installation; it does not contain Python itself.</p>
+
+    <p>Linux containers go a step further and isolate the entire operating system, not just the Python parts. In other words, we will install Python itself within Docker as well as install and run a production-level database.</p>
+
+    <p>Docker itself is a complex topic and we won’t dive that deep into it in this book, however understanding its background and key components is important. If you’d like to learn more about it, I recommend the <a href="https://diveintodocker.com/ref-dfp">Dive into Docker video course</a>.</p>
+
+    <h3 id="leanpub-auto-install-docker">Install Docker</h3>
+
+    <p>Ok, enough theory. Let’s start using Docker and Django together. The first step is to sign up for a free account on <a href="https://hub.docker.com/signup">Docker Hub</a> and then install the Docker desktop app on your local machine:</p>
+
+    <ul>
+
+      <li><a href="https://hub.docker.com/editions/community/docker-ce-desktop-mac">Docker for Mac</a></li>
+
+      <li><a href="https://hub.docker.com/editions/community/docker-ce-desktop-windows">Docker for Windows</a></li>
+
+    </ul>
+
+    <p>This download might take some time as it is a very big file! Feel free to stretch your legs at this point.</p>
+
+    <p>Once Docker is done installing we can confirm the correct version is running by typing the command <code>docker --version</code> in the command line shell. It should be at least version 18.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker --version
+Docker version 20.10.14, build a224086
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-docker-hello-world">Docker Hello, World</h3>
+
+    <p>Docker ships with its own “Hello, World” image that is a helpful first step to run. On the command line type <code>docker run hello-world</code>. This will download an official Docker image and then run it within a container. We’ll discuss both images and containers in a moment.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker run hello-world
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+7050e35b49f5: Pull complete
+Digest: sha256:80f31da1ac7b312ba29d65080fddf797dd76acfb870e677f390d5acba9741b17
+Status: Downloaded newer image for hello-world:latest
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (arm64v8)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The command <code>docker info</code> lets us inspect Docker. It will contain a lot of output but focus on the top lines which show we now have 1 container which is <code>stopped</code> and 1 image.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker info
+Client:
+ Debug Mode: false
+
+Server:
+ Containers: 1
+  Running: 0
+  Paused: 0
+  Stopped: 1
+ Images: 1
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This means Docker is successfully installed and running.</p>
+
+    <h3 id="leanpub-auto-install-django">Install Django</h3>
+
+    <p>Now we will create a Django “Hello, World” project that runs locally on our computer and then move it entirely within Docker (“Dockerize it”) so you can see how all the pieces fit together.</p>
+
+    <p>You can save your Django code anywhere you like but for convenience we will place our code the <code>desktop</code> directory. The command <code>cd</code> (change directory) followed by the intended location works on both Windows and macOS computers to navigate to the <code>desktop</code> from the command line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ cd onedrive\desktop
+$ pwd
+
+Path
+----
+C:\Users\wsv\onedrive\desktop
+
+# macOS
+$ cd desktop
+$ pwd
+/Users/wsv/desktop
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To make a new directory use the command <code>mkdir</code> followed by the name. We will create one called <code>code</code> on the Desktop and then within it a new directory called <code>ch2-hello</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ mkdir code
+$ cd code
+$ mkdir ch2-hello
+$ cd ch2-hello
+
+# macOS
+$ mkdir code
+$ cd code
+$ mkdir ch2-hello
+$ cd ch2-hello
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To create a virtual environment within this new directory use the format <code>python -m venv &lt;name_of_env&gt;</code> on Windows or <code>python3 -m venv &lt;name_of_env&gt;</code> on macOS. Once created, a virtual environment must be <em>activated</em>. It is up to the developer to choose a proper environment name but a common choice is to call it <code>.venv</code>.</p>
+
+    <p>On Windows an <em>Execution Policy</em> must be set to enable running scripts. This is a safety precaution. The <a href="https://docs.python.org/3/library/venv.html">Python docs</a> recommend allowing scripts for the <code>CurrentUser</code> only, which is what we will do. On macOS there are no similar restrictions on scripts so it is possible to directly run <code>source .venv/bin/activate</code>.</p>
+
+    <p>Here is what the full commands look like to create and activate a new virtual environment called <code>.venv</code>:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ python -m venv .venv
+$ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+$ .venv\Scripts\Activate.ps1
+(.venv) $
+
+# macOS
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+(.venv) $
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The shell prompt now has the environment name <code>(.venv)</code> prefixed which indicates that the virtual environment is active. Any Python packages installed or updated within this location will be confined to the active virtual environment.</p>
+
+    <p>Django is hosted on the <a href="https://pypi.org">Python Package Index (PyPI)</a>, a central repository for most Python packages. We will use <code>pip</code>, the most popular package installer, which comes included with Python 3. To install the latest version of Django use the command <code>python -m pip install django~=4.0.0</code>.</p>
+
+    <p>The comparison operator <code>~=</code> ensures that subsequent security updates for Django, such as 4.0.1, 4.0.2, and so on are automatically installed. Note that while it <em>is</em> possible to use the shorter version of <code>pip install &lt;package&gt;</code>, it is a best practice to use the longer but more explicit form of <code>python -m pip install &lt;package&gt;</code> to ensure that the correct version of Python is used. This can be an issue if you have multiple versions of Python installed on your computer.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ python -m pip install django~=4.0.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You might see a <code>WARNING</code> message about updating <code>pip</code> after running these commands. It’s always good to be on the latest version of software and to remove the annoying <code>WARNING</code> message each time you use <code>pip</code>. You can either copy and paste the recommended command or run <code>python -m pip install --upgrade pip</code> to be on the latest version.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ python -m pip install --upgrade pip
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-django-hello-world">Django Hello, World</h3>
+
+    <p>Now we can use the <code>startproject</code> command to create a new Django project called <code>django_project</code>. Adding a period, <code>.</code>, at the end of the command is an optional step but one many Django developers do. Without the period Django adds an additional directory to the project; with the period it does not.</p>
+
+    <p>We can also use the <code>migrate</code> command to initialize the database and start the local web server with the <code>runserver</code> command.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ django-admin startproject django_project .
+(.venv) $ python manage.py migrate
+(.venv) $ python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Assuming everything worked correctly you should now be able to navigate to see the Django Welcome page at <code>http://127.0.0.1:8000/</code> in your web browser.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/00_welcome40.jpg" alt="Django welcome page" style="width: 100%"/>
+
+        <figcaption>Django welcome page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-pages-app">Pages App</h3>
+
+    <p>Now we will make a simple homepage by creating a dedicated <code>pages</code> app for it. Stop the local server by typing <code>Control+c</code> and then use the <code>startapp</code> command appending our desired <code>pages</code> name.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ python manage.py startapp pages
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Django automatically installs a new <code>pages</code> directory and several files for us. But even though the app has been created our <code>django_project</code> won’t recognize it until we add it to the <code>INSTALLED_APPS</code> config within the <code>django_project/settings.py</code> file. Django loads apps from top to bottom so generally speaking it’s a good practice to add new apps below built-in apps they might rely on such as <code>admin</code>, <code>auth</code>, and all the rest.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="c1"># Local</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now we can set the URL route for the <code>pages</code> app. Since we want our message to appear on the homepage we’ll use the empty string <code>""</code>. Don’t forget to add the <code>include</code> import on the second line as well.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>  <code class="c1"># new</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Rather than set up a template at this point we can just hardcode a message in our view layer at <code>pages/views.py</code> which will output the string “Hello, World!”.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/views.py</code>
+<code class="kn">from</code> <code class="nn">django.http</code> <code class="kn">import</code> <code class="n">HttpResponse</code>
+
+
+<code class="k">def</code> <code class="nf">home_page_view</code><code class="p">(</code><code class="n">request</code><code class="p">):</code>
+    <code class="k">return</code> <code class="n">HttpResponse</code><code class="p">(</code><code class="s2">"Hello, World!"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>What’s next? Our last step is to create a <code>urls.py</code> file within the <code>pages</code> app and link it to <code>home_page_view</code>. Do so now with your text editor. Then in the new file <code>pages/urls.py</code> import <code>path</code> on the top line, add the <code>home_page_view</code>, and then set its route to again be the empty string of <code>""</code>. Note that we also provide an optional name, <code>home</code>, for this route which is a best practice.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># pages/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code>
+
+<code class="kn">from</code> <code class="nn">.views</code> <code class="kn">import</code> <code class="n">home_page_view</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">home_page_view</code><code class="p">,</code> <code class="n">name</code><code class="o">=</code><code class="s2">"home"</code><code class="p">)</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The full flow of our Django homepage is as follows:
+* when a user goes to the homepage they will first be routed to <code>django_project/urls.py</code>
+* then routed to <code>pages/urls.py</code>
+* and finally directed to the <code>home_page_view</code> which returns the string “Hello, World!”</p>
+
+    <p>Our work is done for a basic homepage. Start up the local server again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the web browser at <code>http://127.0.0.1:8000/</code> it will now output our desired message.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/02_helloworld.jpg" alt="Hello World" style="width: 100%"/>
+
+        <figcaption>Hello World</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>The last step is to create a <code>requirements.txt</code> file containing a record of all Python packages currently installed in our virtual environment. The command <code>pip freeze</code> will output the contents of your current virtual environment and by using the <code>&gt;</code> operator we can do all this in one step: output the contents into a new file called <code>requirements.txt</code>. If your server is still running enter <code>Ctrl+c</code> and <code>Enter</code> to exit before entering this command.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ pip freeze &gt; requirements.txt
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>A new <code>requirements.txt</code> file will be created. It should contain <code>Django</code> as well as the packages <code>asgiref</code> and <code>sqlparse</code> which are automatically included when Django is installed.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+sqlparse==0.4.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now it’s time to switch to Docker. Exit our virtual environment since we no longer need it by typing <code>deactivate</code> and <code>Return</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ deactivate
+$
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>How do we know the virtual environment is no longer active? There will no longer be parentheses around the directory name on the command line prompt. Any normal Django commands you try to run at this point will fail. For example, try <code>python manage.py runserver</code> to see what happens.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ python manage.py runserver
+...
+ModuleNotFoundError: No module named 'django'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>This means we’re fully out of the virtual environment and ready for Docker.</p>
+
+    <h3 id="leanpub-auto-docker-image">Docker Image</h3>
+
+    <p>A Docker <em>image</em> is a read-only template that describes how to create a Docker <em>container</em>. The image is the instructions while the container is the actual running instance of an image. To continue our apartment analogy from earlier in the chapter, an image is the blueprint or set of plans for building an apartment; the container is the actual, fully-built building.</p>
+
+    <p>Images are often based on another image with some additional customization. For example, there is a long list of officially supported images for <a href="https://hub.docker.com/_/python/">Python</a> depending on the version and flavor of Python desired.</p>
+
+    <h3 id="leanpub-auto-dockerfile">Dockerfile</h3>
+
+    <p>For our Django project we need to create a custom image that contains Python but also installs our code and has additional configuration details. To build our own image we create a special file known as a <em>Dockerfile</em> that defines the steps to create and run the custom image.</p>
+
+    <p>Use your text editor to create a new <code>Dockerfile</code> file in the project-level directory next to the <code>manage.py</code> file. Within it add the following code which we’ll walk through line-by-line below.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Dockerfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Pull base image
+FROM python:3.10.4-slim-bullseye
+
+# Set environment variables
+ENV PIP_DISABLE_PIP_VERSION_CHECK 1
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Set work directory
+WORKDIR /code
+
+# Install dependencies
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy project
+COPY . .
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p><code>Dockerfile</code>s are read from top-to-bottom when an image is created. The first instruction is a <code>FROM</code> command that tells Docker what base image we would like to use for our application. Docker images can be inherited from other images so instead of creating our own base image, we’ll use the official Python image that already has all the tools and packages that we need for our Django application. In this case we’re using Python <code>3.10.4</code> and the much smaller in size <code>slim</code> variant that does not contain the common packages contained in the default tag. The tag <code>bullseye</code> refers to the latest stable Debian release. It is a good idea to set this explicitly to minimize potential breakage when there are new releases of Debian.</p>
+
+    <p>Then we use the <code>ENV</code> command to set three environment variables:</p>
+
+    <ul>
+
+      <li>
+<code>PIP_DISABLE_PIP_VERSION_CHECK</code> disables an automatic check for <code>pip</code> updates each time</li>
+
+      <li>
+<code>PYTHONDONTWRITEBYTECODE</code> means Python will not try to write <code>.pyc</code> files</li>
+
+      <li>
+<code>PYTHONUNBUFFERED</code> ensures our console output is not buffered by Docker</li>
+
+    </ul>
+
+    <p>The command <code>WORKDIR</code> is used to set a default working directory when running the rest of our commands. This tells Docker to use this path as the default location for all subsequent commands. As a result, we can use relative paths based on the working directory rather than typing out the full file path each time. In our case the working directory is <code>/code</code> but it can often be much longer and something like <code>/app/src</code>, <code>/usr/src/app</code>, or similar variations depending upon the specific needs of a project.</p>
+
+    <p>The next step is to install our dependencies with <code>pip</code> and the <code>requirements.txt</code> file we already created. The <code>COPY</code> command takes two parameters: the first parameter tells Docker what file(s) to copy into the image and the second parameter tells Docker where you want the file(s) to be copied to. In this case we are copying the existing <code>requirements.txt</code> file from our local computer into the current working directory which is represented by <code>.</code>.</p>
+
+    <p>Once the <code>requirements.txt</code> file is inside the image we can use our last command, <code>RUN</code>, to execute <code>pip install</code>. This works exactly the same as if we were running <code>pip install</code> locally on our machine, but this time the modules are installed into the image. The <code>-r</code> flag tells <code>pip</code> to open a file–called <code>requirements.txt</code> here–and install its contents. If we did not include the <code>-r</code> flag <code>pip</code> would try and fail to install <code>requirements.txt</code> since it isn’t itself an actual Python package.</p>
+
+    <p>At the moment we have a new image based on the <code>slim-bullseye</code> variant of <code>Python 3.10.4</code> and have installed our dependencies. The final step is to copy all the files in our current directory into the working directory on the image. We can do this by using the <code>COPY</code> command. Remember it takes two parameters so we’ll copy the current directory on our local filesystem (<code>.</code>) into the working directory (<code>.</code>) of the image.</p>
+
+    <p>If you’re confused right now don’t worry. Docker is a lot to absorb but the good news is that the steps involved to “Dockerize” an existing project are very similar.</p>
+
+    <h3 id="leanpub-auto-dockerignore">.dockerignore</h3>
+
+    <p>A <code>.dockerignore</code> file is a best practice way to specify certain files and directories that should not be included in a Docker image. This can help reduce overall image size and improves security by keeping things that are meant to be secret out of Docker.</p>
+
+    <p>At the moment we can safely ignore the local virtual environment (<code>.venv</code>), our future <code>.git</code> directory, and a <code>.gitignore</code> file. In your text editor create a new file called <code>.dockerignore</code> in the base directory next to the existing <code>manage.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.dockerignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+.git
+.gitignore
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We now have our complete instructions for creating a custom image but we haven’t actually built it yet. The command to do this is unsurprisingly <code>docker build</code> followed by the period, <code>.</code>, indicating the <code>Dockerfile</code> is located in the current directory. There will be a lot of output here. I’ve only included the first two lines and the last one.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker build .
+[+] Building 9.1s (10/10) FINISHED
+ =&gt; [internal] load build definition from Dockerfile
+...
+=&gt; =&gt; writing image sha256:89ede1...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-docker-composeyml">docker-compose.yml</h3>
+
+    <p>Our fully-built custom image is now available to run as a container. In order to run the container we need a list of instructions in a file called <code>docker-compose.yml</code>. With your text editor create a <code>docker-compose.yml</code> file in the project-level directory next to the <code>Dockerfile</code>. It will contain the following code.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>version: "3.9"
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code  
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>On the top line we set the <a href="https://docs.docker.com/compose/compose-file/compose-versioning/">most recent version</a> of Docker Compose which is currently <code>3.9</code>. Then we specify which <code>services</code> (or containers) we want to have running within our Docker host. It’s possible to have multiple <code>services</code> running, but for now we just have one for <code>web</code>.</p>
+
+    <p>Within <code>web</code> we set <code>build</code> to look in the current directory for our <code>Dockerfile</code>. We’ll use the Django default ports of <code>8000</code> and execute the <code>command</code> to run the local web server. Finally the <a href="https://docs.docker.com/storage/volumes/">volumes</a> mount automatically syncs the Docker filesystem with our local computer’s filesystem. This if we make a change to the code within Docker it will automatically be synced with the local filesystem.</p>
+
+    <p>The final step is to run our Docker container using the command <code>docker-compose up</code>. This command will result in another long stream of output code on the command line.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose up
+[+] Building .4s (10/10) FINISHED                                     
+ =&gt; [internal] load build definition from Dockerfile
+...
+Attaching to docker-web-1
+docker-web-1  | Watching for file changes with StatReloader
+docker-web-1  | Performing system checks...
+docker-web-1  |
+docker-web-1  | System check identified no issues (0 silenced).
+docker-web-1  | May 16, 2022 - 18:08:08
+docker-web-1  | Django version 4.0.4, using settings 'django_project.settings'
+docker-web-1  | Starting development server at http://0.0.0.0:8000/
+docker-web-1  | Quit the server with CONTROL-C.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>To confirm it actually worked, go back to <code>http://127.0.0.1:8000/</code> in your web browser. Refresh the page and the “Hello, World” page should still appear.</p>
+
+    <p>Django is now running purely within a Docker container. We are not working within a virtual environment locally. We did not execute the <code>runserver</code> command. All of our code now exists and our Django server is running within a self-contained Docker container. Success!</p>
+
+    <p>We will create multiple Docker images and containers over the course of this book and with practice the flow will start to make more sense.:</p>
+
+    <ul>
+
+      <li>create a <code>Dockerfile</code> with custom image instructions</li>
+
+      <li>add a <code>.dockerignore</code> file</li>
+
+      <li>build the image</li>
+
+      <li>create a <code>docker-compose.yml</code> file</li>
+
+      <li>spin up the container(s)</li>
+
+    </ul>
+
+    <p>Stop the currently running container with <code>Control+c</code> (press the “Control” and “c” button at the same time) and additionally type <code>docker-compose down</code>. Docker containers take up a lot of memory so it’s a good idea to stop them when you’re done using them. Containers are meant to be stateless which is why we use <code>volumes</code> to copy our code over locally where it can be saved.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+[+] Running 2/0
+ ⠿ Container docker-web-1  Removed
+ ⠿ Network docker_default  Removed
+ $
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Whenever any new technology is introduced there are potential security concerns. In Docker’s case, one example is that it sets the default user to <code>root</code>. The root user (also known as the “superuser” or “admin”) is a special user account used in Linux for system administration. It is the most privileged user on a Linux system and has access to all commands and files.</p>
+
+    <p>The Docker docs contain a section a large section on Security and specifically on <a href="https://docs.docker.com/engine/security/rootless/">rootless mode</a> to avoid this. We will not be covering it here since this is a book on Django, not Docker, but especially if your website stores sensitive information do review the entire Security section closely before going live.</p>
+
+    <h3 id="leanpub-auto-git">Git</h3>
+
+    <p><em>Git</em> is the version control system of choice these days and we’ll use it in this book. Initialize a new repository with <code>git init</code> and run <code>git status</code> to see which files/directories will be tracked.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git init
+$ git status
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Before making our first commit it is always a good idea to create a <code>.gitignore</code> file in the project root directory. We will include our virtual environment directory, <code>.venv</code>, the <code>pycache</code> folder, the local database <code>db.sqlite3</code>, and if on macOS <code>.DS_Store</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+__pycache__/
+db.sqlite3
+.DS_Store  # Mac only
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you run <code>git status</code> again it should show the following:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+.......
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Both the database and virtual environment are not ignored by Git. Go ahead and add all current files to Git and create our first commit and message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git add .
+$ git commit -m 'ch2-hello'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can compare your code for this chapter with the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch2-hello">official repository</a> available on Github.</p>
+
+    <h3 id="leanpub-auto-conclusion-2">Conclusion</h3>
+
+    <p>Docker is a self-contained environment that includes everything we need for local development: web services, databases, and more if we want. The general pattern will always be the same when using it with Django:</p>
+
+    <ul>
+
+      <li>create a new virtual environment and install Django</li>
+
+      <li>create a new Django project within it</li>
+
+      <li>write a <code>Dockerfile</code> and build the initial image</li>
+
+      <li>write a <code>docker-compose.yml</code> file and run the container with <code>docker-compose up</code>
+</li>
+
+    </ul>
+
+    <p>We will build several more Django projects with Docker so this flow makes more sense, but that’s really all there is to it. In the next chapter we’ll create a new Django project using Docker and add PostgreSQL in a separate container as our database.</p>
+
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,385 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 12: Reviews App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-12-reviews-app">Chapter 12: Reviews App</h2>
+
+    <p>In this chapter we’ll add a <code>reviews</code> app so that readers can leave reviews of their favorite books. It gives us a chance to discuss foreign keys, app structure, and dive into forms.</p>
+
+    <h3 id="leanpub-auto-foreign-keys">Foreign Keys</h3>
+
+    <p>We’ve already used a foreign key with our user model, but didn’t have to think about it. Now we do! Fundamentally a database table can be thought of as similar to a spreadsheet with rows and columns. There needs to be a <em>primary key</em> field that is unique and refers to each record. In the last chapter we changed that from <code>id</code> to a <code>UUID</code>, but one still exists!</p>
+
+    <p>This matters when we want to link two tables together. For example, our <code>Books</code> model will link to a <code>Reviews</code> model since each review has to be connected to a relevant book. This implies a foreign key relationship.</p>
+
+    <p>There are three possible types of foreign key relationships:</p>
+
+    <ul>
+
+      <li><a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#onetoonefield">One-to-one</a></li>
+
+      <li><a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#foreignkey">One-to-many</a></li>
+
+      <li><a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#manytomanyfield">Many-to-many</a></li>
+
+    </ul>
+
+    <p>A <code>one-to-one</code> relationship is the simplest kind. An example would be a table of people’s names and a table of social security numbers. Each person has only <strong>one</strong> social security number and each social security number is linked to only <strong>one</strong> person.</p>
+
+    <p>In practice <code>one-to-one</code> relationships are rare. It’s unusual for both sides of a relationship to only be matched to one counterpart. Some other examples though would be country-flag or person-passport.</p>
+
+    <p>A <code>one-to-many</code> relationship is more common and is the <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#foreignkey">default foreign key</a> setting within Django. For example, consider a restaurant where <strong>one</strong> customer can place <strong>many</strong> orders.</p>
+
+    <p>It’s also possible to have a <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#manytomanyfield">ManyToManyField</a> relationship. Let’s consider a list of books and a list of authors: each book could have more than one author and each author can write more than one book. That’s a many-to-many relationship. Just as with the previous two examples you need a linked Foreign Key field to connect the two lists. Additional examples include doctors and patients (every doctor sees multiple patients and vice versa) or employees and tasks (each employee has multiple tasks while each task is worked on by multiple employees).</p>
+
+    <p>Database design is a fascinating, deep topic that is both an art and a science. As the number of tables grow in a project over time it is almost inevitable that a refactoring will need to occur to address issues around inefficiency, bloat, and outright errors. <a href="https://en.wikipedia.org/wiki/Database_normalization">Normalization</a> is the process of structuring a relational database though far beyond the scope of this book.</p>
+
+    <h3 id="leanpub-auto-reviews-model">Reviews model</h3>
+
+    <p>Coming back to our basic reviews app, the first consideration is what type of foreign key relationship will there be. If we are going to link a user to a review, then it is a straightforward one-to-many relationship. However it could also be possible to link books to reviews which would be many-to-many. The “correct” choice quickly becomes somewhat subjective and certainly dependent upon the particular needs of the project.</p>
+
+    <p>In this project we’ll treat the reviews app as a one-to-many between authors and reviews as it’s the simpler approach.</p>
+
+    <p>Here again we face a choice around how to design our project. Do we add the <code>Reviews</code> model within our existing <code>books/models.py</code> file or create a dedicated <code>reviews</code> app that we then link to? Let’s start by adding a <code>Reviews</code> model to the <code>books</code> app.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="kn">import</code> <code class="nn">uuid</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+
+<code class="k">class</code> <code class="nc">Book</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="o">...</code>
+
+
+<code class="k">class</code> <code class="nc">Review</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">book</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ForeignKey</code><code class="p">(</code>
+        <code class="n">Book</code><code class="p">,</code>
+        <code class="n">on_delete</code><code class="o">=</code><code class="n">models</code><code class="o">.</code><code class="n">CASCADE</code><code class="p">,</code>
+        <code class="n">related_name</code><code class="o">=</code><code class="s2">"reviews"</code><code class="p">,</code>
+    <code class="p">)</code>
+    <code class="n">review</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">255</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ForeignKey</code><code class="p">(</code>
+        <code class="n">get_user_model</code><code class="p">(),</code>
+        <code class="n">on_delete</code><code class="o">=</code><code class="n">models</code><code class="o">.</code><code class="n">CASCADE</code><code class="p">,</code>
+    <code class="p">)</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">review</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the top, under imports include <code>get_user_model</code>, which is needed to refer to our <code>CustomUser</code> model, then create a dedicated <code>Review</code> model. The <code>book</code> field is the one-to-many foreign key that links <code>Book</code> to <code>Review</code> and we’re following the standard practice of naming it the same as the linked model. The <code>review</code> field contains the actual content which perhaps could be a <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#django.db.models.TextField">TextField</a> depending on how much space you want to provide for review length! For now, we’ll force reviews to be short at 255 characters or less. And then we’ll <em>also</em> link to the <code>author</code> field to auto-populate the current user with the review.</p>
+
+    <p>For all many-to-one relationships such as a ForeignKey we must also specify an <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#django.db.models.ForeignKey.on_delete">on_delete</a> option. We also explicitly set the <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#django.db.models.ForeignKey.related_name">related_name</a> to make it easier to follow the foreign key relationship “backwards” in the future on queries. Note that this name <a href="https://docs.djangoproject.com/en/4.0/topics/db/models/#be-careful-with-related-name-and-related-query-name">must be unique</a> to avoid future problems. And lastly using <a href="https://learndjango.com/tutorials/django-best-practices-referencing-user-model">get_user_model</a> to reference our custom user model.</p>
+
+    <p>Create a new migrations file for our changes and then run <code>migrate</code> to apply them.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py makemigrations books
+Migrations for 'books':
+  books/migrations/0002_review.py
+    - Create model Review
+$ docker-compose exec web python manage.py migrate
+Operations to perform:
+  Apply all migrations: account, accounts, admin, auth, books, contenttypes, sessions, si\
+tes
+Running migrations:
+  Applying books.0002_review... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-admin-2">Admin</h3>
+
+    <p>For the reviews app to appear in the admin we need to update <code>books/admin.py</code> substantially by adding the <code>Review</code> model and specifying a display of <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/admin/#django.contrib.admin.TabularInline">TabularInline</a>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code><code class="p">,</code> <code class="n">Review</code>
+
+
+<code class="k">class</code> <code class="nc">ReviewInline</code><code class="p">(</code><code class="n">admin</code><code class="o">.</code><code class="n">TabularInline</code><code class="p">):</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">Review</code>
+
+
+<code class="k">class</code> <code class="nc">BookAdmin</code><code class="p">(</code><code class="n">admin</code><code class="o">.</code><code class="n">ModelAdmin</code><code class="p">):</code>
+    <code class="n">inlines</code> <code class="o">=</code> <code class="p">[</code>
+        <code class="n">ReviewInline</code><code class="p">,</code>
+    <code class="p">]</code>
+    <code class="n">list_display</code> <code class="o">=</code> <code class="p">(</code><code class="s2">"title"</code><code class="p">,</code> <code class="s2">"author"</code><code class="p">,</code> <code class="s2">"price"</code><code class="p">,)</code>
+
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">Book</code><code class="p">,</code> <code class="n">BookAdmin</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now navigate to the books section at <code>http://127.0.0.1:8000/admin/books/book/</code> and then click on any of the books to see the reviews visible on the individual book page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/12_dfp_reviews.jpg" alt="Django for Professionals Admin Reviews" style="width: 100%"/>
+
+        <figcaption>Django for Professionals Admin Reviews</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>We’re limited to reviews by existing users at this point, although we have previously created a <code>testuser@email.com</code> that was deleted when we removed the database volume mount in the previous chapter. There are two options for adding this account: we could go to the main site and use the “Sign Up” link or we can add it directly from the admin. Let’s do the latter.</p>
+
+    <p>From the <code>Users</code> section on the Admin homepage click on the “+ Add” button. Add a new user called <code>testuser</code> and a password. Click the “Save” button.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/12_admin_testuser.jpg" alt="Admin testuser" style="width: 100%"/>
+
+        <figcaption>Admin testuser</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Then on the next page add <code>testuser@email.com</code> as the email address. Did you notice the the user’s password is encrypted now? Django <em>does not</em> store raw passwords which means even as a superuser we cannot see individual user passwords. We can change the password to something else but we can’t just copy and paste user passwords.</p>
+
+    <p>Scroll down to the bottom of the page and click the “Save” button.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/12_admin_email.jpg" alt="Admin testuser" style="width: 100%"/>
+
+        <figcaption>Admin testuser</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Ok, finally, we can add reviews to the “Django for Professionals” book using <code>testuser</code>. Navigate back to the <code>Books</code> section and click on the correct book. Write two reviews and as <code>AUTHOR</code> make sure to select <code>testuser</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/12_dfp_two_reviews.jpg" alt="Add Two Reviews" style="width: 100%"/>
+
+        <figcaption>Add Two Reviews</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-templates-3">Templates</h3>
+
+    <p>With the <code>reviews</code> model set it is time to update our templates to display reviews on the individual page for each book. Add a basic “Reviews” section and then loop over all existing reviews. Since this is a foreign key relationship we follow it by using <code>book.reviews.all</code>. Then display the review field with <code>review.review</code> and the author with <code>review.author</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># templates/books/book_detail.html
+{% extends "_base.html" %}
+
+{% block title %}{{ book.title }}{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"book-detail"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">""</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Author: {{ book.author }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Price: {{ book.price }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">h3</code><code class="p">&gt;</code>Reviews<code class="p">&lt;/</code><code class="nt">h3</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">ul</code><code class="p">&gt;</code>
+        {% for review in book.reviews.all %}
+        <code class="p">&lt;</code><code class="nt">li</code><code class="p">&gt;</code>{{ review.review }} ({{ review.author }})<code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+        {% endfor %}
+      <code class="p">&lt;/</code><code class="nt">ul</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>That’s it! Navigate over to the “Django for Professionals” individual page to see the result. Your url will be different than the one here because we’re using a UUID.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/12_dfp_reviews_page.jpg" alt="Reviews on Detail Page" style="width: 100%"/>
+
+        <figcaption>Reviews on Detail Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-tests-5">Tests</h3>
+
+    <p>Time for tests. We need to create a new user for our review and add a review to the <code>setUpTestData</code> method in our test suite. Then we can test that the book object contains the correct review.</p>
+
+    <p>This involves importing <code>get_user_model</code> as well as adding the <code>Review</code> model at the top. We can use <code>create_user</code> to make a new user called <code>reviewuser</code> and then a <code>review</code> object that is linked to our single <code>book</code> object. Finally under <code>test_book_detail_view</code> we can add an additional <code>assertContains</code> test to the <code>response</code> object.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code>
+
+<code class="kn">from</code> <code class="nn">.models</code> <code class="kn">import</code> <code class="n">Book</code><code class="p">,</code> <code class="n">Review</code>  <code class="c1"># new</code>
+
+
+<code class="k">class</code> <code class="nc">BookTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+
+    <code class="nd">@classmethod</code>
+    <code class="k">def</code> <code class="nf">setUpTestData</code><code class="p">(</code><code class="bp">cls</code><code class="p">):</code>
+        <code class="bp">cls</code><code class="o">.</code><code class="n">user</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create_user</code><code class="p">(</code>  <code class="c1"># new</code>
+            <code class="n">username</code><code class="o">=</code><code class="s2">"reviewuser"</code><code class="p">,</code>
+            <code class="n">email</code><code class="o">=</code><code class="s2">"reviewuser@email.com"</code><code class="p">,</code>
+            <code class="n">password</code><code class="o">=</code><code class="s2">"testpass123"</code><code class="p">,</code>
+        <code class="p">)</code>
+
+        <code class="bp">cls</code><code class="o">.</code><code class="n">book</code> <code class="o">=</code> <code class="n">Book</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code>
+            <code class="n">title</code><code class="o">=</code><code class="s2">"Harry Potter"</code><code class="p">,</code>
+            <code class="n">author</code><code class="o">=</code><code class="s2">"JK Rowling"</code><code class="p">,</code>
+            <code class="n">price</code><code class="o">=</code><code class="s2">"25.00"</code><code class="p">,</code>
+        <code class="p">)</code>
+
+        <code class="bp">cls</code><code class="o">.</code><code class="n">review</code> <code class="o">=</code> <code class="n">Review</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create</code><code class="p">(</code>  <code class="c1"># new</code>
+            <code class="n">book</code><code class="o">=</code><code class="bp">cls</code><code class="o">.</code><code class="n">book</code><code class="p">,</code>
+            <code class="n">author</code><code class="o">=</code><code class="bp">cls</code><code class="o">.</code><code class="n">user</code><code class="p">,</code>
+            <code class="n">review</code><code class="o">=</code><code class="s2">"An excellent review"</code><code class="p">,</code>
+        <code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_listing</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">title</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">author</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"JK Rowling"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="sa">f</code><code class="s2">"</code><code class="si">{</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">price</code><code class="si">}</code><code class="s2">"</code><code class="p">,</code> <code class="s2">"25.00"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_list_view</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">reverse</code><code class="p">(</code><code class="s2">"book_list"</code><code class="p">))</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"books/book_list.html"</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_book_detail_view</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">book</code><code class="o">.</code><code class="n">get_absolute_url</code><code class="p">())</code>
+        <code class="n">no_response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"/books/12345/"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">no_response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">404</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Harry Potter"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"An excellent review"</code><code class="p">)</code>  <code class="c1"># new</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="n">response</code><code class="p">,</code> <code class="s2">"books/book_detail.html"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you run the tests now they all should pass.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.260s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-git-10">Git</h3>
+
+    <p>Add our new code changes to Git and include a commit message for the chapter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch12'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The code for this chapter can be found <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch12-reviews">on the official Github repository</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-12">Conclusion</h3>
+
+    <p>With more time we might update the reviews functionality with a form on the page itself, however this means AJAX calls using either htmx, jQuery, React, Vue, or another dedicated JavaScript framework. Unfortunately covering that fully is well beyond the scope of this book.</p>
+
+    <p>As the project grows it might also make sense to split reviews off into its own dedicated app. Doing so is a very subjective call. In general, keeping things as simple as possible–adding foreign keys within an existing app until it becomes too large to easily understand–is a solid approach.</p>
+
+    <p>In the next chapter we will add image uploads to our site so there can be covers for each book.</p>
+
+  </div>
+
+</body>
+
+</html>

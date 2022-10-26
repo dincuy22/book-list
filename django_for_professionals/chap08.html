@@ -1,0 +1,783 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 8: Advanced User Registration</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-8-advanced-user-registration">Chapter 8: Advanced User Registration</h2>
+
+    <p>At this point we have the standard Django user registration implemented. But often that’s just the starting point on professional projects. What about customizing things a bit? For example, Django’s default username/email/password pattern is somewhat dated these days. It’s far more common to simply require email/password for sign up and log in. And really every part of the authentication flow–the forms, emails, pages–can be customized if so desired.</p>
+
+    <p>Another major factor in many projects is the need for social authentication, that is handling sign up and log in via a third-party service like Google, Facebook, and so on.</p>
+
+    <p>We could implement our own solutions here from scratch but there are some definite risks: user registration is a complex area with many moving parts and one area where we really do not want to make a security mistake.</p>
+
+    <p>For this reason, many professional Django developers rely on the popular third-party <a href="https://github.com/pennersr/django-allauth">django-allauth</a>. Adding any third party package should come with a degree of caution since you <em>are</em> adding another dependency to your technical stack. It’s important to make sure any package is both up-to-date and well tested. Fortunately <code>django-allauth</code> is both.</p>
+
+    <p>At the cost of a little bit of <em>magic</em> it addresses all of these concerns and makes customization much, much easier.</p>
+
+    <h3 id="leanpub-auto-django-allauth">django-allauth</h3>
+
+    <p>We will install <code>django-allauth</code> in the usual manner. Start off by adding it to the existing <code>requirements.txt</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+psycopg2-binary==2.9.3
+sqlparse==0.4.2
+django-crispy-forms==1.14.0
+crispy-bootstrap5==0.6
+django-allauth==0.50.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then spin down the currently running Docker container, rebuild our Docker image, and start up a new container.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Our website will still function the same as before since we haven’t explicitly told Django about this new <code>django-allauth</code> package. To do that we need to update the <code>INSTALLED_APPS</code> config within our <code>django_project/settings.py</code> file adding Django’s built-in, but optional, <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/sites/">sites framework</a>, <code>allauth</code>, and its account feature, <code>allauth.account</code>.</p>
+
+    <p><code>django-allauth</code> also requires an update to Django’s <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#authentication-backends">AUTHENTICATION_BACKENDS</a>. By default, Django includes <code>ModelBackend</code> which is needed to login by username in the Django admin. <code>django-allauth</code> needs its own additional backend, <code>AuthenticationBackend</code>, so users can login by e-mail.</p>
+
+    <p>Here is what the complete updates look like in the <code>django_project/settings.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sites"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="c1"># Third-party</code>
+    <code class="s2">"crispy_forms"</code><code class="p">,</code>
+    <code class="s2">"crispy_bootstrap5"</code><code class="p">,</code>
+    <code class="s2">"allauth"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="s2">"allauth.account"</code><code class="p">,</code>  <code class="c1"># new</code>
+    <code class="c1"># Local</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>
+    <code class="s2">"pages.apps.PagesConfig"</code><code class="p">,</code>
+<code class="p">]</code>
+
+<code class="c1"># django-allauth config</code>
+<code class="n">SITE_ID</code> <code class="o">=</code> <code class="mi">1</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-authenticationbackends">AUTHENTICATION_BACKENDS</h3>
+
+    <p>The <code>settings.py</code> file created by Django for any new project contains a number of explicit settings–those that we see in the file already–as well as a longer additional list of implicit settings that exist but aren’t visible. This can be confusing at first. The complete list of settings configurations <a href="https://docs.djangoproject.com/en/4.0/ref/settings/">is available here</a>.</p>
+
+    <p>An example is the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#authentication-backends">AUTHENTICATION_BACKENDS</a> setting. Under the hood Django sets this to <code>'django.contrib.auth.backends.ModelBackend'</code>, which is used when Django attempts to authenticate a user. We could add the following line to <code>django_project/settings.py</code> and the current behavior would remain unchanged:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="n">AUTHENTICATION_BACKENDS</code> <code class="o">=</code> <code class="p">(</code>
+    <code class="s2">"django.contrib.auth.backends.ModelBackend"</code><code class="p">,</code>
+<code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>However, for <code>django-allauth</code> we need to add its specific authentication options, too, which will allow us to switch over to using login via e-mail in a moment. At the bottom of your <code>django_project/settings.py</code> file add the following section:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="c1"># django-allauth config</code>
+<code class="n">SITE_ID</code> <code class="o">=</code> <code class="mi">1</code>
+<code class="n">AUTHENTICATION_BACKENDS</code> <code class="o">=</code> <code class="p">(</code>
+    <code class="s2">"django.contrib.auth.backends.ModelBackend"</code><code class="p">,</code>
+    <code class="s2">"allauth.account.auth_backends.AuthenticationBackend"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-emailbackend">EMAIL_BACKEND</h3>
+
+    <p>Another configuration implicitly set by is <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#email-backend">EMAIL_BACKEND</a>. By default Django will look for a configured <a href="https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">SMTP server</a> to send emails.</p>
+
+    <p><code>django-allauth</code> will send such an email upon a successful user registration, which we can and will customize later, but since we don’t <em>yet</em> have a SMTP server properly configured, it will result in an error.</p>
+
+    <p>The solution, for now, is to have Django output any emails to the command line console instead. Thus we can override the default, implicit config by using <a href="https://docs.djangoproject.com/en/4.0/topics/email/#console-backend">console</a> instead of <code>smtp</code>. Add this at the bottom of the <code>settings.py</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="c1"># django-allauth config</code>
+<code class="n">SITE_ID</code> <code class="o">=</code> <code class="mi">1</code>
+<code class="n">AUTHENTICATION_BACKENDS</code> <code class="o">=</code> <code class="p">(</code>
+    <code class="s2">"django.contrib.auth.backends.ModelBackend"</code><code class="p">,</code>
+    <code class="s2">"allauth.account.auth_backends.AuthenticationBackend"</code><code class="p">,</code>
+<code class="p">)</code>
+<code class="n">EMAIL_BACKEND</code> <code class="o">=</code> <code class="s2">"django.core.mail.backends.console.EmailBackend"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-accountlogoutredirect">ACCOUNT_LOGOUT_REDIRECT</h3>
+
+    <p>There’s one more subtle change to make to our configurations at this time. If you look at the <a href="https://django-allauth.readthedocs.io/en/latest/configuration.html">configurations page</a> again you’ll see there is a setting for <code>ACCOUNT_LOGOUT_REDIRECT</code> that defaults to the path of the homepage at <code>/</code>.</p>
+
+    <p>In our current <code>settings.py</code> file we have the following two lines for redirects which point to the homepage via its URL name of <code>"home"</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">LOGIN_REDIRECT_URL</code> <code class="o">=</code> <code class="s2">"home"</code>
+<code class="n">LOGOUT_REDIRECT_URL</code> <code class="o">=</code> <code class="s2">"home"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The issue is that <code>django-allauth</code>’s <code>ACCOUNT_LOGOUT_REDIRECT</code> actually overrides the built-in <code>LOGOUT_REDIRECT_URL</code> but since they both point to the homepage this change may not be immediately apparent. To future-proof our application–since maybe we don’t want to always redirect to the homepage on logout–we should be explicit here with the logout redirect.</p>
+
+    <p>We can also move the two redirect lines under our <code>django-allauth config</code> section. This is what the entire <code>django-allauth config</code> section should look like at this time.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="c1"># django-allauth config</code>
+<code class="n">LOGIN_REDIRECT_URL</code> <code class="o">=</code> <code class="s2">"home"</code>
+<code class="n">ACCOUNT_LOGOUT_REDIRECT</code> <code class="o">=</code> <code class="s2">"home"</code>  <code class="c1"># new</code>
+<code class="n">SITE_ID</code> <code class="o">=</code> <code class="mi">1</code>
+<code class="n">AUTHENTICATION_BACKENDS</code> <code class="o">=</code> <code class="p">(</code>
+    <code class="s2">"django.contrib.auth.backends.ModelBackend"</code><code class="p">,</code>
+    <code class="s2">"allauth.account.auth_backends.AuthenticationBackend"</code><code class="p">,</code>
+<code class="p">)</code>
+<code class="n">EMAIL_BACKEND</code> <code class="o">=</code> <code class="s2">"django.core.mail.backends.console.EmailBackend"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Given that we have made many changes to our <code>django_project/settings.py</code> file let’s now run <code>migrate</code> to update our database.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py migrate
+Operations to perform:
+  Apply all migrations: account, accounts, admin, auth, contenttypes, sessions, sites
+Running migrations:
+  Applying account.0001_initial... OK
+  Applying account.0002_email_max_length... OK
+  Applying sites.0001_initial... OK
+  Applying sites.0002_alter_domain_unique... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-urls">URLs</h3>
+
+    <p>We also need to swap out the built-in <code>auth</code> app URLs for <code>django-allauth</code>’s own <code>allauth</code> app. We’ll still use the same <code>accounts/</code> URL path, however, since we’ll be using <code>django-allauth</code>’s templates and routes for sign up we can delete the URL path for our <code>accounts</code> app, too.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="c1"># Django admin</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="c1"># User management</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"allauth.urls"</code><code class="p">)),</code>  <code class="c1"># new</code>
+    <code class="c1"># Local apps</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>
+<code class="p">]</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At this point we <em>could</em> further delete <code>accounts/urls.py</code> and <code>accounts/views.py</code> which were both created solely for our hand-written sign up page and are no longer being used.</p>
+
+    <h3 id="leanpub-auto-templates-1">Templates</h3>
+
+    <p>Django’s <code>auth</code> app looks for templates within a <code>templates/registration</code> directory, but <code>allauth</code> prefers they be located within a <code>templates/account</code> directory. So we will create a new directory called <code>templates/account</code> and then copy over our existing <code>login.html</code> and <code>signup.html</code> templates into it.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ mkdir templates/account
+$ mv templates/registration/login.html templates/account/login.html
+$ mv templates/registration/signup.html templates/account/signup.html
+</pre>
+
+      </div>
+
+    </figure>
+
+    <aside>
+
+      <p>It’s easy to add an <code>s</code> onto <code>account</code> here by accident, but don’t or you’ll get an error. The correct directory is <code>templates/account/</code>.</p>
+
+    </aside>
+
+    <p>We can delete the <code>templates/registration</code> directory at this point since it is no longer needed.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ rm -r templates/registration
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p><code>rm</code> means remove and <code>-r</code> means do it recursively, which is necessary whenever you are dealing with a directory. If you’d like further information on this command you can type <code>man rm</code> to read the manual.</p>
+
+    <p>Note that if you ever see a command that includes <code>rm -rf</code>–and especially <code>sudo rm -rf</code>–use incredible caution! It is possible to wipe your entire computer with this command. Don’t ever execute it unless you are 100% sure the result is intended.</p>
+
+    <p>The last step is to update the URL links within <code>templates/_base.html</code> to use <code>django-allauth</code>’s URL names rather than Django’s. We do this by adding an <code>account_</code> prefix so Django’s <code>'logout'</code> will now be <code>'account_logout'</code>, <code>'login'</code> will be <code>'account_login'</code>, and <code>signup</code> will be <code>account_signup</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/_base.html --&gt;</code>
+...
+<code class="p">&lt;</code><code class="nt">ul</code> <code class="na">class</code><code class="o">=</code><code class="s">"navbar-nav me-auto mb-2 mb-md-0"</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'about' %}"</code><code class="p">&gt;</code>About<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+  {% if user.is_authenticated %}
+  <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'account_logout' %}"</code><code class="p">&gt;</code>Log Out<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+  {% else %}
+  <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'account_login' %}"</code><code class="p">&gt;</code>Log In<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">li</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-item"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">a</code> <code class="na">class</code><code class="o">=</code><code class="s">"nav-link"</code> <code class="na">href</code><code class="o">=</code><code class="s">"{% url 'account_signup' %}"</code><code class="p">&gt;</code>Sign Up<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+  {% endif %}
+<code class="p">&lt;/</code><code class="nt">ul</code><code class="p">&gt;</code>
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And we’re done!</p>
+
+    <h3 id="leanpub-auto-log-in-1">Log In</h3>
+
+    <p>Refresh the homepage at <code>http://127.0.0.1:8000</code>, log out if you are already logged in, and click on the “Log in” link. The Log In page is now updated page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/08_allauth_login.jpg" alt="Log In Page" style="width: 100%"/>
+
+        <figcaption>Log In Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Note the new “Remember Me” box option. This is the first of many <a href="https://django-allauth.readthedocs.io/en/latest/configuration.html">configurations</a> that <code>django-allauth</code> provides. The default <code>None</code> asks the user if they want their session to be remembered so they don’t have to log in again. It can also be set to <code>False</code> to not remember or <code>True</code> to always remember. We’ll choose <code>True</code> which is how a traditional Django log in page would work.</p>
+
+    <p>Under the <code># django-allauth config</code> section of the <code>django_project/settings.py</code> file add a new line for this.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="c1"># django-allauth config</code>
+<code class="o">...</code>
+<code class="n">ACCOUNT_SESSION_REMEMBER</code> <code class="o">=</code> <code class="kc">True</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the “Log In” page and the box is gone!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/08_allauth_login_no_box.jpg" alt="Log In Page No Box" style="width: 100%"/>
+
+        <figcaption>Log In Page No Box</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you try out the log in form with your superuser account it will redirect back to the homepage with a welcome message. Click on the “Log Out” link.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/08_logout.jpg" alt="Log Out Page" style="width: 100%"/>
+
+        <figcaption>Log Out Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Rather than directly log us out, <code>django-allauth</code> has an intermediary “Log Out” page which we can customize to match the rest of our project.</p>
+
+    <h3 id="leanpub-auto-log-out-1">Log Out</h3>
+
+    <p>We will now update the default Log Out template by creating a <code>templates/account/logout.html</code> file to override it. Do so now in your text editor. As in our other templates it will extend <code>_base.html</code> and include Bootstrap styling on the <code>submitted</code> button.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c">&lt;!-- templates/account/logout.html --&gt;</code>
+{% extends "_base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Log Out{% endblock %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">h1</code><code class="p">&gt;</code>Log Out<code class="p">&lt;/</code><code class="nt">h1</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Are you sure you want to log out?<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+  <code class="p">&lt;</code><code class="nt">form</code> <code class="na">method</code><code class="o">=</code><code class="s">"post"</code> <code class="na">action</code><code class="o">=</code><code class="s">"{% url 'account_logout' %}"</code><code class="p">&gt;</code>
+    {% csrf_token %}
+    {{ form|crispy }}
+    <code class="p">&lt;</code><code class="nt">button</code> <code class="na">class</code><code class="o">=</code><code class="s">"btn btn-danger"</code> <code class="na">type</code><code class="o">=</code><code class="s">"submit"</code><code class="p">&gt;</code>Log Out<code class="p">&lt;/</code><code class="nt">button</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">form</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Go ahead and refresh the page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/08_custom_logout_page.jpg" alt="Custom Log Out Page" style="width: 100%"/>
+
+        <figcaption>Custom Log Out Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Then click on the “Log Out” link to complete the process.</p>
+
+    <h3 id="leanpub-auto-sign-up-1">Sign Up</h3>
+
+    <p>At the top of our website, in the nav bar, click on link for “Sign Up” which has Bootstrap and <code>django-crispy-forms</code> styling.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/08_signup.jpg" alt="Sign Up Page" style="width: 100%"/>
+
+        <figcaption>Sign Up Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>An optional customization we can make via <code>django-allauth</code> is to only ask for a password once. Since we’ll configure password change and reset options later, there’s less of a risk that a user who types in the password incorrectly will be locked out of their account.</p>
+
+    <p>This change is, if you look at the <a href="https://django-allauth.readthedocs.io/en/latest/configuration.html">django-allauth configuration options</a>, is a one-liner.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="c1"># django-allauth config</code>
+<code class="o">...</code>
+<code class="n">ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE</code> <code class="o">=</code> <code class="kc">False</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the page and the form will update itself to remove the additional password line.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/08_signup_single_password.jpg" alt="Sign Up with Single Password" style="width: 100%"/>
+
+        <figcaption>Sign Up with Single Password</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now create a new user to confirm everything works. We can call the user <code>testuser1</code>, use <code>testuser1@email.com</code> as email, and <code>testpass123</code> as the password. Upon submit it will redirect you to the homepage.</p>
+
+    <p>Remember how we configured email to output to the console? <code>django-allauth</code> automatically sends an email upon registration which we can view by typing <code>docker-compose logs</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose logs
+...
+web_1  | Content-Type: text/plain; charset="utf-8"
+web_1  | MIME-Version: 1.0
+web_1  | Content-Transfer-Encoding: 7bit
+web_1  | Subject: [example.com] Please Confirm Your E-mail Address
+web_1  | From: webmaster@localhost
+web_1  | To: testuser@email.com
+web_1  | Date: Tue, 17 May 2022 14:04:15 -0000
+web_1  | Message-ID: &lt;155266195771.15.17095643701553564393@cdab877c4af3&gt;
+web_1  |
+web_1  | Hello from example.com!
+web_1  |
+web_1  | You're receiving this e-mail because user testuser1 has given yours as
+an e-mail address to connect their account.
+web_1  |
+web_1  | To confirm this is correct, go to http://127.0.0.1:8000/accounts/
+confirm-emailMQ:1h4oIn:GYETeK5dRClGjcgA8NbuOoyvafA/
+web_1  |
+web_1  | Thank you from example.com!
+web_1  | example.com
+web_1  | -----------------------------------------------------------------------
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>There it is. Later on in the book we will customize this message and configure a proper email service to send it to actual users.</p>
+
+    <h3 id="leanpub-auto-admin">Admin</h3>
+
+    <p>Log in to the admin with your superuser account at <code>http://127.0.0.1:8000/admin/</code> and we can see it, too, has changed now that <code>django-allauth</code> is involved.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/08_admin.jpg" alt="Admin Homepage" style="width: 100%"/>
+
+        <figcaption>Admin Homepage</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>There are two new sections: <code>Accounts</code> and <code>Sites</code> courtesy of our recent work. If you click on the <code>Users</code> section we see our traditional view that shows the three current user accounts.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 28px">
+
+        <img src="images/missing.png" alt="Admin Users" style="width: 100%"/>
+
+        <figcaption>Admin Users</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>If you expand the admin sidebar on the leftside of the page we can go directly to the <code>Sites</code> section to see what the Django sites framework provides. We’ll update both the Domain Name and the Display Name in a later chapter on configuring email.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/08_sites.jpg" alt="Admin Sites" style="width: 100%"/>
+
+        <figcaption>Admin Sites</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-email-only-login">Email Only Login</h3>
+
+    <p>It’s time to really use <code>django-allauth</code>’s <a href="https://django-allauth.readthedocs.io/en/latest/configuration.html">extensive list of configurations</a> by switching over to using just email for login, not username. This requires a few changes. First we’ll make a <code>username</code> not required, but set <code>email</code> instead to required. Then we’ll require <code>email</code> to be unique and the authentication method of choice.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="c1"># django-allauth config</code>
+<code class="o">...</code>
+<code class="n">ACCOUNT_USERNAME_REQUIRED</code> <code class="o">=</code> <code class="kc">False</code>  <code class="c1"># new</code>
+<code class="n">ACCOUNT_AUTHENTICATION_METHOD</code> <code class="o">=</code> <code class="s2">"email"</code>  <code class="c1"># new</code>
+<code class="n">ACCOUNT_EMAIL_REQUIRED</code> <code class="o">=</code> <code class="kc">True</code>  <code class="c1"># new</code>
+<code class="n">ACCOUNT_UNIQUE_EMAIL</code> <code class="o">=</code> <code class="kc">True</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Navigate back to the homepage and click on “Log Out” since you’ll be logged in with your superuser account. Then click on the navbar link for “Sign Up” and create an account for <code>testuser2@email.com</code> with <code>testpass123</code> as the password.</p>
+
+    <p>After being redirected to the homepage upon success, go into the admin to inspect what actually happened. Log in with your superuser account and navigate to the <code>Users</code> section.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/08_admin_testuser2.jpg" alt="Admin Users" style="width: 100%"/>
+
+        <figcaption>Admin Users</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>We can see that <code>django-allauth</code> automatically populated a username for us based on the email part before the <code>@</code>. This is because our underlying <code>CustomUser</code> model still has a <code>username</code> field. We didn’t delete it.</p>
+
+    <p>While this approach may seem a little hackish in fact it works <em>just fine</em>. Fully removing the username from the custom user model requires the use of <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#django.contrib.auth.models.AbstractBaseUser">AbstractBaseUser</a>, which is an additional, optional step some developers take. It requires far more coding and understanding so it is not recommended unless you really know your way around Django’s authentication system!</p>
+
+    <p>There is, however, an edge case here that we should look into: what happens if we have <code>testuser2@email.com</code> and then a sign up for <code>testuser2@example.com</code>? Wouldn’t that result in a username of <code>testuser2</code> for both which would cause a conflict? Let’s try it out!</p>
+
+    <p>Log out of the admin, on the Sign Up Page create an account for <code>testuser2@example.com</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/08_testuser2_example_signup.jpg" alt="Sign Up Form" style="width: 100%"/>
+
+        <figcaption>Sign Up Form</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>Now log back into the admin and go to our <code>Users</code> section.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/08_admin_two_testuser2.jpg" alt="Admin Users" style="width: 100%"/>
+
+        <figcaption>Admin Users</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p><code>django-allauth</code> automatically adds a two-digit string to the username. In this case it is <code>20</code> so <code>testuser2</code> becomes <code>testuser27</code>. This two-digit string will be randomly generated for us.</p>
+
+    <h3 id="leanpub-auto-tests-3">Tests</h3>
+
+    <p>Time for tests. Like any good third-party package <code>django-allauth</code> comes with its own tests so we don’t need to re-test its core functionality, just confirm that our project works as expected.</p>
+
+    <p>There are several errors now with our current tests though related to <code>SignUpPageTests</code> since we’re using <code>django-allauth</code> now for this rather than our own views, forms, and urls.</p>
+
+    <p>Let’s update the tests. Starting at the top we are no longer using <code>CustomUserCreationForm</code> or <code>SignupPageView</code> so we can remove both imports. We are using <code>django-allauth</code>’s URL path and name now for the sign up page which is <code>account_signup</code>, not the <code>signup</code> we named it previously. How did that it was <code>account_signup</code>? I looked at <a href="https://github.com/pennersr/django-allauth/blob/master/allauth/account/urls.py">the source code</a> and found the URL name.</p>
+
+    <p>The updated code looks as follows:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">reverse</code><code class="p">,</code> <code class="n">resolve</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+    <code class="o">...</code>
+
+
+<code class="k">class</code> <code class="nc">SignupPageTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>  <code class="c1"># new</code>
+    <code class="n">username</code> <code class="o">=</code> <code class="s2">"newuser"</code>
+    <code class="n">email</code> <code class="o">=</code> <code class="s2">"newuser@email.com"</code>
+
+    <code class="k">def</code> <code class="nf">setUp</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">url</code> <code class="o">=</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"account_signup"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">response</code> <code class="o">=</code> <code class="bp">self</code><code class="o">.</code><code class="n">client</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="n">url</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_signup_template</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="o">.</code><code class="n">status_code</code><code class="p">,</code> <code class="mi">200</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTemplateUsed</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"account/signup.html"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertContains</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Sign Up"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertNotContains</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">response</code><code class="p">,</code> <code class="s2">"Hi there! I should not be on the page."</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_signup_form</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">new_user</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create_user</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">username</code><code class="p">,</code> <code class="bp">self</code><code class="o">.</code><code class="n">email</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">all</code><code class="p">()</code><code class="o">.</code><code class="n">count</code><code class="p">(),</code> <code class="mi">1</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">all</code><code class="p">()[</code><code class="mi">0</code><code class="p">]</code><code class="o">.</code><code class="n">username</code><code class="p">,</code> <code class="bp">self</code><code class="o">.</code><code class="n">username</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">get_user_model</code><code class="p">()</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">all</code><code class="p">()[</code><code class="mi">0</code><code class="p">]</code><code class="o">.</code><code class="n">email</code><code class="p">,</code> <code class="bp">self</code><code class="o">.</code><code class="n">email</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Run the tests again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.410s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-social">Social</h3>
+
+    <p>If you want to add social authentication it’s just a few settings. I have a <a href="https://learndjango.com/tutorials/django-allauth-tutorial">complete tutorial online</a> for integrating Github. The process is similar for Google, Facebook, and all the rest <code>django-allauth</code> supports. <a href="https://django-allauth.readthedocs.io/en/latest/providers.html">Here is the complete list of providers</a>.</p>
+
+    <h3 id="leanpub-auto-git-6">Git</h3>
+
+    <p>As always commit the code changes with Git.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch8'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And if there are any issues, compare with the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch8-advanced-user-registration">official source code on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-8">Conclusion</h3>
+
+    <p>We now have a user registration flow that works and can be quickly extended into social authentication if needed. In the next chapter we’ll add environment variables to our project for greater security and flexibility.</p>
+
+  </div>
+
+</body>
+
+</html>

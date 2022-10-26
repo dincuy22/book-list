@@ -1,0 +1,444 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 13: File/Image Uploads</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-13-fileimage-uploads">Chapter 13: File/Image Uploads</h2>
+
+    <p>We previously configured static assets such as images in Chapter 6, but user-uploaded files, such as book covers, are somewhat different. To start with, Django refers to the former as <code>static</code> whereas anything uploaded by a user, whether it be a file or an image, is referred to as <code>media</code>.</p>
+
+    <p>The process for adding this feature for files or images is similar, but for images the Python image processing library <a href="https://python-pillow.org/">Pillow</a> must be installed which includes additional features such as basic validation.</p>
+
+    <p>Let’s install <code>pillow</code> using our by-now-familiar pattern of adding it to the <code>requirements.txt</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+psycopg2-binary==2.9.3
+sqlparse==0.4.2
+django-crispy-forms==1.14.0
+crispy-bootstrap5==0.6
+django-allauth==0.50.0
+environs[django]==9.5.0
+pillow==9.0.1
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then stop our Docker container, rebuild the Docker image so it now contains <code>pillow</code>, and start up the container up again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-media-files">Media Files</h3>
+
+    <p>Fundamentally the difference between static and media files is that we can trust the former, but we definitely can’t trust the latter by default. There are always <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#file-upload-security">security concerns</a> when dealing with <a href="https://docs.djangoproject.com/en/4.0/topics/security/#user-uploaded-content">user-uploaded content</a>. Notably, it’s important to <em>validate all uploaded files</em> to ensure they are what they say they are. There are a number of nasty ways a malicious actor can attack a website that blindly accepts user uploads.</p>
+
+    <p>To start let’s add two new configurations to the <code>django_project/settings.py</code> file. By default <code>MEDIA_URL</code> and <code>MEDIA_ROOT</code> are both empty and not displayed so we need to configure them:</p>
+
+    <ul>
+
+      <li>
+<a href="https://docs.djangoproject.com/en/4.0/ref/settings/#media-root">MEDIA_ROOT</a> is the absolute file system path to the directory for user-uploaded files</li>
+
+      <li>
+<a href="https://docs.djangoproject.com/en/4.0/ref/settings/#media-url">MEDIA_URL</a> is the URL we can use in our templates for the files</li>
+
+    </ul>
+
+    <p>We can add both of these settings after <code>STATICFILES_STORAGE</code> near the bottom of the <code>django_project/settings.py</code> file. We’ll use the common convention of calling both <code>media</code>. Don’t forget to include the trailing slash <code>/</code> for <code>MEDIA_URL</code>!</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">MEDIA_URL</code> <code class="o">=</code> <code class="s2">"/media/"</code>  <code class="c1"># new</code>
+<code class="n">MEDIA_ROOT</code> <code class="o">=</code> <code class="n">BASE_DIR</code> <code class="o">/</code> <code class="s2">"media"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Next add a new directory called <code>media</code> and a subdirectory called <code>covers</code> within it.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ mkdir media
+$ mkdir media/covers
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And finally, since user-uploaded content is assumed to exist in a production context, to see media items locally we need to update <code>django_project/urls.py</code> to show the files locally. This involves importing both <code>settings</code> and <code>static</code> at the top and then adding an additional line at the bottom.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/urls.py</code>
+<code class="kn">from</code> <code class="nn">django.conf</code> <code class="kn">import</code> <code class="n">settings</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.conf.urls.static</code> <code class="kn">import</code> <code class="n">static</code>  <code class="c1"># new</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.urls</code> <code class="kn">import</code> <code class="n">path</code><code class="p">,</code> <code class="n">include</code>
+
+<code class="n">urlpatterns</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="c1"># Django admin</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"admin/"</code><code class="p">,</code> <code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">urls</code><code class="p">),</code>
+    <code class="c1"># User management</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"accounts/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"allauth.urls"</code><code class="p">)),</code>
+    <code class="c1"># Local apps</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">""</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"pages.urls"</code><code class="p">)),</code>
+    <code class="n">path</code><code class="p">(</code><code class="s2">"books/"</code><code class="p">,</code> <code class="n">include</code><code class="p">(</code><code class="s2">"books.urls"</code><code class="p">)),</code>
+<code class="p">]</code> <code class="o">+</code> <code class="n">static</code><code class="p">(</code>
+    <code class="n">settings</code><code class="o">.</code><code class="n">MEDIA_URL</code><code class="p">,</code> <code class="n">document_root</code><code class="o">=</code><code class="n">settings</code><code class="o">.</code><code class="n">MEDIA_ROOT</code>
+<code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-models-1">Models</h3>
+
+    <p>With our generic media configuration out of the way we can now turn to our models. To store these images we’ll use Django’s <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#django.db.models.ImageField">ImageField</a> which comes with some basic image processing validation included.</p>
+
+    <p>The name of the field is <code>cover</code> and we specify the location of the uploaded image will be in <code>MEDIA_ROOT/covers</code> (the <code>MEDIA_ROOT</code> part is implied based on our earlier <code>settings.py</code> config).</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="k">class</code> <code class="nc">Book</code><code class="p">(</code><code class="n">models</code><code class="o">.</code><code class="n">Model</code><code class="p">):</code>
+    <code class="nb">id</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">UUIDField</code><code class="p">(</code>
+        <code class="n">primary_key</code><code class="o">=</code><code class="kc">True</code><code class="p">,</code>
+        <code class="n">default</code><code class="o">=</code><code class="n">uuid</code><code class="o">.</code><code class="n">uuid4</code><code class="p">,</code>
+        <code class="n">editable</code><code class="o">=</code><code class="kc">False</code><code class="p">)</code>
+    <code class="n">title</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">author</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">CharField</code><code class="p">(</code><code class="n">max_length</code><code class="o">=</code><code class="mi">200</code><code class="p">)</code>
+    <code class="n">price</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">DecimalField</code><code class="p">(</code><code class="n">max_digits</code><code class="o">=</code><code class="mi">6</code><code class="p">,</code> <code class="n">decimal_places</code><code class="o">=</code><code class="mi">2</code><code class="p">)</code>
+    <code class="n">cover</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ImageField</code><code class="p">(</code><code class="n">upload_to</code><code class="o">=</code><code class="s2">"covers/"</code><code class="p">)</code>  <code class="c1"># new</code>
+
+    <code class="k">def</code> <code class="fm">__str__</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="bp">self</code><code class="o">.</code><code class="n">title</code>
+
+    <code class="k">def</code> <code class="nf">get_absolute_url</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="k">return</code> <code class="n">reverse</code><code class="p">(</code><code class="s2">"book_detail"</code><code class="p">,</code> <code class="n">args</code><code class="o">=</code><code class="p">[</code><code class="nb">str</code><code class="p">(</code><code class="bp">self</code><code class="o">.</code><code class="n">id</code><code class="p">)])</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <aside>
+
+      <p>If we wanted to allow uploads of a regular file rather than an image file the only difference could be to change <code>ImageField</code> to <code>FileField</code>.</p>
+
+    </aside>
+
+    <p>Since we’ve updated the model it’s time to create a migrations file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py makemigrations books
+You are trying to add a non-nullable field 'cover_image' to book
+without a default; we can't do that (the database needs something to populate
+existing rows).
+Please select a fix:
+ 1) Provide a one-off default now (will be set on all existing rows with a
+    null value for this column)
+ 2) Quit, and let me add a default in models.py
+Select an option:
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Oops! What happened? We’re adding a new database field, but we already have three entries in our database for each book. Yet we failed to set a default value for <code>cover</code>.</p>
+
+    <p>To fix this type <code>2</code> to quit. We’ll add a <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#blank">blank</a> field set to <code>True</code> for existing images.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># books/models.py</code>
+<code class="n">cover</code> <code class="o">=</code> <code class="n">models</code><code class="o">.</code><code class="n">ImageField</code><code class="p">(</code><code class="n">upload_to</code><code class="o">=</code><code class="s2">"covers/"</code><code class="p">,</code> <code class="n">blank</code><code class="o">=</code><code class="kc">True</code><code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <aside>
+
+      <p>It’s common to see <code>blank</code> and <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#null">null</a> used together to set a default value on a field. A gotcha is that the <em>field type</em> – <code>ImageField</code> vs. <code>CharField</code> and so on – dictates how to use them properly so closely read the documentation for future use.</p>
+
+    </aside>
+
+    <p>Now we can create a migrations file without errors.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py makemigrations books
+Migrations for 'books':
+  books/migrations/0003_book_cover.py
+    - Add field cover to book
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>And then apply the migration to our database.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py migrate
+Operations to perform:
+  Apply all migrations: account, accounts, admin, auth, books, contenttypes, sessions, si\
+tes
+Running migrations:
+  Applying books.0003_book_cover... OK
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-admin-3">Admin</h3>
+
+    <p>We’re in the home stretch now! Navigate over to the admin and the entry for the book “Django for Professionals.” The <code>cover</code> field is visible already and we already have a copy of it locally within <code>static/images/cover_40.jpg</code> so use that file for the upload and then click the “Save” button in bottom right.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/13_admin_dfp.jpg" alt="Admin add cover" style="width: 100%"/>
+
+        <figcaption>Admin add cover</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>This will redirect back to the main Books section. Click on the link again for “Django for Professionals” and we can see it <code>currently</code> exists in our desired location of <code>covers/</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/13_admin_dfp_currently.jpg" alt="Admin with cover" style="width: 100%"/>
+
+        <figcaption>Admin with cover</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-template">Template</h3>
+
+    <p>OK, final step. Let’s update our template to display the book cover on the individual page. The route will be <code>book.cover.url</code> pointing to the location of the cover in our file system.</p>
+
+    <p>Here’s what the updated <code>book_detail.html</code> file looks like with this one line change above the <code>title</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># templates/books/book_detail.html
+{% extends "_base.html" %}
+
+{% block title %}{{ book.title }}{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"book-detail"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">img</code> <code class="na">class</code><code class="o">=</code><code class="s">"bookcover"</code> <code class="na">src</code><code class="o">=</code><code class="s">"{{ book.cover.url}}"</code> <code class="na">alt</code><code class="o">=</code><code class="s">"{{ book.title }}"</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">""</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Author: {{ book.author }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">p</code><code class="p">&gt;</code>Price: {{ book.price }}<code class="p">&lt;/</code><code class="nt">p</code><code class="p">&gt;</code>
+    <code class="p">&lt;</code><code class="nt">div</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">h3</code><code class="p">&gt;</code>Reviews<code class="p">&lt;/</code><code class="nt">h3</code><code class="p">&gt;</code>
+      <code class="p">&lt;</code><code class="nt">ul</code><code class="p">&gt;</code>
+        {% for review in book.reviews.all %}
+        <code class="p">&lt;</code><code class="nt">li</code><code class="p">&gt;</code>{{ review.review }} ({{ review.author }})<code class="p">&lt;/</code><code class="nt">li</code><code class="p">&gt;</code>
+        {% endfor %}
+      <code class="p">&lt;/</code><code class="nt">ul</code><code class="p">&gt;</code>
+    <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+  <code class="p">&lt;/</code><code class="nt">div</code><code class="p">&gt;</code>
+{% endblock content %}
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you now visit the page for “Django for Professionals” you’ll see the cover image proudly there!</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/13_dfp_cover.jpg" alt="Cover image" style="width: 100%"/>
+
+        <figcaption>Cover image</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>One potential gotcha is that our template now expects a <code>cover</code> to be present. If you navigate to either of the two other books, for which we have not added a cover, you’ll see the following <code>ValueError</code> message which is quite descriptive.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/13_cover_error.jpg" alt="Cover image error" style="width: 100%"/>
+
+        <figcaption>Cover image error</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>We must add some basic logic to our template so that if a cover is not present the template doesn’t look for it! This can be done using an <code>if</code> statement that checks for <code>book.cover</code> and displays it if it exists.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># templates/books/book_detail.html
+{% extends "_base.html" %}
+
+{% block title %}{{ book.title }}{% endblock title %}
+
+{% block content %}
+  <code class="p">&lt;</code><code class="nt">div</code> <code class="na">class</code><code class="o">=</code><code class="s">"book-detail"</code><code class="p">&gt;</code>
+    {% if book.cover %}
+      <code class="p">&lt;</code><code class="nt">img</code> <code class="na">class</code><code class="o">=</code><code class="s">"bookcover"</code> <code class="na">src</code><code class="o">=</code><code class="s">"{{ book.cover.url}}"</code> <code class="na">alt</code><code class="o">=</code><code class="s">"{{ book.title }}"</code><code class="p">&gt;</code>
+    {% endif %}
+    <code class="p">&lt;</code><code class="nt">h2</code><code class="p">&gt;&lt;</code><code class="nt">a</code> <code class="na">href</code><code class="o">=</code><code class="s">""</code><code class="p">&gt;</code>{{ book.title }}<code class="p">&lt;/</code><code class="nt">a</code><code class="p">&gt;&lt;/</code><code class="nt">h2</code><code class="p">&gt;</code>
+  ...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh either book page now you’ll see they display the correct page albeit without a cover.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/13_no_error.jpg" alt="DFA No Error" style="width: 100%"/>
+
+        <figcaption>DFA No Error</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-django-storages">django-storages</h3>
+
+    <p>There are several steps that a truly production website could take but are beyond the current scope of this book. The most important is storing all media files on a dedicated CDN (Content Delivery Network) rather than on our own server. Unlike static files, which the developer controls and can trust, media files are user-generated and should always be treated with caution. The popular third-party package <a href="https://github.com/jschneier/django-storages">django-storages</a> allows for storing Django media files on a service like Amazon’s S3.</p>
+
+    <p>Furthermore the hosting service we will be using later on, Heroku, has an <a href="https://devcenter.heroku.com/articles/dynos#ephemeral-filesystem">ephemeral file system</a>. Each internal dyno boots with a clean copy of the file system from the most recent deploy. Static files are located on the file system; media files are not. As a result, in production media files will not remain with Heroku. Using <code>django-storages</code> is therefore basically mandatory alongside Heroku and will be mentioned again in the deployment chapter.</p>
+
+    <h3 id="leanpub-auto-next-steps">Next Steps</h3>
+
+    <p>Additional steps could include extra validations on the image-uploading form to ensure that only a normal, safe image was able to be added. We could add dedicated create/edit/delete forms for the creation of books and cover image. Tests would be nice to have here too although they would be primarily focused on the form validation section not the basic image-uploading via the admin. Again this is an area that can become quite complex, but is worthy of further study.</p>
+
+    <p>The last recommendation is to look at the third-party <a href="https://github.com/un1t/django-cleanup">django-cleanup</a> package which automatically deletes old files. It can be quite handy.</p>
+
+    <h3 id="leanpub-auto-git-11">Git</h3>
+
+    <p>Make sure to create a new Git commit for the changes in this chapter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch13'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>As always you can compare your code against the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch13-file-image-uploads">official source code on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-13">Conclusion</h3>
+
+    <p>This chapter demonstrated how to add user files to a project. In practice it is straightforward, but the additional layer of security concerns makes it an area worthy of focus at scale.</p>
+
+    <p>In the next chapter we will add permissions to our site to lock it down.</p>
+
+  </div>
+
+</body>
+
+</html>

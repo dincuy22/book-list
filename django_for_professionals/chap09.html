@@ -1,0 +1,360 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 9: Environment Variables</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-9-environment-variables">Chapter 9: Environment Variables</h2>
+
+    <p><a href="https://en.wikipedia.org/wiki/Environment_variable">Environment variables</a> are variables that can be loaded into the operating environment of a project at run time as opposed to hard coded into the codebase itself. They are considered an integral part of the popular <a href="https://12factor.net/">Twelve-Factor App Design</a> methodology and a Django best practice because they allow a greater level of security and simpler local/production configurations.</p>
+
+    <p>Why greater security? Because we can store truly secret information–database credentials, API keys, and so on–separate from the actual code base. This is a good idea because using a version control system, like <code>git</code>, means that it only takes one bad commit for credentials to be added in there forever. Which means that <em>anyone</em> with access to the codebase has full control over the project. This is very, very dangerous. It’s much better to limit who has access to the application and environment variables provide an elegant way to do so.</p>
+
+    <p>A secondary advantage is that environment variables make it much easier to switch between local and production code environments. As we will see, there are a number of setting configurations that Django uses by default intended to make local development easier, but which must be changed once the same project is ready for production.</p>
+
+    <h3 id="leanpub-auto-environs">Environs</h3>
+
+    <p>There are many different ways to work with environment variables in Python but for this project we’ll use the <a href="https://github.com/sloria/environs">environs</a> package, which has a Django-specific option that installs a number of additional packages that help with configuration.</p>
+
+    <p>We will install it by first updating the <code>requirements.txt</code> file.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+psycopg2-binary==2.9.3
+sqlparse==0.4.2
+django-crispy-forms==1.14.0
+crispy-bootstrap5==0.6
+django-allauth==0.50.0
+environs[django]==9.5.0
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then spin down the currently running Docker container, rebuild our Docker image which will contain the new software package, and start up the container again.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In the <code>django_project/settings.py</code> file, there are three lines of imports to add at the top of the file, just under the import of <code>Path</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="kn">from</code> <code class="nn">pathlib</code> <code class="kn">import</code> <code class="n">Path</code>
+<code class="kn">from</code> <code class="nn">environs</code> <code class="kn">import</code> <code class="n">Env</code>  <code class="c1"># new</code>
+
+<code class="n">env</code> <code class="o">=</code> <code class="n">Env</code><code class="p">()</code>  <code class="c1"># new</code>
+<code class="n">env</code><code class="o">.</code><code class="n">read_env</code><code class="p">()</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>All set.</p>
+
+    <h3 id="leanpub-auto-secretkey">SECRET_KEY</h3>
+
+    <p>For our first environment variable we’ll set the <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-SECRET_KEY">SECRET_KEY</a>, a randomly generated string used for <a href="https://docs.djangoproject.com/en/4.0/topics/signing/">cryptographic signing</a> and created whenever the <code>startproject</code> command is run. It is very important that <code>SECRET_KEY</code> actually be kept, well, secret.</p>
+
+    <p>In my <code>django_project/settings.py</code> file, it has the following value:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">SECRET_KEY</code> <code class="o">=</code> <code class="s2">"django-insecure-hv1(e0r@v4n4m6gqdz</code><code class="si">%d</code><code class="s2">n(60o=dsy8&amp;@0_lbs8p-v3u^bs4)xl"</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Note that the double quotes (<code>""</code>) around the <code>SECRET_KEY</code> make it a Python string. The double quotes are not actually part of the <code>SECRET_KEY</code> value itself, which is an easy mistake to make.</p>
+
+    <p>There is a two-step process to switching over to environment variables:</p>
+
+    <ul>
+
+      <li>add the environment variable to the <code>docker-compose.yml</code> file</li>
+
+      <li>update <code>django_project/settings.py</code> to point to the variable</li>
+
+    </ul>
+
+    <p>In the <code>docker-compose.yml</code> file, add a section called <code>environment</code> under the <code>web</code> service. It will be a variable that we’ll call <code>DJANGO_SECRET_KEY</code> with the value of our existing <code>SECRET_KEY</code>. This is what the updated file looks like:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>version: '3.9'
+
+services:
+  web:
+    build: .
+    command: python /code/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    environment:
+      - "DJANGO_SECRET_KEY=django-insecure-hv1(e0r@v4n4m6gqdz%dn(60o=dsy8&amp;@0_lbs8p-v3u^bs\
+4)xl"
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+
+volumes:
+  postgres_data:
+</pre>
+
+      </div>
+
+    </figure>
+
+    <aside>
+
+      <p>Note that if your SECRET_KEY includes a dollar sign, $, then you need to add an additional dollar sign, $$. This is due to how <code>docker-compose</code> <a href="https://docs.docker.com/compose/compose-file/#variable-substitution">handles variable substitution</a>. Otherwise you will see an error!</p>
+
+    </aside>
+
+    <p>The second step is to update the <code>SECRET_KEY</code> configuration within <code>django_project/settings.py</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">SECRET_KEY</code> <code class="o">=</code> <code class="n">env</code><code class="p">(</code><code class="s2">"DJANGO_SECRET_KEY"</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If you refresh the website now you’ll likely see an error. Django requires a <code>SECRET_KET</code> to work and in this case, our value is being stored within <code>docker-compose.yml</code>, which is used to start the container. It won’t be applied until we restart the current container which we’ll do so now.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose down
+$ docker-compose up -d
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Refresh the page again and everything works as before, which is what we want. Astute readers may notice that even though we are now using an environment variable the actual value of <code>SECRET_KEY</code> is still visible in our source code as it’s merely moved to <code>docker-compose.yml</code> which is tracked by Git. This is true! However, when we configure our website for production, we will create a separate file for production purposes–<code>docker-compose-production.yml</code>–and immediately add it to our <code>.gitignore</code> file so it is not tracked in the source code.</p>
+
+    <p>For now though, the goal of this chapter is to start using environment variables locally for the values that need to be either truly secret or switched in a production context.</p>
+
+    <h3 id="leanpub-auto-debug-and-allowedhosts">DEBUG and ALLOWED_HOSTS</h3>
+
+    <p>As the Django <a href="https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/">deployment checklist</a> notes, there are a number of settings that must be updated before a website can be deployed safely in production. Chief among them are <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-DEBUG">DEBUG</a> and <a href="https://docs.djangoproject.com/en/4.0/ref/settings/#allowed-hosts">ALLOWED_HOSTS</a>.</p>
+
+    <p>When <code>DEBUG</code> is set to <code>True</code>, Django displays a lengthy message and detailed bug report whenever an error occurs. For example, try visiting a page that does not exist such as <code>/debug</code>.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_debug.jpg" alt="Debug Page" style="width: 100%"/>
+
+        <figcaption>Debug Page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>This is great for our purposes as developers, but it is also a roadmap for a hacker in a production setting. When <code>DEBUG</code> is set to <code>False</code> it is required to add a setting for <code>ALLOWED_HOSTS</code>, which controls the specific hosts or domains that can access the website. We’ll add the two local ports–<code>localhost</code> and <code>127.0.0.1</code>–as well as <code>.herokuapp.com</code>, which will be used by Heroku for our production website.</p>
+
+    <p>Update the <code>django_project/settings.py</code> file with two new settings:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEBUG</code> <code class="o">=</code> <code class="kc">False</code>  <code class="c1"># new</code>
+<code class="n">ALLOWED_HOSTS</code> <code class="o">=</code> <code class="p">[</code><code class="s2">".herokuapp.com"</code><code class="p">,</code> <code class="s2">"localhost"</code><code class="p">,</code> <code class="s2">"127.0.0.1"</code><code class="p">]</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then refresh the web page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/09_page_not_found.jpg" alt="Debug Page Not Found" style="width: 100%"/>
+
+        <figcaption>Debug Page Not Found</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>This is the behavior we want for our production site: no information, just a generic message. When we deploy the website we’ll use an elegant way to toggle between the two settings, but for now change <code>DEBUG</code> to an environment variable called <code>DJANGO_DEBUG</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DEBUG</code> <code class="o">=</code> <code class="n">env</code><code class="o">.</code><code class="n">bool</code><code class="p">(</code><code class="s2">"DJANGO_DEBUG"</code><code class="p">)</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then proceed to update <code>docker-compose.yml</code> so <code>DJANGO_DEBUG</code> is set to <code>True</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>version: '3.9'
+
+services:
+  web:
+    build: .
+    command: python /code/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+    environment:
+      - "DJANGO_SECRET_KEY=django-insecure-hv1(e0r@v4n4m6gqdz%dn(60o=dsy8&amp;@0_lbs8p-v3u^bs\
+4)xl"
+      - "DJANGO_DEBUG=True"
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+
+volumes:
+  postgres_data:
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>After the changes refresh the homepage of your website and it will work as before. Everything is working properly.</p>
+
+    <h3 id="leanpub-auto-databases-1">DATABASES</h3>
+
+    <p>When we installed <code>environs[django]</code> earlier, the Django “goodies” included the elegant <a href="https://github.com/jacobian/dj-database-url">dj-database-url</a> package, which takes all the database configurations needed for our database, SQLite or PostgreSQL. This will be very helpful later on in production.</p>
+
+    <p>For now, we can set it to use PostgreSQL locally by adding a default value. Update the existing <code>DATABASES</code> configuration with the following:</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DATABASES</code> <code class="o">=</code> <code class="p">{</code>
+    <code class="s2">"default"</code><code class="p">:</code> <code class="n">env</code><code class="o">.</code><code class="n">dj_db_url</code><code class="p">(</code><code class="s2">"DATABASE_URL"</code><code class="p">,</code>
+    <code class="n">default</code><code class="o">=</code><code class="s2">"postgres://postgres@db/postgres"</code><code class="p">)</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The environment variable, <code>DATABASE_URL</code>, will be created by Heroku when we deploy. More on that later. Refresh the website to confirm everything still works properly.</p>
+
+    <h3 id="leanpub-auto-git-7">Git</h3>
+
+    <p>We made a number of important changes in this chapter so make sure to commit the code updates with Git.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git status
+$ git add .
+$ git commit -m 'ch9'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>If any issues crop up, compare your files against the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch9-environment-variables">official source code on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-9">Conclusion</h3>
+
+    <p>Adding environment variables is a necessary step for any truly professional Django project. They take some getting used to but are invaluable for switching between local and production environments as we’ll do later on in the book. In the next chapter we’ll fully configure our email settings and add password reset functionality.</p>
+
+  </div>
+
+</body>
+
+</html>

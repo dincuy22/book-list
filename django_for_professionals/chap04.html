@@ -1,0 +1,681 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+
+<head>
+  <title dir="ltr">Chapter 4: Bookstore Project</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="stylesheet.css" type="text/css" rel="stylesheet"/>
+</head>
+
+<body dir="ltr" class="lfm">
+
+  <div>
+
+    <h2 id="leanpub-auto-chapter-4-bookstore-project">Chapter 4: Bookstore Project</h2>
+
+    <p>It is time to build the main project of this book, an online Bookstore. In this chapter we will start a new project, switch over to Docker, add a custom user model, and write our first tests.</p>
+
+    <p>Let’s start by creating a new Django project. From the desktop create a new directory called <code>ch4-bookstore</code> and then create and activate a new Python virtual environment. From there we will install both Django and the <code>psycopg2-binary</code> adapter necessary to connect to a PostgreSQL database.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Windows
+$ cd onedrive\desktop
+$ mkdir ch4-bookstore
+$ cd ch4-bookstore
+$ python -m venv .venv
+$ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+$ .venv\Scripts\Activate.ps1
+(.venv) $ python -m pip install django~=4.0.0 psycopg2-binary==2.9.3
+
+# macOS
+$ cd ~/desktop/code
+$ mkdir ch4-bookstore
+$ cd ch4-bookstore
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+(.venv) $ python3 -m pip install django~=4.0.0 psycopg2-binary==2.9.3
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We use the <code>startproject</code> command to make our new Django project called <code>django_project</code>. Make sure you don’t forget that period, <code>.</code>, at the end of the command or else Django will create an extra directory which we don’t need. Then use <code>runserver</code> to start the local Django web server and confirm everything is working correctly.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ django-admin startproject django_project .
+(.venv) $ python manage.py runserver
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>In your web browser go to <code>http://127.0.0.1:8000/</code> and you should see the friendly Django welcome page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/00_welcome40.jpg" alt="Django welcome page" style="width: 100%"/>
+
+        <figcaption>Django welcome page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>On the command line you will likely see a warning about “18 unapplied migration(s)”. It’s safe to ignore this for now since we’re about to switch over to Docker and PostgreSQL.</p>
+
+    <p>Lastly stop the local server with <code>Control+c</code> and in your text editor create a <code>requirements.txt</code> file with the current contents of our Python virtual environment.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ pip freeze &gt; requirements.txt
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>The new file should contain the three packages installed with Django–<code>Django</code>, <code>asgiref</code>, <code>sqlparse</code>–as well as <code>psycopg2-binary</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>requirements.txt</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>asgiref==3.5.2
+Django==4.0.4
+psycopg2-binary==2.9.3
+sqlparse==0.4.2
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-docker-1">Docker</h3>
+
+    <p>We can now switch over to Docker in our project. Go ahead and stop the local server <code>Control+c</code> and also exit the virtual environment shell.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>(.venv) $ deactivate
+$
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Docker should already be installed and the desktop app running from the previous chapter. We will need a <code>Dockerfile</code> for our image and a <code>docker-compose.yml</code> file to run the container. This process is identical to what we just did in Chapter 3.</p>
+
+    <p>In your text editor create a new <code>Dockerfile</code> and <code>docker-compose.yml</code> file in the base directory next to the existing <code>manage.py</code> file. Then add the following code to each.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Dockerfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Pull base image
+FROM python:3.10.4-slim-bullseye
+
+# Set environment variables
+ENV PIP_DISABLE_PIP_VERSION_CHECK 1
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Set work directory
+WORKDIR /code
+
+# Install dependencies
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy project
+COPY . .
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>docker-compose.yml</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>version: "3.9"
+
+services:
+  web:
+    build: .
+    command: python /code/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - "POSTGRES_HOST_AUTH_METHOD=trust"
+
+volumes:
+  postgres_data:
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Remember that if you are on a newer M1-based macOS computer it may be necessary to specify the proper local platform by adding <code>--platform=linux/amd64</code> to the initial <code>FROM</code> command that installs Python.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Dockerfile</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code># Pull base image
+FROM --platform=linux/amd64 python:3.10.4-slim-bullseye
+...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Before building the image make sure to create a <code>.dockerignore</code> file and <code>.gitignore</code> file too.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.dockerignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+.git
+.gitignore
+</pre>
+
+      </div>
+
+    </figure>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>.gitignore</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>.venv
+__pycache__/
+db.sqlite3
+.DS_Store  # Mac only
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now we can build our image and run the containers with one command.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose up -d --build
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Go to the web browser now at <code>http://127.0.0.1:8000/</code> and click refresh. It should be the same friendly Django welcome page albeit now running inside of Docker.</p>
+
+    <h3 id="leanpub-auto-postgresql-1">PostgreSQL</h3>
+
+    <p>The last step is switching over to PostgreSQL. Even though we already installed <code>psycopg2-binary</code> and have PostgreSQL available in our <code>docker-compose.yml</code> file, we still must explicitly tell Django what <code>DATABASE</code> to use which we can do in the <code>django_project/settings.py</code> file. Remember that by default Django will use a SQLite database instead.  </p>
+
+    <p>The updated code is the same as in the previous chapter.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">DATABASES</code> <code class="o">=</code> <code class="p">{</code>
+    <code class="s2">"default"</code><code class="p">:</code> <code class="p">{</code>
+        <code class="s2">"ENGINE"</code><code class="p">:</code> <code class="s2">"django.db.backends.postgresql"</code><code class="p">,</code>
+        <code class="s2">"NAME"</code><code class="p">:</code> <code class="s2">"postgres"</code><code class="p">,</code>
+        <code class="s2">"USER"</code><code class="p">:</code> <code class="s2">"postgres"</code><code class="p">,</code>
+        <code class="s2">"PASSWORD"</code><code class="p">:</code> <code class="s2">"postgres"</code><code class="p">,</code>
+        <code class="s2">"HOST"</code><code class="p">:</code> <code class="s2">"db"</code><code class="p">,</code>
+        <code class="s2">"PORT"</code><code class="p">:</code> <code class="mi">5432</code><code class="p">,</code>
+    <code class="p">}</code>
+<code class="p">}</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Make sure to refresh the web browser for the homepage to confirm everything still works correctly.</p>
+
+    <h3 id="leanpub-auto-custom-user-model">Custom User Model</h3>
+
+    <p>Now we come to new material! We begin by implementing a custom user model which the official Django documentation <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project">“highly recommends.”</a> Why? Because you <em>will</em> need to make changes to the built-in <code>User</code> model at some point in your project’s life and if you have not started with a custom user model from the very first <code>migrate</code> command you run, then you’re in for a world of hurt because <code>User</code> is tightly interwoven with the rest of Django internally. It is challenging to switch over to a custom user model mid-project.</p>
+
+    <p>A point of confusion for many people is that custom user models were only added in Django 1.5. Up until that point the recommended approach was to add a <a href="https://docs.djangoproject.com/en/4.0/ref/models/fields/#django.db.models.OneToOneField">OneToOneField</a>, often called a Profile model, to <code>User</code>. You’ll often see this set up in older projects.</p>
+
+    <p>But these days using a custom user model is the more common approach. However as with many things Django-related, there are implementation choices: either extend <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#django.contrib.auth.models.AbstractUser">AbstractUser</a> which keeps the default <code>User</code> fields and permissions or extend <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#django.contrib.auth.models.AbstractBaseUser">AbstractBaseUser</a> which is even more granular, and flexible, but requires more work.</p>
+
+    <p>We’ll stick with the simpler <code>AbstractUser</code> in this book as <code>AbstractBaseUser</code> can be added later if needed.</p>
+
+    <p>There are four steps for adding a custom user model to our project:</p>
+
+    <ol class="numeric">
+
+      <li>Create a <code>CustomUser</code> model</li>
+
+      <li>Update <code>django_project/settings.py</code>
+</li>
+
+      <li>Customize <code>UserCreationForm</code> and <code>UserChangeForm</code>
+</li>
+
+      <li>Add the custom user model to <code>admin.py</code>
+</li>
+
+    </ol>
+
+    <p>The first step is to create a <code>CustomUser</code> model which will live within its own app. I like to name this app <code>accounts</code>. Going forward we’ll run the majority of our commands within Docker itself. Because we configured a <code>volumes</code> within the <code>web</code> service of <code>docker-compose.yml</code> any file system changes within Docker will be reflected in the local file system.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py startapp accounts
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Create a new <code>CustomUser</code> model which extends <code>AbstractUser</code>. That means we’re essentially making a copy where <code>CustomUser</code> now has inherited all the functionality of <code>AbstractUser</code>, but we can override or add new functionality as needed. We’re not making any changes yet so include the Python <code>pass</code> statement which acts as a placeholder for our future code.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/models.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.models</code> <code class="kn">import</code> <code class="n">AbstractUser</code>
+<code class="kn">from</code> <code class="nn">django.db</code> <code class="kn">import</code> <code class="n">models</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUser</code><code class="p">(</code><code class="n">AbstractUser</code><code class="p">):</code>
+    <code class="k">pass</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Now go in and update our <code>settings.py</code> file in the <code>INSTALLED_APPS</code> section to tell Django about our new <code>accounts</code> app. We also want to add a <code>AUTH_USER_MODEL</code> config at the bottom of the file which will cause our project to use <code>CustomUser</code> instead of the default <code>User</code> model.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># django_project/settings.py</code>
+<code class="n">INSTALLED_APPS</code> <code class="o">=</code> <code class="p">[</code>
+    <code class="s2">"django.contrib.admin"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.auth"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.contenttypes"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.sessions"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.messages"</code><code class="p">,</code>
+    <code class="s2">"django.contrib.staticfiles"</code><code class="p">,</code>
+    <code class="c1"># Local</code>
+    <code class="s2">"accounts.apps.AccountsConfig"</code><code class="p">,</code>  <code class="c1"># new</code>
+<code class="p">]</code>
+<code class="o">...</code>
+<code class="n">AUTH_USER_MODEL</code> <code class="o">=</code> <code class="s2">"accounts.CustomUser"</code>  <code class="c1"># new</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Time to create a migrations file for the changes. We’ll add the optional app name <code>accounts</code> to the command so that only changes to that app are included.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py makemigrations accounts
+Migrations for 'accounts':
+  accounts/migrations/0001_initial.py
+    - Create model CustomUser
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Then run <code>migrate</code> to initialize the database for the very first time.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py migrate
+Operations to perform:
+  Apply all migrations: accounts, admin, auth, contenttypes, sessions
+Running migrations:
+  No migrations to apply.
+</pre>
+
+      </div>
+
+    </figure>
+
+    <h3 id="leanpub-auto-custom-user-forms">Custom User Forms</h3>
+
+    <p>A user model can be both created and edited within the Django admin. So we’ll need to update the built-in forms too to point to <code>CustomUser</code> instead of <code>User</code>. In your text editor create a new file called <code>accounts/forms.py</code> and type in the following code to switch over to <code>CustomUser</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/forms.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.forms</code> <code class="kn">import</code> <code class="n">UserCreationForm</code><code class="p">,</code> <code class="n">UserChangeForm</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserCreationForm</code><code class="p">(</code><code class="n">UserCreationForm</code><code class="p">):</code>
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">:</code>
+        <code class="n">model</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code>
+        <code class="n">fields</code> <code class="o">=</code> <code class="p">(</code>
+            <code class="s2">"email"</code><code class="p">,</code>
+            <code class="s2">"username"</code><code class="p">,</code>
+        <code class="p">)</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserChangeForm</code><code class="p">(</code><code class="n">UserChangeForm</code><code class="p">):</code>
+    <code class="k">class</code> <code class="nc">Meta</code><code class="p">:</code>
+        <code class="n">model</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code>
+        <code class="n">fields</code> <code class="o">=</code> <code class="p">(</code>
+            <code class="s2">"email"</code><code class="p">,</code>
+            <code class="s2">"username"</code><code class="p">,</code>
+        <code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>At the very top we’ve imported <code>CustomUser</code> model via <a href="https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#django.contrib.auth.get_user_model">get_user_model</a> which looks to our <code>AUTH_USER_MODEL</code> config in <code>settings.py</code>. This might feel a bit more circular than directly importing <code>CustomUser</code> here, but it enforces the idea of making one single reference to the custom user model rather than directly referring to it all over our project.</p>
+
+    <p>Next we import <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#django.contrib.auth.forms.UserCreationForm">UserCreationForm</a> and <a href="https://docs.djangoproject.com/en/4.0/topics/auth/default/#django.contrib.auth.forms.UserChangeForm">UserChangeForm</a> which will both be extended.</p>
+
+    <p>Then create two new forms–<code>CustomUserCreationForm</code> and <code>CustomUserChangeForm</code>–that extend the base user forms imported above and specify swapping in our <code>CustomUser</code> model and displaying the fields <code>email</code> and <code>username</code>. The <code>password</code> field is implicitly included by default and so does not need to be explicitly named here as well.</p>
+
+    <h3 id="leanpub-auto-custom-user-admin">Custom User Admin</h3>
+
+    <p>Finally we have to update our <code>accounts/admin.py</code> file. The admin is a common place to manipulate user data and there is tight coupling between the built-in <code>User</code> and the admin.</p>
+
+    <p>We’ll extend the existing <code>UserAdmin</code> into <code>CustomUserAdmin</code> and tell Django to use our new forms and custom user model. We can also list <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/auth/">any user attributes</a> we want but for now will just focus on three: email, username, and superuser status.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/admin.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib</code> <code class="kn">import</code> <code class="n">admin</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth.admin</code> <code class="kn">import</code> <code class="n">UserAdmin</code>
+
+<code class="kn">from</code> <code class="nn">.forms</code> <code class="kn">import</code> <code class="n">CustomUserCreationForm</code><code class="p">,</code> <code class="n">CustomUserChangeForm</code>
+
+<code class="n">CustomUser</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserAdmin</code><code class="p">(</code><code class="n">UserAdmin</code><code class="p">):</code>
+    <code class="n">add_form</code> <code class="o">=</code> <code class="n">CustomUserCreationForm</code>
+    <code class="n">form</code> <code class="o">=</code> <code class="n">CustomUserChangeForm</code>
+    <code class="n">model</code> <code class="o">=</code> <code class="n">CustomUser</code>
+    <code class="n">list_display</code> <code class="o">=</code> <code class="p">[</code>
+        <code class="s2">"email"</code><code class="p">,</code>
+        <code class="s2">"username"</code><code class="p">,</code>
+        <code class="s2">"is_superuser"</code><code class="p">,</code>
+    <code class="p">]</code>
+
+
+<code class="n">admin</code><code class="o">.</code><code class="n">site</code><code class="o">.</code><code class="n">register</code><code class="p">(</code><code class="n">CustomUser</code><code class="p">,</code> <code class="n">CustomUserAdmin</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>Phew. A bit of code upfront but this saves a ton of heartache later on.</p>
+
+    <h3 id="leanpub-auto-superuser">Superuser</h3>
+
+    <p>A good way to confirm our custom user model is up and running properly is to create a superuser account so we can log into the admin. This command will access <code>CustomUserCreationForm</code> under the hood.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py createsuperuser
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>I’ve used the username <code>wsv</code>, email of <code>will@wsvincent.com</code>, and password <code>testpass123</code>. You can use your own preferred variations here.</p>
+
+    <p>In your web browser open the page <code>http://127.0.0.1:8000/admin</code> and log in. You should see your superuser name in the upper right corner on the post-log in page.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 396px">
+
+        <img src="images/04_admin.jpg" alt="Django admin homepage" style="width: 100%"/>
+
+        <figcaption>Django admin homepage</figcaption>
+
+      </figure>
+
+    </div>
+
+    <p>You can also click on the <code>Users</code> section to see the email and username of your superuser account.</p>
+
+    <div class="figure-wrapper center">
+
+      <figure class="image" style="width: 395px">
+
+        <img src="images/04_admin_users_page.jpg" alt="Django admin users page" style="width: 100%"/>
+
+        <figcaption>Django admin users page</figcaption>
+
+      </figure>
+
+    </div>
+
+    <h3 id="leanpub-auto-tests">Tests</h3>
+
+    <p>Since we’ve added new functionality to our project we should test it. Whether you are a solo developer or working on a team, tests are important. In the words of Django co-founder Jacob Kaplan-Moss, “Code without tests is broken as designed.”</p>
+
+    <p>There are two main types of tests:</p>
+
+    <ul>
+
+      <li>
+<em>Unit tests</em> are small, fast, and isolated to a specific piece of functionality</li>
+
+      <li>
+<em>Integration tests</em> are large, slow, and used for testing an entire application or a user flow like payment that covers multiple screens</li>
+
+    </ul>
+
+    <p>You should write many unit tests and a small number of integration tests.</p>
+
+    <p>The Python programming language contains its own <a href="https://docs.python.org/3/library/unittest.html">unit testing framework</a> and Django’s <a href="https://docs.djangoproject.com/en/4.0/topics/testing/">automated testing framework</a> extends this with multiple additions into a web context. There is no excuse for not writing a lot of tests; they will save you time.</p>
+
+    <p>It’s important to note that not everything needs to be tested. For example, any built-in Django features already contain tests in the source code. If we were using the default <code>User</code> model in our project we would not need to test it. But since we’ve created a <code>CustomUser</code> model we should.</p>
+
+    <h3 id="leanpub-auto-unit-tests">Unit Tests</h3>
+
+    <p>To write unit tests in Django we use <a href="https://docs.djangoproject.com/en/4.0/topics/testing/tools/#django.test.TestCase">TestCase</a> which is, itself, an extension of Python’s <a href="https://docs.python.org/3/library/unittest.html#unittest.TestCase">TestCase</a>. Our <code>accounts</code> app already contains a <code>tests.py</code> file which is automatically added when the <code>startapp</code> command is used. Currently it is blank. Let’s fix that!</p>
+
+    <p>Each method must be prefaced with <code>test</code> in order to be run by the Django test suite. It is also a good idea to be overly descriptive with your unit test names since mature projects have hundreds if not thousands of tests!</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Code</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code><code class="c1"># accounts/tests.py</code>
+<code class="kn">from</code> <code class="nn">django.contrib.auth</code> <code class="kn">import</code> <code class="n">get_user_model</code>
+<code class="kn">from</code> <code class="nn">django.test</code> <code class="kn">import</code> <code class="n">TestCase</code>
+
+
+<code class="k">class</code> <code class="nc">CustomUserTests</code><code class="p">(</code><code class="n">TestCase</code><code class="p">):</code>
+    <code class="k">def</code> <code class="nf">test_create_user</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">User</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code>
+        <code class="n">user</code> <code class="o">=</code> <code class="n">User</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create_user</code><code class="p">(</code>
+            <code class="n">username</code><code class="o">=</code><code class="s2">"will"</code><code class="p">,</code> <code class="n">email</code><code class="o">=</code><code class="s2">"will@email.com"</code><code class="p">,</code> <code class="n">password</code><code class="o">=</code><code class="s2">"testpass123"</code>
+        <code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">user</code><code class="o">.</code><code class="n">username</code><code class="p">,</code> <code class="s2">"will"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">user</code><code class="o">.</code><code class="n">email</code><code class="p">,</code> <code class="s2">"will@email.com"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTrue</code><code class="p">(</code><code class="n">user</code><code class="o">.</code><code class="n">is_active</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertFalse</code><code class="p">(</code><code class="n">user</code><code class="o">.</code><code class="n">is_staff</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertFalse</code><code class="p">(</code><code class="n">user</code><code class="o">.</code><code class="n">is_superuser</code><code class="p">)</code>
+
+    <code class="k">def</code> <code class="nf">test_create_superuser</code><code class="p">(</code><code class="bp">self</code><code class="p">):</code>
+        <code class="n">User</code> <code class="o">=</code> <code class="n">get_user_model</code><code class="p">()</code>
+        <code class="n">admin_user</code> <code class="o">=</code> <code class="n">User</code><code class="o">.</code><code class="n">objects</code><code class="o">.</code><code class="n">create_superuser</code><code class="p">(</code>
+            <code class="n">username</code><code class="o">=</code><code class="s2">"superadmin"</code><code class="p">,</code> <code class="n">email</code><code class="o">=</code><code class="s2">"superadmin@email.com"</code><code class="p">,</code> <code class="n">password</code><code class="o">=</code><code class="s2">"testpass123"</code>
+        <code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">admin_user</code><code class="o">.</code><code class="n">username</code><code class="p">,</code> <code class="s2">"superadmin"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertEqual</code><code class="p">(</code><code class="n">admin_user</code><code class="o">.</code><code class="n">email</code><code class="p">,</code> <code class="s2">"superadmin@email.com"</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTrue</code><code class="p">(</code><code class="n">admin_user</code><code class="o">.</code><code class="n">is_active</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTrue</code><code class="p">(</code><code class="n">admin_user</code><code class="o">.</code><code class="n">is_staff</code><code class="p">)</code>
+        <code class="bp">self</code><code class="o">.</code><code class="n">assertTrue</code><code class="p">(</code><code class="n">admin_user</code><code class="o">.</code><code class="n">is_superuser</code><code class="p">)</code>
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>We have imported both <code>get_user_model</code> and <code>TestCase</code> before creating a <code>CustomUserTests</code> class. Within it are two separate tests. <code>test_create_user</code> confirms that a new user can be created. First we set our user model to the variable <code>User</code> and then create one via the manager method <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/auth/#django.contrib.auth.models.UserManager.create_user">create_user</a> which does the actual work of creating a new user with the proper permissions.</p>
+
+    <p>For <code>test_create_superuser</code> we follow a similar pattern but reference <a href="https://docs.djangoproject.com/en/4.0/ref/contrib/auth/#django.contrib.auth.models.UserManager.create_superuser">create_superuser</a> instead of <code>create_user</code>. The difference between the two users is that a superuser should have both <code>is_staff</code> and <code>is_superuser</code> set to True.</p>
+
+    <p>To run our tests within Docker we’ll prefix <code>docker-compose exec web</code> to the traditional command <code>python manage.py test</code>.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ docker-compose exec web python manage.py test
+Found 2 test(s).
+Creating test database for alias 'default'...
+System check identified no issues (0 silenced).
+..
+---------------------------------------------------------------------
+Ran 2 tests in 0.115s
+
+OK
+Destroying test database for alias 'default'...
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>All the tests pass so we can proceed.</p>
+
+    <h3 id="leanpub-auto-git-2">Git</h3>
+
+    <p>We’ve accomplished quite a lot in this chapter so it is a good point to pause and commit our work by initializing a new Git repository, adding changes, and including a commit message.</p>
+
+    <figure class="code" dir="ltr">
+
+      <figcaption>Shell</figcaption>
+
+      <div class="highlight">
+
+        <pre><code></code>$ git init
+$ git status
+$ git add .
+$ git commit -m 'ch4'
+</pre>
+
+      </div>
+
+    </figure>
+
+    <p>You can compare with the <a href="https://github.com/wsvincent/djangoforprofessionals/tree/main/ch4-books">official source code for this chapter on Github</a>.</p>
+
+    <h3 id="leanpub-auto-conclusion-4">Conclusion</h3>
+
+    <p>Our Bookstore project is now running with Docker and PostgreSQL and we’ve configured a custom user model. Next up will be a <code>pages</code> app for our static pages.</p>
+
+  </div>
+
+</body>
+
+</html>
